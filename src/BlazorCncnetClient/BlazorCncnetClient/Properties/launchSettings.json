@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "BlazorCncnetClient": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:11332;http://localhost:11333"
+    }
+  }
+}
