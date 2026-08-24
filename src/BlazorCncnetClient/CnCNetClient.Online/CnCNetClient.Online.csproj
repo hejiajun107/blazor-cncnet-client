@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CnCNetClient.Online</RootNamespace>
+    <Description>CnCNetClient Online Library (migrated from DTAClient.Online, independently maintained). IRC + CnCNet lobby logic, XNAUI-free.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CnCNetClient.Core\CnCNetClient.Core.csproj" />
+    <ProjectReference Include="..\CnCNetClient.Tools\CnCNetClient.Tools.csproj" />
+    <ProjectReference Include="..\CnCNetClient.Integration\CnCNetClient.Integration.csproj" />
+    <ProjectReference Include="..\CnCNetClient.Domain\CnCNetClient.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

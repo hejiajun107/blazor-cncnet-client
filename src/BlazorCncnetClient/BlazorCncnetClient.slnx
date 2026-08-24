@@ -1,3 +1,9 @@
 <Solution>
   <Project Path="BlazorCncnetClient/BlazorCncnetClient.csproj" />
+  <Project Path="CnCNetClient.Tools/CnCNetClient.Tools.csproj" />
+  <Project Path="CnCNetClient.Core/CnCNetClient.Core.csproj" />
+  <Project Path="CnCNetClient.Integration/CnCNetClient.Integration.csproj" />
+  <Project Path="CnCNetClient.Updater/CnCNetClient.Updater.csproj" />
+  <Project Path="CnCNetClient.Domain/CnCNetClient.Domain.csproj" />
+  <Project Path="CnCNetClient.Online/CnCNetClient.Online.csproj" />
 </Solution>

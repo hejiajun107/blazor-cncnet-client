@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -29,5 +29,14 @@
 		<PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
 		<PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
 		<PackageReference Include="Serilog.Sinks.Console" Version="5.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CnCNetClient.Core\CnCNetClient.Core.csproj" />
+		<ProjectReference Include="..\CnCNetClient.Tools\CnCNetClient.Tools.csproj" />
+		<ProjectReference Include="..\CnCNetClient.Integration\CnCNetClient.Integration.csproj" />
+		<ProjectReference Include="..\CnCNetClient.Domain\CnCNetClient.Domain.csproj" />
+		<ProjectReference Include="..\CnCNetClient.Online\CnCNetClient.Online.csproj" />
+		<ProjectReference Include="..\CnCNetClient.Updater\CnCNetClient.Updater.csproj" />
 	</ItemGroup>
 </Project>

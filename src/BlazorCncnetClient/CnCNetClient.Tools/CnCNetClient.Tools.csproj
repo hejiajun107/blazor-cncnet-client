@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CnCNetClient.Tools</RootNamespace>
+    <Description>Base utility library (INI parsing, path safety, conversions), vendored from Rampastring.Tools and independently maintained.</Description>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CnCNetClient.Updater</RootNamespace>
+    <Description>CnCNet Client Updater Library (migrated from ClientUpdater, independently maintained).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CnCNetClient.Core\CnCNetClient.Core.csproj" />
+  </ItemGroup>
+
+</Project>

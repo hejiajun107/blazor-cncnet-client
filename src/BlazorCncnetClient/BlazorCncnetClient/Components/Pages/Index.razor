@@ -1,7 +1,42 @@
-﻿@page "/"
+@page "/"
+@inject EnvironmentCheck Env
+@inject ILogger<Index> Logger
 
-<h3>Index</h3>
+<div class="env-check">
+    <h1>CNCNet 客户端</h1>
+    <p class="subtitle">启动环境检测</p>
+
+    <div class="env-row"><span>启动目录</span><code>@Env.StartupPath</code></div>
+    <div class="env-row"><span>游戏目录</span><code>@(Env.GamePath ?? "未找到")</code></div>
+    <div class="env-row"><span>ClientDefinitions.ini</span><code>@(Env.ClientDefinitionsFound ? "已找到" : "缺失")</code></div>
+    <div class="env-row"><span>客户端配置</span><code>@(Env.ConfigurationReady ? "已初始化" : "未初始化")</code></div>
+
+    <div class="msg @(Env.IsReady ? "ok" : "warn")">@Env.Message</div>
+
+    <div class="actions">
+        @if (Env.IsReady)
+        {
+            <button class="btn primary" @onclick="GoMainMenu">进入主菜单</button>
+        }
+        else
+        {
+            <button class="btn" @onclick="ReDetect">重新检测</button>
+        }
+    </div>
+</div>
 
 @code {
+    protected override void OnInitialized()
+    {
+        Logger.LogInformation("启动环境检测开始");
+        Env.Detect();
+        Logger.LogInformation("启动环境检测结束: {Ready} - {Message}", Env.IsReady, Env.Message);
+    }
 
+    private void ReDetect() => Env.Detect();
+
+    private void GoMainMenu()
+    {
+        // TODO(M2.4): 导航到主菜单页面
+    }
 }

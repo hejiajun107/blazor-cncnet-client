@@ -150,3 +150,95 @@ app {
 .sidebar .collapse {
     display: block;
 }
+
+/* ── 启动环境检测页（M2.2 骨架样式，M2.5 主题系统落地后统一替换） ── */
+.env-check {
+    max-width: 640px;
+    margin: 8vh auto 0;
+    padding: 2rem 2.5rem;
+    border: 1px solid #3a3a4a;
+    border-radius: 10px;
+    background: #17181f;
+    color: #e6e6ea;
+    font-size: 14px;
+}
+
+.env-check h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.6rem;
+}
+
+.env-check .subtitle {
+    margin: 0 0 1.5rem;
+    color: #8a8a96;
+}
+
+.env-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #2a2b35;
+}
+
+.env-row span {
+    color: #8a8a96;
+}
+
+.env-row code {
+    color: #7fd0ff;
+    word-break: break-all;
+    text-align: right;
+}
+
+.env-check .msg {
+    margin: 1.25rem 0;
+    padding: 0.6rem 0.9rem;
+    border-radius: 6px;
+}
+
+.env-check .msg.ok {
+    background: rgba(46, 160, 67, 0.15);
+    color: #7ee787;
+    border: 1px solid rgba(46, 160, 67, 0.4);
+}
+
+.env-check .msg.warn {
+    background: rgba(219, 150, 40, 0.15);
+    color: #ffd47e;
+    border: 1px solid rgba(219, 150, 40, 0.4);
+}
+
+.env-check .actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.env-check .btn {
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    border: 1px solid #4a4b58;
+    background: #23242e;
+    color: #e6e6ea;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.12s ease, transform 0.08s ease;
+}
+
+.env-check .btn:hover {
+    background: #2e303c;
+}
+
+.env-check .btn:active {
+    transform: scale(0.98);
+}
+
+.env-check .btn.primary {
+    background: #1b6ec2;
+    border-color: #1b6ec2;
+    color: #fff;
+}
+
+.env-check .btn.primary:hover {
+    background: #1f7bdb;
+}

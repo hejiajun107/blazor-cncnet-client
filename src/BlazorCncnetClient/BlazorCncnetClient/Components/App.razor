@@ -1,7 +1,19 @@
+@using System.Threading
 @using BlazorCncnetClient.Components.Layouts
 @using BlazorCncnetClient.Components.Pages
+@inject InfiniFrameDispatcher Dispatcher
+
 <Router AppAssembly="@typeof(Program).Assembly" NotFoundPage="@typeof(PageNotFound)">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
     </Found>
 </Router>
+
+@code {
+    protected override void OnInitialized()
+    {
+        // 捕获 UI 线程同步上下文（Blazor 渲染线程），供 IDispatcher 调度回 UI。
+        Dispatcher.Initialize(SynchronizationContext.Current ?? throw new InvalidOperationException(
+            "未能在 UI 线程找到 SynchronizationContext。InfiniFrameDispatcher 需要它在启动时初始化。"));
+    }
+}

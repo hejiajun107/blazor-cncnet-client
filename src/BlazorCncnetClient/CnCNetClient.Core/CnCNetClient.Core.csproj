@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CnCNetClient.Core</RootNamespace>
+    <Description>CnCNetClient Core Library (migrated from CNCNet ClientCore, independently maintained).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ude.NetStandard" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CnCNetClient.Tools\CnCNetClient.Tools.csproj" />
+  </ItemGroup>
+
+</Project>

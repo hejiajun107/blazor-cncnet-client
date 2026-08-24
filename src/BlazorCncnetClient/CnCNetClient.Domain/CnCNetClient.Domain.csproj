@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>CnCNetClient.Domain</RootNamespace>
+    <Description>CnCNetClient Domain Library (migrated from DTAClient.Domain, independently maintained).</Description>
+  </PropertyGroup>
+
+  <!-- TunnelHandler was migrated from Domain to Online; it still needs access to
+       `CnCNetTunnel.UpdateFrom` (internal) and `TimedHttpClient` (internal) which
+       originated in the same assembly. Expose internals to Online rather than
+       widening the public API surface. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="CnCNetClient.Online" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageReference Include="OpenMcdf" Version="3.1.4" />
+    <PackageReference Include="DiscordRichPresence" Version="1.2.1.24" />
+    <PackageReference Include="lzo.net" Version="0.0.6" />
+    <PackageReference Include="Ude.NetStandard" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CnCNetClient.Core\CnCNetClient.Core.csproj" />
+    <ProjectReference Include="..\CnCNetClient.Tools\CnCNetClient.Tools.csproj" />
+    <ProjectReference Include="..\CnCNetClient.Integration\CnCNetClient.Integration.csproj" />
+  </ItemGroup>
+
+</Project>
