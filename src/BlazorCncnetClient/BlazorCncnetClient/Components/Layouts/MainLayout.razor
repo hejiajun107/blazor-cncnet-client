@@ -1,12 +1,74 @@
-﻿@inherits LayoutComponentBase
-﻿@using InfiniFrame.Blazor
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject IJSRuntime JS
+@inject IThemeProvider ThemeProvider
+@inject NavigationManager Nav
 
-<div class="main">
-    <div class="content px-4 ">
+<!-- HUD 顶栏（全局，TopBar 通用组件，spec §5.3） -->
+<TopBar Brand="COMMAND NET" SubText="指挥核心在线">
+    <div class="theme-switch" role="group" aria-label="主题切换">
+        @foreach (var t in ThemeProvider.Themes)
+        {
+            <Tooltip Text="@t.Hint" Position="bottom">
+                <button type="button" class="ts @(t.Key == ThemeProvider.Current.Key ? "on" : "")"
+                        @onclick="() => SwitchTheme(t.Key)">@t.Name</button>
+            </Tooltip>
+        }
+    </div>
+    <span>BUILD <b>0.3.0</b></span>
+    <span>延迟 <b id="lat">23</b>MS</span>
+</TopBar>
+
+<!-- 背景层（全局共享）：星粒 / 极光 / 网格 / 扫描线 / 暗角 -->
+<canvas id="bg-canvas"></canvas>
+<div class="aurora"></div>
+<div class="grid"></div>
+<div class="scan"></div>
+<div class="vig"></div>
+
+<div class="shell">
+    <!-- 页面切换过渡：@key 随路由变化强制重放 fade-slide（动效 tokens，spec §5.5） -->
+    <div class="page-anim" @key="Nav.Uri">
         @Body
     </div>
 </div>
 
-@code {
+<!-- 底栏（全局） -->
+<footer class="foot">
+    <div>SYSTEM STATUS: <b style="color:var(--cyan)">NOMINAL</b> <span>· 渲染引擎 ACTIVE</span></div>
+    <div class="r"><span>分辨率自适应</span><span>60 FPS</span><span>WEBGL OK</span></div>
+</footer>
 
+<!-- Toast（全局） -->
+<div class="toast" id="toast">提示</div>
+
+<!-- 全局弹窗（spec §5.3 MessageBox，MessageBoxService 驱动） -->
+<MessageBox />
+
+@code {
+    protected override void OnInitialized()
+    {
+        // 主题切换后刷新切换控件高亮态
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // 主题系统：加载持久化主题并应用（M2.5）
+            await ThemeProvider.InitializeAsync();
+            // 星粒背景动效（尊重 prefers-reduced-motion，内部处理）
+            await JS.InvokeVoidAsync("cncnet.initStars", "bg-canvas");
+        }
+    }
+
+    private async Task SwitchTheme(string key) => await ThemeProvider.ApplyAsync(key);
+
+    private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+    }
 }

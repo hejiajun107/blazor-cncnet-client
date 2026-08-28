@@ -20,6 +20,7 @@
 	  <PackageReference Include="InfiniLore.InfiniFrame" Version="0.60.0" />
 	  <PackageReference Include="InfiniLore.InfiniFrame.Blazor" Version="0.60.0" />
 	  <PackageReference Include="InfiniLore.InfiniFrame.BlazorWebView" Version="0.60.0" />
+	  <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
 	</ItemGroup>
 
 

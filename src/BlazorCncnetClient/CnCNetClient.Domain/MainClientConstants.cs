@@ -1,9 +1,6 @@
 using System;
 using System.IO;
 
-#if WINFORMS
-using System.Windows.Forms;
-#endif
 using CnCNetClient.Core;
 
 using CnCNetClient.Tools;
@@ -36,8 +33,9 @@ namespace CnCNetClient.Domain
         }
 
         /// <summary>
-        /// Show an error in console as well as a Win32 MessageBox. For non-Windows platforms, this launches a text file in a GUI editor.
-        /// This action handles errors when XNA windows are not initialized yet.
+        /// Show an error in console as well as a log file. 
+        /// This action handles errors when the UI is not initialized yet; once the UI is up,
+        /// the host injects <see cref="DisplayErrorAction"/> to present errors via the Blazor UI.
         /// </summary>
         /// <param name="title">The title.</param>
         /// <param name="error">The error.</param>
@@ -51,9 +49,6 @@ namespace CnCNetClient.Domain
             if (LoggerInitialized)
                 Logger.Log(FormattableString.Invariant($"{(title is null ? null : title + Environment.NewLine + Environment.NewLine)}{error}"));
 
-#if WINFORMS
-            MessageBox.Show(error, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-#else
             if (LoggerInitialized)
                 ProcessLauncher.StartShellProcess(ProgramConstants.LogFileName);
             else
@@ -67,7 +62,6 @@ namespace CnCNetClient.Domain
                 }
                 ProcessLauncher.StartShellProcess(tempfile);
             }
-#endif
 
             if (exit)
                 Environment.Exit(1);

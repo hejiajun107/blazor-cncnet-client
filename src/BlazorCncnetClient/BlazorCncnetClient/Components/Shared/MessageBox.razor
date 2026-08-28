@@ -1,0 +1,76 @@
+@namespace BlazorCncnetClient.Components.Shared
+@implements IDisposable
+@inject MessageBoxService Service
+
+@if (Service.IsOpen || Service.IsClosing)
+{
+    <div class="msgbox-overlay @(Service.IsClosing ? "closing" : "")" @onclick="OnOverlayClick">
+        <div class="msgbox @(Service.IsClosing ? "pop-out" : "pop-in")" role="dialog" aria-modal="true"
+             aria-label="@Service.Title" @onclick:stopPropagation="true">
+            <div class="mb-head kind-@Service.Kind.ToString().ToLowerInvariant()">
+                <span class="mb-ic">@Icon</span>
+                <span class="mb-title">@Service.Title</span>
+                <span class="mb-en">@EnLabel</span>
+            </div>
+            <div class="mb-body">@Service.Message</div>
+            <div class="mb-actions">
+                @switch (Service.Buttons)
+                {
+                    case MessageBoxButtons.Ok:
+                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">确定</button>
+                        break;
+                    case MessageBoxButtons.OkCancel:
+                        <button class="mb-btn item-in" @onclick="() => Close(false)">取消</button>
+                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">确定</button>
+                        break;
+                    case MessageBoxButtons.YesNo:
+                        <button class="mb-btn item-in" @onclick="() => Close(false)">否</button>
+                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">是</button>
+                        break;
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string Icon => Service.Kind switch
+    {
+        MessageBoxKind.Warn => "▲",
+        MessageBoxKind.Error => "✕",
+        MessageBoxKind.Confirm => "?",
+        _ => "▸"
+    };
+
+    private string EnLabel => Service.Kind switch
+    {
+        MessageBoxKind.Warn => "WARNING",
+        MessageBoxKind.Error => "ERROR",
+        MessageBoxKind.Confirm => "CONFIRM",
+        _ => "INFO"
+    };
+
+    protected override void OnInitialized() => Service.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task Close(bool result)
+    {
+        if (!Service.IsOpen || Service.IsClosing)
+            return;
+        Service.Resolve(result);                 // 进入 fade-out 120ms
+        await Task.Delay(120);
+        Service.CompleteClose();                 // 关闭并完成调用方 await
+        StateHasChanged();
+    }
+
+    // 点击遮罩：仅确认型弹窗允许以「取消/否」关闭，避免误触丢结果。
+    private async Task OnOverlayClick()
+    {
+        if (Service.Buttons == MessageBoxButtons.Ok || Service.IsClosing)
+            return;
+        await Close(false);
+    }
+
+    public void Dispose() => Service.Changed -= OnChanged;
+}

@@ -1,0 +1,60 @@
+@namespace BlazorCncnetClient.Components.Shared
+@implements IDisposable
+
+<header class="hud">
+    <div class="sys">
+        <span class="live @(Status ? "" : "off")"></span>
+        <b>@Brand</b>
+        @if (!string.IsNullOrEmpty(SubText))
+        {
+            <span>· @SubText</span>
+        }
+    </div>
+    <div class="sys">
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        @if (!string.IsNullOrEmpty(PlayerName))
+        {
+            <span>玩家 <b>@PlayerName</b></span>
+        }
+        @if (ShowClock)
+        {
+            <span class="clock">@Clock</span>
+        }
+    </div>
+</header>
+
+@code {
+    /// <summary>品牌名（左侧主标，Orbitron）。</summary>
+    [Parameter] public string Brand { get; set; } = "COMMAND NET";
+
+    /// <summary>副标题（分隔点后的小字）。</summary>
+    [Parameter] public string? SubText { get; set; }
+
+    /// <summary>连接状态：true=青色呼吸灯（pulse），false=离线红灯常亮。</summary>
+    [Parameter] public bool Status { get; set; } = true;
+
+    /// <summary>当前玩家名（未连接时省略）。</summary>
+    [Parameter] public string? PlayerName { get; set; }
+
+    /// <summary>是否显示实时时钟（每秒滚动更新）。</summary>
+    [Parameter] public bool ShowClock { get; set; } = true;
+
+    /// <summary>右侧自定义内容插槽（如主题切换控件）。</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string Clock { get; set; } = string.Empty;
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        Tick();
+        _timer = new System.Threading.Timer(_ => InvokeAsync(Tick), null, 1000, 1000);
+    }
+
+    private void Tick() => Clock = DateTime.Now.ToString("HH:mm:ss");
+
+    public void Dispose() => _timer?.Dispose();
+}

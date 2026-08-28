@@ -2,6 +2,7 @@
 @using BlazorCncnetClient.Components.Layouts
 @using BlazorCncnetClient.Components.Pages
 @inject InfiniFrameDispatcher Dispatcher
+@inject GlobalExceptionHandler GlobalErrors
 
 <Router AppAssembly="@typeof(Program).Assembly" NotFoundPage="@typeof(PageNotFound)">
     <Found Context="routeData">
@@ -15,5 +16,8 @@
         // 捕获 UI 线程同步上下文（Blazor 渲染线程），供 IDispatcher 调度回 UI。
         Dispatcher.Initialize(SynchronizationContext.Current ?? throw new InvalidOperationException(
             "未能在 UI 线程找到 SynchronizationContext。InfiniFrameDispatcher 需要它在启动时初始化。"));
+
+        // 2.8 全局异常兜底：注入 DisplayErrorAction（MessageBox 呈现）并订阅进程级未处理异常。
+        GlobalErrors.Subscribe();
     }
 }

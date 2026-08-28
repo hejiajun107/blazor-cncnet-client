@@ -1,0 +1,133 @@
+@page "/menu"
+@implements IDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject IThemeProvider ThemeProvider
+@inject MessageBoxService MessageBox
+
+<main class="stage">
+    <section class="left">
+        <div class="logobar">
+            <span class="rec"></span>
+            @if (ThemeProvider.Current.Key == "ra")
+            {
+                <span style="color:#ffd23f;letter-spacing:5px">RED ALERT</span>
+                <span class="ver">// COMMAND &amp; CONQUER · 指挥作战</span>
+            }
+            else
+            {
+                <text>CNC</text><span style="color:#fff">NET</span> <span class="ver">// 幽能星港 · 指挥视窗</span>
+            }
+        </div>
+
+        <div class="viewport item-in">
+            <canvas id="globe"></canvas>
+            <div class="radar"></div>
+            <span class="corner c-tl"></span><span class="corner c-tr"></span>
+            <span class="corner c-bl"></span><span class="corner c-br"></span>
+            <div class="label">GLOBAL NETWORK // SECTOR-07</div>
+            <div class="label2">SCAN: ACTIVE</div>
+        </div>
+
+        <div class="readout item-in" style="animation-delay:80ms">
+            <div class="ro"><div class="k">在线玩家</div><div class="v" id="r1">1284</div></div>
+            <div class="ro"><div class="k">活跃房间</div><div class="v" id="r2">327</div></div>
+            <div class="ro"><div class="k">网络延迟</div><div class="v">23<small>MS</small></div></div>
+            <div class="ro"><div class="k">威胁等级</div><div class="v" style="color:var(--gold);text-shadow:0 0 14px rgba(255,176,59,.5)">▲ 低</div></div>
+        </div>
+    </section>
+
+    <aside class="panel">
+        <div class="ph"><span>指挥菜单</span><span style="font-family:var(--font-orbitron)">MAIN TERMINAL</span></div>
+        @for (var i = 0; i < MenuItems.Length; i++)
+        {
+            var m = MenuItems[i];
+            <button class="mbtn @(m.IsPrimary ? "primary" : "") item-in"
+                    style="animation-delay:@((120 + i * 50).ToString())ms"
+                    @onclick="() => OnMenuClick(m)">
+                <span class="ic">@m.Icon</span>
+                <span class="txt"><span class="cn">@m.Cn</span><br><span class="en">@m.En</span></span>
+                <span class="go">›</span>
+            </button>
+        }
+        <div class="pf"><span class="cn">© 2026 CNCNet CLIENT</span><span>ESC · 返回</span></div>
+    </aside>
+</main>
+
+@code {
+    private sealed record MenuItem(string Key, string Cn, string En, string Icon, bool IsPrimary = false);
+
+    private static readonly MenuItem[] MenuItems =
+    [
+        new("campaign", "战役", "Campaign", "◆", true),
+        new("multiplayer", "多人游戏", "Multiplayer", "⬡"),
+        new("skirmish", "遭遇战", "Skirmish", "⚔"),
+        new("lan", "局域网", "LAN", "⌗"),
+        new("load", "载入", "Load Game", "↻"),
+        new("lore", "资料库", "Codex / Lore", "❖"),
+        new("stats", "统计", "Statistics", "▤"),
+        new("settings", "设置", "Settings", "⚙"),
+        new("credits", "鸣谢", "Credits", "✦"),
+    ];
+
+    protected override void OnInitialized()
+    {
+        // 品牌文案随主题切换刷新（红警 → RED ALERT）
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+    }
+
+    private DotNetObjectReference<MainMenu>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // 全息地球 + 读数模拟（尊重 prefers-reduced-motion，内部处理）
+            await JS.InvokeVoidAsync("cncnet.initGlobe", "globe");
+            await JS.InvokeVoidAsync("cncnet.initReadout");
+            // ESC 返回首页（实现「可退」）
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("cncnet.initMenuKeyNav", _dotNetRef);
+        }
+    }
+
+    private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
+
+    /// <summary>ESC 键：从主菜单返回首页（环境检测页）。由 JS keydown 触发。</summary>
+    [JSInvokable]
+    public Task OnEscKey()
+    {
+        Nav.NavigateTo("/");
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+        if (_dotNetRef is not null)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.disposeMenuKeyNav");
+            _dotNetRef.Dispose();
+        }
+    }
+
+    private async Task OnMenuClick(MenuItem item)
+    {
+        // M2.4/M2.7：暂以 toast / MessageBox 占位，后续各功能页接入后改为真实导航。
+        switch (item.Key)
+        {
+            case "settings":
+                await MessageBox.ShowAsync("设置", "设置中心正在建设中，敬请期待。",
+                    MessageBoxButtons.Ok, MessageBoxKind.Info);
+                break;
+            case "credits":
+                var ok = await MessageBox.ShowAsync("鸣谢", "是否查看开发人员与致谢名单？",
+                    MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+                await JS.InvokeVoidAsync("cncnet.toast", ok ? "已打开鸣谢" : "已取消");
+                break;
+            default:
+                await JS.InvokeVoidAsync("cncnet.toast", $"进入{item.Cn}…");
+                break;
+        }
+    }
+}

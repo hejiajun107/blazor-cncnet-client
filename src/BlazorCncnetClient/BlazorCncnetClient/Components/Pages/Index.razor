@@ -1,6 +1,7 @@
 @page "/"
 @inject EnvironmentCheck Env
 @inject ILogger<Index> Logger
+@inject NavigationManager Nav
 
 <div class="env-check">
     <h1>CNCNet 客户端</h1>
@@ -22,6 +23,7 @@
         {
             <button class="btn" @onclick="ReDetect">重新检测</button>
         }
+        <button class="btn" @onclick="PreviewMainMenu">预览主菜单（开发）</button>
     </div>
 </div>
 
@@ -35,8 +37,8 @@
 
     private void ReDetect() => Env.Detect();
 
-    private void GoMainMenu()
-    {
-        // TODO(M2.4): 导航到主菜单页面
-    }
+    private void GoMainMenu() => Nav.NavigateTo("/menu");
+
+    // 开发期预览入口：无需游戏资源即可查看主菜单 UI。
+    private void PreviewMainMenu() => Nav.NavigateTo("/menu");
 }
