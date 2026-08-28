@@ -1,0 +1,196 @@
+@namespace BlazorCncnetClient.Components.Shared
+@implements IDisposable
+@using CnCNetClient.Core
+@using CnCNetClient.Domain.Multiplayer.CnCNet
+@using CnCNetClient.Online
+@inject LoginService Service
+@inject IJSRuntime JS
+@inject IServiceProvider Services
+
+@if (Service.IsOpen || Service.IsClosing)
+{
+    <div class="msgbox-overlay login-overlay @(Service.IsClosing ? "closing" : "")" @onclick="OnOverlayClick">
+        <div class="msgbox login @(Service.IsClosing ? "pop-out" : "pop-in")" role="dialog" aria-modal="true"
+             aria-label="连接 CnCNet" @onclick:stopPropagation="true">
+            <div class="mb-head kind-info">
+                <span class="mb-ic">⬡</span>
+                <span class="mb-title">连接 CnCNet</span>
+                <span class="mb-en">CONNECT TO CNCNET</span>
+            </div>
+            <div class="lg-body">
+                <label class="lg-field" for="lg-name">
+                    <span class="lg-k">玩家名 <em>PLAYER NAME</em></span>
+                    <input id="lg-name" class="lg-input" maxlength="30" spellcheck="false" autocomplete="off"
+                           value="@Service.PlayerName" disabled="@Service.IsConnecting"
+                           placeholder="昵称（字母/数字/-_，首字符非数字）"
+                           @oninput="OnNameInput" @onkeydown="OnNameKeyDown" />
+                </label>
+
+                <label class="lg-check">
+                    <input type="checkbox" checked="@Service.RememberMe" disabled="@Service.IsConnecting"
+                           @onchange="e => SetPref(x => x.RememberMe = e.Value is bool b && b)" />
+                    <span class="c"><span class="cn">记住我</span><em>REMEMBER ME · 下次跳过本页</em></span>
+                </label>
+                <label class="lg-check">
+                    <input type="checkbox" checked="@Service.PersistentMode" disabled="@Service.IsConnecting"
+                           @onchange="e => SetPref(x => x.PersistentMode = e.Value is bool b && b)" />
+                    <span class="c"><span class="cn">离开大厅保持连接</span><em>STAY CONNECTED</em></span>
+                </label>
+                <label class="lg-check">
+                    <input type="checkbox" checked="@Service.AutoConnect"
+                           disabled="@(Service.IsConnecting || !(Service.RememberMe && Service.PersistentMode))"
+                           @onchange="e => SetPref(x => x.AutoConnect = e.Value is bool b && b)" />
+                    <span class="c"><span class="cn">启动自动连接</span><em>AUTO CONNECT</em></span>
+                </label>
+
+                @if (!string.IsNullOrEmpty(Service.Error))
+                {
+                    <div class="lg-err shake">@Service.Error</div>
+                }
+            </div>
+            <div class="mb-actions">
+                <button class="mb-btn item-in" @onclick="OnCancel" disabled="@Service.IsConnecting">取消</button>
+                <button class="mb-btn primary item-in" @onclick="OnConnect" disabled="@Service.IsConnecting">
+                    @(Service.IsConnecting ? "连接中…" : "连接")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private CnCNetManager? _manager;
+    private bool _wired;
+
+    protected override void OnInitialized() => Service.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    /* ── 输入 ── */
+    private void OnNameInput(ChangeEventArgs e) => Service.PlayerName = e.Value?.ToString() ?? string.Empty;
+
+    private void OnNameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            _ = OnConnect();
+    }
+
+    private void SetPref(Action<LoginService> mutate)
+    {
+        if (Service.IsConnecting)
+            return;
+        mutate(Service);
+        // 启动自动连接依赖「记住我 + 持久连接」同勾选（与原版 CnCNetLoginWindow 一致）
+        if (!Service.RememberMe || !Service.PersistentMode)
+            Service.AutoConnect = false;
+        Service.NotifyChanged();
+    }
+
+    /* ── 连接（spec §5.3.1：校验 → PLAYERNAME → CnCNetManager.Connect） ── */
+    private async Task OnConnect()
+    {
+        if (Service.IsConnecting || Service.IsClosing)
+            return;
+
+        var error = NameValidator.IsNameValid(Service.PlayerName, out var msg);
+        if (error != NameValidationError.None)
+        {
+            Service.Error = msg ?? "昵称不合法。";
+            Service.NotifyChanged();
+            return;
+        }
+
+        // 昵称即身份（CnCNet 无密码认证）：写入进程级 PLAYERNAME 后发起 IRC 连接。
+        ProgramConstants.PLAYERNAME = Service.PlayerName.Trim();
+        await PersistPrefsAsync();
+        EnsureManager();
+
+        Service.Error = null;
+        Service.IsConnecting = true;
+        Service.NotifyChanged();
+        _manager!.Connect();
+    }
+
+    /// <summary>
+    /// 懒解析 CnCNetManager：其构造依赖 ClientConfiguration（环境检测后才就绪），
+    /// 首次发起登录时才实例化（Program.cs 以工厂注册，Random 显式提供）。
+    /// </summary>
+    private void EnsureManager()
+    {
+        if (_wired)
+            return;
+        _wired = true;
+        _manager = (CnCNetManager)Services.GetService(typeof(CnCNetManager))!;
+        // Connected / ConnectAttemptFailed 经 IDispatcher 回调至 UI 线程，可直接操作。
+        _manager.Connected += OnConnected;
+        _manager.ConnectAttemptFailed += OnConnectAttemptFailed;
+    }
+
+    private void OnConnected(object? sender, EventArgs e)
+    {
+        if (!Service.IsOpen || Service.IsClosing)
+            return;
+        Service.IsConnecting = false;
+        Service.Error = null;
+        _ = JS.InvokeVoidAsync("cncnet.toast", $"已连接 CnCNet：{ProgramConstants.PLAYERNAME}");
+        _ = CloseAsync(LoginResult.Connected);
+    }
+
+    private void OnConnectAttemptFailed(object? sender, EventArgs e)
+    {
+        if (!Service.IsOpen)
+            return;
+        Service.IsConnecting = false;
+        Service.Error = "无法连接 CnCNet 服务器，请检查网络后重试。";
+        Service.NotifyChanged();
+    }
+
+    /* ── 关闭（复用 MessageBox 的 fade-out 120ms 流程） ── */
+    private async Task OnCancel()
+    {
+        if (Service.IsConnecting || Service.IsClosing)
+            return;
+        await CloseAsync(LoginResult.Cancelled);
+    }
+
+    private async Task OnOverlayClick()
+    {
+        if (Service.IsConnecting || Service.IsClosing)
+            return;
+        await CloseAsync(LoginResult.Cancelled);
+    }
+
+    private async Task CloseAsync(LoginResult result)
+    {
+        if (!Service.IsOpen || Service.IsClosing)
+            return;
+        Service.Resolve(result);            // 进入 fade-out 120ms
+        await Task.Delay(120);
+        Service.CompleteClose();
+        StateHasChanged();
+    }
+
+    /* ── M3 过渡持久化（localStorage；M4 4.1.1 改由 UserINISettings 写 settings INI） ── */
+    private async Task PersistPrefsAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("cncnet.saveLoginPrefs",
+                Service.PlayerName, Service.RememberMe, Service.PersistentMode, Service.AutoConnect);
+        }
+        catch
+        {
+            // 持久化失败不阻塞登录
+        }
+    }
+
+    public void Dispose()
+    {
+        Service.Changed -= OnChanged;
+        if (_wired && _manager is not null)
+        {
+            _manager.Connected -= OnConnected;
+            _manager.ConnectAttemptFailed -= OnConnectAttemptFailed;
+        }
+    }
+}

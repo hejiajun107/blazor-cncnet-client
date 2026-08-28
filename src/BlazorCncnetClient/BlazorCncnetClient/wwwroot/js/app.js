@@ -188,5 +188,41 @@
         }
     }
 
-    window.cncnet = { initStars, initGlobe, initReadout, toast, applyTheme, getTheme, initMenuKeyNav, disposeMenuKeyNav };
+    /* ── 登录偏好（M3 过渡：localStorage；M4 4.1.1 改由 UserINISettings 写 settings INI） ── */
+    const LOGIN_KEY = 'cncnet.login';
+    function saveLoginPrefs(name, remember, persistent, auto) {
+        try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ name, remember, persistent, auto })); } catch (e) { /* 忽略持久化失败 */ }
+    }
+    function loadLoginPrefs() {
+        try { return JSON.parse(localStorage.getItem(LOGIN_KEY) || 'null'); } catch (e) { return null; }
+    }
+
+    /* ── 聊天区滚动到底部（在线大厅） ─────────────────────────── */
+    function scrollToBottom(el) {
+        if (!el) return;
+        el.scrollIntoView({ block: 'nearest', behavior: REDUCED ? 'auto' : 'smooth' });
+    }
+
+    /* ── 视口尺寸（右键菜单坐标钳制） ────────────────────────── */
+    function getViewport() {
+        return { width: window.innerWidth, height: window.innerHeight };
+    }
+
+    /* ── 大厅键盘导航（ESC 关闭右键菜单/私聊窗，不导航） ────── */
+    let lobbyKeyHandler;
+    function initLobbyKeyNav(dotNetRef) {
+        disposeLobbyKeyNav();
+        lobbyKeyHandler = (e) => {
+            if (e.key === 'Escape') dotNetRef.invokeMethodAsync('OnLobbyEsc');
+        };
+        window.addEventListener('keydown', lobbyKeyHandler);
+    }
+    function disposeLobbyKeyNav() {
+        if (lobbyKeyHandler) {
+            window.removeEventListener('keydown', lobbyKeyHandler);
+            lobbyKeyHandler = null;
+        }
+    }
+
+    window.cncnet = { initStars, initGlobe, initReadout, toast, applyTheme, getTheme, initMenuKeyNav, disposeMenuKeyNav, saveLoginPrefs, loadLoginPrefs, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav };
 })();

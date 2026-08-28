@@ -1,9 +1,13 @@
 @page "/menu"
 @implements IDisposable
+@using CnCNetClient.Core
+@using CnCNetClient.Online
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
+@inject LoginService Login
+@inject IServiceProvider Services
 
 <main class="stage">
     <section class="left">
@@ -88,6 +92,30 @@
             // ESC 返回首页（实现「可退」）
             _dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("cncnet.initMenuKeyNav", _dotNetRef);
+            // 自动连接（3.1.3）：记住我已勾选 → 跳过登录浮窗直接连接
+            await TryAutoConnectAsync();
+        }
+    }
+
+    /// <summary>M3 过渡持久化的登录偏好（M4 4.1.1 改由 UserINISettings 提供）。</summary>
+    private sealed record LoginPrefsDto(string? Name, bool RememberMe, bool PersistentMode, bool AutoConnect);
+
+    /// <summary>自动连接（spec §5.3.1）：RememberMe 已勾选时进主菜单即连接，不再弹登录浮窗。</summary>
+    private async Task TryAutoConnectAsync()
+    {
+        try
+        {
+            var prefs = await JS.InvokeAsync<LoginPrefsDto?>("cncnet.loadLoginPrefs");
+            if (prefs is null || !prefs.RememberMe || string.IsNullOrWhiteSpace(prefs.Name))
+                return;
+            ProgramConstants.PLAYERNAME = prefs.Name.Trim();
+            var manager = (CnCNetManager)Services.GetService(typeof(CnCNetManager))!;
+            await JS.InvokeVoidAsync("cncnet.toast", $"自动连接 CnCNet：{prefs.Name}…");
+            manager.Connect();
+        }
+        catch
+        {
+            // 自动连接失败不阻塞主菜单
         }
     }
 
@@ -113,9 +141,26 @@
 
     private async Task OnMenuClick(MenuItem item)
     {
-        // M2.4/M2.7：暂以 toast / MessageBox 占位，后续各功能页接入后改为真实导航。
+        // M2.4/M2.7/M3.1：暂以 toast / MessageBox / 登录浮窗占位，后续各功能页接入后改为真实导航。
         switch (item.Key)
         {
+            case "multiplayer":
+                // 已连接（含自动连接）→ 直接进入大厅（M3.2 /online/lobby）
+                var manager = (CnCNetManager)Services.GetService(typeof(CnCNetManager))!;
+                if (manager.IsConnected)
+                {
+                    Nav.NavigateTo("/online/lobby");
+                    break;
+                }
+
+                // 登录浮窗（spec §5.3.1）：昵称连接 CnCNet，成功 → 进入大厅
+                var result = await Login.ShowAsync();
+                if (result == LoginResult.Connected)
+                    Nav.NavigateTo("/online/lobby");
+                else if (result == LoginResult.Cancelled)
+                    await JS.InvokeVoidAsync("cncnet.toast", "已取消连接");
+                // Failed：浮窗内已给出错误提示
+                break;
             case "settings":
                 await MessageBox.ShowAsync("设置", "设置中心正在建设中，敬请期待。",
                     MessageBoxButtons.Ok, MessageBoxKind.Info);

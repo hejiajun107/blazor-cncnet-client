@@ -7,8 +7,10 @@ using Microsoft.Extensions.Logging;
 using BlazorCncnetClient.Components;
 using BlazorCncnetClient.Infrastructure;
 using BlazorCncnetClient.Infrastructure.Theme;
+using CnCNetClient.Domain.Multiplayer.CnCNet;
 using CnCNetClient.Integration.Lifecycle;
 using CnCNetClient.Integration.Threading;
+using CnCNetClient.Online;
 
 namespace BlazorCncnetClient
 {
@@ -63,6 +65,24 @@ namespace BlazorCncnetClient
             // 全局异常兜底（M2.8）：Serilog 落盘定位崩溃 + 迁移 DisplayErrorAction 语义（MessageBox 呈现错误、exit 时退出）
             appBuilder.Services.AddScoped<GlobalExceptionHandler>();
 
+            // 登录浮窗（M3.1 spec §5.3.1）：LoginService 驱动 <LoginModal /> 宿主组件
+            appBuilder.Services.AddScoped<LoginService>();
+
+            // 在线连接（M3.1）：CnCNetManager 以工厂注册并懒实例化——
+            // 其依赖链（GameCollection 依赖 ClientConfiguration 的 LocalGame）在环境检测后才就绪，
+            // 首次发起登录/自动连接时（此时已在主菜单）才解析构造。Random 显式提供（DI 无法解析）。
+            appBuilder.Services.AddSingleton<GameCollection>();
+            appBuilder.Services.AddSingleton<CnCNetUserData>();
+            appBuilder.Services.AddSingleton<CnCNetManager>(sp =>
+                new CnCNetManager(
+                    sp.GetRequiredService<IDispatcher>(),
+                    sp.GetRequiredService<GameCollection>(),
+                    sp.GetRequiredService<CnCNetUserData>(),
+                    new Random()));
+
+            // 在线大厅（M3.2 spec §5.3.2）：聚合频道/聊天/房间/玩家状态，供 /online/lobby 读取
+            appBuilder.Services.AddScoped<LobbyService>();
+
             // register the root component and selector
             appBuilder.RootComponents.Add<App>("app");
 
@@ -77,7 +97,7 @@ namespace BlazorCncnetClient
                     // .Center()
                     // .SetUseOsDefaultSize(true)
                     // .SetUseOsDefaultLocation(true);
-                    // .SetTitle("InfiniLore InfiniFrame.Blazor Sample")
+                    .SetTitle("CNCNet Client")
                     // 用 int 重载，避免宿主层引入 System.Drawing
                     .SetLocation(100, 100)
                     .SetSize(1280, 720)

@@ -1,0 +1,451 @@
+@page "/online/lobby"
+@implements IDisposable
+@using CnCNetClient.Core
+@using CnCNetClient.Online
+@using CnCNetClient.Domain.Multiplayer.CnCNet
+@using SixLabors.ImageSharp.PixelFormats
+@inject LobbyService LobbySvc
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject IThemeProvider ThemeProvider
+@inject MessageBoxService MessageBox
+
+<div class="lobby page-anim">
+    <header class="lobby-top item-in">
+        <div class="lt-left">
+            <span class="lt-t">频道</span>
+            <select class="lt-select" value="@CurrentChannelName" @onchange="OnChannelChanged">
+                @foreach (var c in LobbySvc.Channels)
+                {
+                    <option value="@c.ChannelName">@c.UIName · @c.ChannelName (@c.Users.Count)</option>
+                }
+            </select>
+        </div>
+        <div class="lt-mid">
+            <span class="lt-title">CNCNet 在线大厅</span>
+            <span class="lt-en">ONLINE LOBBY · @(LobbySvc.LocalGame?.UIName ?? "CnCNet")</span>
+        </div>
+        <div class="lt-right">
+            <span class="lt-player">@ProgramConstants.PLAYERNAME</span>
+            <span class="lt-online">在线 <em>@OnlineCount</em></span>
+            <button class="mb-btn item-in" @onclick="OnLogout">离开</button>
+        </div>
+    </header>
+
+    <div class="lobby-grid">
+        <section class="lb-panel lb-games item-in" style="animation-delay:60ms">
+            <header class="lb-ph">
+                <span>房间列表 <em>@FilteredGames.Count</em></span>
+                <input class="lb-search" placeholder="筛选房间…" value="@_gameFilter" @oninput="OnGameFilterInput" />
+            </header>
+            <div class="lb-body">
+                @if (FilteredGames.Count == 0)
+                {
+                    <div class="lb-empty">@(_gameFilter.Length == 0 ? "暂无公开房间" : "无匹配房间")</div>
+                }
+                else
+                {
+                    <Virtualize Items="@FilteredGames" Context="g">
+                        <div class="game-card @(g.Passworded ? "locked" : "")">
+                            <div class="gc-top">
+                                <span class="gc-name">@(g.Passworded ? "◈ " : "")@g.RoomName</span>
+                                <span class="gc-players @(g.IsFull ? "full" : "")">@g.PlayerCount/@g.MaxPlayers</span>
+                            </div>
+                            <div class="gc-sub" title="@g.Map">@g.Map</div>
+                            <div class="gc-meta">
+                                <span class="gc-mode">@g.GameMode</span>
+                                <span class="gc-host">@g.HostName</span>
+                                <span class="gc-tag">@(g.IsLadder ? "天梯" : g.Tunneled ? "隧道" : "动态")</span>
+                            </div>
+                        </div>
+                    </Virtualize>
+                }
+            </div>
+        </section>
+
+        <section class="lb-panel lb-chat item-in" style="animation-delay:110ms">
+            <header class="lb-ph">
+                <span>频道聊天 <em>@CurrentChannelName</em></span>
+            </header>
+            <div class="chat-scroll">
+                @if (VisibleMessages.Count == 0)
+                {
+                    <div class="lb-empty">尚无消息，打个招呼吧</div>
+                }
+                else
+                {
+                    @foreach (var m in VisibleMessages)
+                    {
+                        <div class="chat-msg @(m.IsUser ? "user" : "sys")">
+                            @if (m.IsUser)
+                            {
+                                <span class="cm-time">@m.DateTime.ToString("HH:mm")</span>
+                                <span class="cm-name" style="color:@ToCss(m.Color)"
+                                      @oncontextmenu="e => OpenContextMenuBySender(m.SenderName, e)">@m.SenderName</span>
+                                <span class="cm-text">@m.Message</span>
+                            }
+                            else
+                            {
+                                <span class="cm-sys">@m.Message</span>
+                            }
+                        </div>
+                    }
+                }
+                <div @ref="_chatEnd"></div>
+            </div>
+            <div class="chat-input">
+                <input class="ci-field" maxlength="200" placeholder="输入消息，Enter 发送…"
+                       value="@_draft" disabled="@(CurrentChannel is null)"
+                       @oninput="OnDraftInput" @onkeydown="OnChatKeyDown" />
+                <button class="mb-btn primary ci-send" @onclick="OnSend" disabled="@(CurrentChannel is null)">发送</button>
+            </div>
+        </section>
+
+        <section class="lb-panel lb-users item-in" style="animation-delay:160ms">
+            <header class="lb-ph">
+                <span>玩家 <em>@Users.Count</em></span>
+            </header>
+            <div class="lb-body">
+                @if (Users.Count == 0)
+                {
+                    <div class="lb-empty">频道暂无玩家</div>
+                }
+                else
+                {
+                    <Virtualize Items="@Users" Context="u">
+                        <div class="user-item @(LobbySvc.IsSelf(u.IRCUser.Name) ? "self" : "")"
+                             @oncontextmenu="e => OpenContextMenu(u, e)"
+                             @onclick="() => OpenContextMenu(u, null)">
+                            <span class="u-mark">@(u.IsAdmin ? "@" : u.HasVoice ? "+" : "·")</span>
+                            <span class="u-name">@u.IRCUser.Name</span>
+                            @if (u.IsFriend)
+                            {
+                                <span class="u-friend">★</span>
+                            }
+                            @if (u.IRCUser.IsIgnored)
+                            {
+                                <span class="u-ignored">屏蔽</span>
+                            }
+                        </div>
+                    </Virtualize>
+                }
+            </div>
+        </section>
+    </div>
+
+    @if (_menuOpen && _menuUser is not null)
+    {
+        <div class="ctx-backdrop" @onclick="CloseContextMenu" @oncontextmenu="CloseContextMenu"
+             @oncontextmenu:preventDefault="true"></div>
+        <div class="ctx-menu pop-in" style="left:@(_menuX)px;top:@(_menuY)px"
+             @onmousedown:stopPropagation="true" @oncontextmenu:stopPropagation="true">
+            <div class="ctx-title">@_menuUser.IRCUser.Name</div>
+            <button type="button" class="ctx-item" @onclick="OnPrivateMessage">私聊<span class="en">PM</span></button>
+            <button type="button" class="ctx-item" disabled="@(!LobbySvc.CanInvite)" @onclick="OnInvite">
+                邀请加入<span class="en">INVITE</span></button>
+            <div class="ctx-sep"></div>
+            <button type="button" class="ctx-item" @onclick="OnToggleFriend">
+                @(_menuUser.IRCUser.IsFriend ? "取消加友" : "加为好友")<span class="en">FRIEND</span></button>
+            <button type="button" class="ctx-item" @onclick="OnToggleIgnore">
+                @(_menuUser.IRCUser.IsIgnored ? "取消屏蔽" : "屏蔽此人")<span class="en">IGNORE</span></button>
+        </div>
+    }
+
+    @if (_pmOpen && _pmUser is not null)
+    {
+        <div class="ctx-backdrop" @onclick="ClosePm"></div>
+        <div class="pm-panel pop-in">
+            <div class="pm-head">私聊 · <b>@_pmUser.IRCUser.Name</b><span class="pm-en">PRIVATE MSG</span></div>
+            <input class="pm-field" maxlength="200" placeholder="输入消息，Enter 发送…"
+                   value="@_pmDraft" @oninput="OnPmInput" @onkeydown="OnPmKeyDown" />
+            <div class="pm-actions">
+                <button type="button" class="mb-btn" @onclick="ClosePm">取消</button>
+                <button type="button" class="mb-btn primary" @onclick="OnPmSend">发送</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private const int MAX_VISIBLE_MESSAGES = 300;
+
+    private string _draft = string.Empty;
+    private string _gameFilter = string.Empty;
+    private ElementReference _chatEnd;
+    private bool _scrollToBottom;
+    private int _lastMessageCount;
+
+    // M3.3 右键菜单 / 私聊浮窗状态
+    private ChannelUser? _menuUser;
+    private bool _menuOpen;
+    private double _menuX;
+    private double _menuY;
+    private ChannelUser? _pmUser;
+    private bool _pmOpen;
+    private string _pmDraft = string.Empty;
+    private DotNetObjectReference<Lobby>? _dotNetRef;
+
+    private Channel? CurrentChannel => LobbySvc.CurrentChannel;
+    private string CurrentChannelName => CurrentChannel?.ChannelName ?? "—";
+
+    private int OnlineCount
+    {
+        get
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in LobbySvc.Channels)
+                c.Users.DoForAllUsers(u => names.Add(u.IRCUser.Name));
+            return names.Count;
+        }
+    }
+
+    private List<ChatMessage> VisibleMessages
+    {
+        get
+        {
+            var messages = CurrentChannel?.Messages;
+            if (messages is null || messages.Count == 0)
+                return [];
+            return messages.Count > MAX_VISIBLE_MESSAGES
+                ? messages.GetRange(messages.Count - MAX_VISIBLE_MESSAGES, MAX_VISIBLE_MESSAGES)
+                : messages;
+        }
+    }
+
+    private List<ChannelUser> Users
+    {
+        get
+        {
+            var list = new List<ChannelUser>();
+            CurrentChannel?.Users.DoForAllUsers(list.Add);
+            list.Sort(ChannelUser.ChannelUserComparison);
+            return list;
+        }
+    }
+
+    private List<LobbyGameItem> FilteredGames
+    {
+        get
+        {
+            var filter = _gameFilter.Trim();
+            if (filter.Length == 0)
+                return LobbySvc.Games.ToList();
+            return LobbySvc.Games
+                .Where(g => g.RoomName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                            || g.Map.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                            || g.HostName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                            || g.GameMode.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        LobbySvc.Changed += OnChanged;
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            LobbySvc.Initialize();
+            // M3.3：ESC 关闭右键菜单/私聊窗（不导航）
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("cncnet.initLobbyKeyNav", _dotNetRef);
+        }
+        else if (_scrollToBottom && _chatEnd.Id is not null)
+        {
+            _scrollToBottom = false;
+            await JS.InvokeVoidAsync("cncnet.scrollToBottom", _chatEnd);
+        }
+    }
+
+    private void OnChanged()
+    {
+        var count = CurrentChannel?.Messages.Count ?? 0;
+        _scrollToBottom = count != _lastMessageCount;
+        _lastMessageCount = count;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
+
+    private void OnChannelChanged(ChangeEventArgs e)
+    {
+        var name = e.Value?.ToString();
+        var channel = LobbySvc.Channels.FirstOrDefault(c => c.ChannelName == name);
+        if (channel is not null)
+            LobbySvc.SwitchChannel(channel);
+    }
+
+    private void OnDraftInput(ChangeEventArgs e) => _draft = e.Value?.ToString() ?? string.Empty;
+
+    private void OnChatKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            OnSend();
+    }
+
+    private void OnSend()
+    {
+        if (string.IsNullOrWhiteSpace(_draft))
+            return;
+        LobbySvc.SendMessage(_draft);
+        _draft = string.Empty;
+    }
+
+    private void OnGameFilterInput(ChangeEventArgs e) => _gameFilter = e.Value?.ToString() ?? string.Empty;
+
+    // ── M3.3 右键菜单（私聊/邀请/加友/屏蔽） ──
+
+    private ChannelUser? FindUser(string? name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return null;
+        ChannelUser? found = null;
+        CurrentChannel?.Users.DoForAllUsers(u =>
+        {
+            if (found is null && string.Equals(u.IRCUser.Name, name, StringComparison.OrdinalIgnoreCase))
+                found = u;
+        });
+        return found;
+    }
+
+    private void OpenContextMenuBySender(string? senderName, MouseEventArgs e)
+    {
+        var user = FindUser(senderName);
+        if (user is not null)
+            _ = OpenContextMenu(user, e);
+    }
+
+    private async Task OpenContextMenu(ChannelUser user, MouseEventArgs? e)
+    {
+        if (LobbySvc.IsSelf(user.IRCUser.Name))
+            return;
+        _menuUser = user;
+        _menuOpen = true;
+        if (e is not null)
+        {
+            var vp = await JS.InvokeAsync<ViewportDto>("cncnet.getViewport");
+            _menuX = Math.Min(e.ClientX, Math.Max(0, vp.Width - 190));
+            _menuY = Math.Min(e.ClientY, Math.Max(0, vp.Height - 210));
+        }
+    }
+
+    private void CloseContextMenu()
+    {
+        _menuOpen = false;
+        _menuUser = null;
+    }
+
+    private void OnPrivateMessage()
+    {
+        if (_menuUser is null)
+            return;
+        _pmUser = _menuUser;
+        _pmDraft = string.Empty;
+        _pmOpen = true;
+        CloseContextMenu();
+    }
+
+    private void OnInvite()
+    {
+        if (_menuUser is not null)
+        {
+            LobbySvc.InvitePlayer(_menuUser);
+            _ = JS.InvokeVoidAsync("cncnet.toast", $"已邀请 {_menuUser.IRCUser.Name} 加入游戏");
+        }
+        CloseContextMenu();
+    }
+
+    private void OnToggleFriend()
+    {
+        if (_menuUser is not null)
+        {
+            var was = _menuUser.IRCUser.IsFriend;
+            LobbySvc.ToggleFriend(_menuUser);
+            _ = JS.InvokeVoidAsync("cncnet.toast", was
+                ? $"已将 {_menuUser.IRCUser.Name} 移出好友"
+                : $"已将 {_menuUser.IRCUser.Name} 加为好友");
+        }
+        CloseContextMenu();
+    }
+
+    private void OnToggleIgnore()
+    {
+        if (_menuUser is not null)
+        {
+            var was = _menuUser.IRCUser.IsIgnored;
+            LobbySvc.ToggleIgnore(_menuUser);
+            _ = JS.InvokeVoidAsync("cncnet.toast", was
+                ? $"已取消屏蔽 {_menuUser.IRCUser.Name}"
+                : $"已屏蔽 {_menuUser.IRCUser.Name} 的消息");
+        }
+        CloseContextMenu();
+    }
+
+    // ── 私聊快捷窗（M3.8 扩展多标签私聊中心） ──
+
+    private void OnPmInput(ChangeEventArgs e) => _pmDraft = e.Value?.ToString() ?? string.Empty;
+
+    private void OnPmKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            OnPmSend();
+    }
+
+    private void OnPmSend()
+    {
+        if (_pmUser is null || string.IsNullOrWhiteSpace(_pmDraft))
+            return;
+        LobbySvc.SendPrivateMessage(_pmUser.IRCUser.Name, _pmDraft);
+        _ = JS.InvokeVoidAsync("cncnet.toast", $"私聊消息已发送给 {_pmUser.IRCUser.Name}");
+        ClosePm();
+    }
+
+    private void ClosePm()
+    {
+        _pmOpen = false;
+        _pmUser = null;
+        _pmDraft = string.Empty;
+    }
+
+    /// <summary>ESC：优先关私聊窗，其次关右键菜单（不导航）。由 JS keydown 触发。</summary>
+    [JSInvokable]
+    public Task OnLobbyEsc()
+    {
+        if (_pmOpen)
+            ClosePm();
+        else if (_menuOpen)
+            CloseContextMenu();
+        return Task.CompletedTask;
+    }
+
+    private sealed record ViewportDto(double Width, double Height);
+
+    private async Task OnLogout()
+    {
+        var confirm = await MessageBox.ShowAsync("离开大厅",
+            "确认退出 CnCNet 在线大厅？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        if (!confirm)
+            return;
+        LobbySvc.Logout();
+        await JS.InvokeVoidAsync("cncnet.toast", "已离开大厅");
+        Nav.NavigateTo("/menu");
+    }
+
+    private static string ToCss(Rgba32 color) => $"rgb({color.R},{color.G},{color.B})";
+
+    public void Dispose()
+    {
+        LobbySvc.Changed -= OnChanged;
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+        if (_dotNetRef is not null)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.disposeLobbyKeyNav");
+            _dotNetRef.Dispose();
+            _dotNetRef = null;
+        }
+    }
+}
