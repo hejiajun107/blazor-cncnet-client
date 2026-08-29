@@ -475,6 +475,153 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .gd-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 16px 16px}
 .gd-actions .mb-btn{min-width:104px}
 
+/* ── 房间列表头部操作区（M3.5：筛选 + 创建房间） ── */
+.lb-ph-actions{display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end}
+.lb-ph-actions .lb-search{width:min(180px,32%)}
+.lb-create{flex:none;padding:5px 12px;font-size:12px}
+
+/* ── 创建房间 / 加入密码 对话框（M3.5 spec §5.3，复用 .pop-in 弹窗动效） ── */
+.cr-panel{position:fixed;z-index:41;left:50%;top:44%;transform:translate(-50%,-50%);
+  width:min(460px,92vw);border:1px solid var(--line);background:rgba(8,22,34,.97);
+  backdrop-filter:blur(14px);
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
+  box-shadow:0 18px 60px rgba(0,0,0,.55)}
+.cr-head{display:flex;align-items:baseline;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);
+  font-size:14px;font-weight:700;color:var(--text)}
+.cr-head b{color:var(--cyan-soft);font-weight:700}
+.cr-en{margin-left:auto;font-family:var(--font-orbitron);font-size:9px;letter-spacing:2px;color:var(--dim)}
+.cr-field{display:block;margin:14px 16px 0}
+.cr-field>span{display:block;margin-bottom:6px;font-size:12px;color:var(--text-3);letter-spacing:1px}
+.cr-field input,.cr-field select{width:100%;background:rgba(5,16,24,.9);border:1px solid var(--line);
+  color:var(--text);padding:8px 10px;font-size:13px;font-family:var(--font-cn);
+  transition:border-color var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out)}
+.cr-field input:focus,.cr-field select:focus{outline:none;border-color:var(--cyan);
+  box-shadow:0 0 0 1px var(--cyan),0 0 18px rgba(33,230,255,.25)}
+.cr-field input::placeholder{color:var(--text-3)}
+.cr-row{display:flex;gap:10px}
+.cr-row .cr-field{flex:1;min-width:0}
+.cr-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px}
+.cr-actions .mb-btn{min-width:96px}
+
+/* ── 游戏房间页（M3.5 spec §5.3：/online/game） ── */
+.game-empty{position:relative;z-index:5;height:100vh;display:flex;align-items:center;justify-content:center}
+.ge-box{text-align:center;border:1px solid var(--line);background:rgba(6,20,30,.5);
+  padding:40px 56px;backdrop-filter:blur(10px)}
+.ge-title{font-family:var(--font-orbitron);font-size:22px;font-weight:900;letter-spacing:4px;color:var(--cyan)}
+.ge-sub{margin:12px 0 22px;color:var(--text-2);font-size:13px;letter-spacing:1px}
+
+.groom{position:relative;z-index:5;height:100vh;display:flex;flex-direction:column;
+  padding:60px 16px 14px;gap:10px;overflow:hidden}
+.groom-top{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:10px 16px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(10px)}
+.gt-left{display:flex;align-items:center;gap:12px;min-width:0}
+.gt-badge{display:flex;align-items:center;gap:6px;flex:none;padding:4px 10px;font-size:12px;
+  border:1px solid var(--line);color:var(--text-2)}
+.gt-badge .en{font-family:var(--font-orbitron);font-size:9px;letter-spacing:1px;color:var(--dim)}
+.gt-badge.host{border-color:var(--gold);color:var(--gold)}
+.gt-badge.host .en{color:var(--gold)}
+.gt-tbox{display:flex;flex-direction:column;min-width:0}
+.gt-title{font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gt-en{font-family:var(--font-orbitron);font-size:10px;letter-spacing:1px;color:var(--dim)}
+.gt-right{display:flex;align-items:center;gap:12px;flex:none}
+.gt-player{font-family:var(--font-orbitron);font-size:12px;color:var(--cyan-soft)}
+
+.groom-joining{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  color:var(--text-2);font-size:13px;letter-spacing:1px}
+.gj-spinner{width:34px;height:34px;border:2px solid var(--line);border-top-color:var(--cyan);
+  border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.groom-grid{flex:1;min-height:0;display:grid;gap:10px;
+  grid-template-columns:minmax(230px,1fr) minmax(380px,1.6fr) minmax(250px,1.05fr)}
+.gl-panel{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);
+  background:var(--panel);backdrop-filter:blur(8px);overflow:hidden}
+.gl-ph{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 12px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;letter-spacing:1px}
+.gl-ph em{font-style:normal;color:var(--cyan);font-family:var(--font-orbitron);font-size:9px;letter-spacing:1px}
+.gl-lock{font-size:11px;color:var(--gold)}
+.gl-body{flex:1;min-height:0;overflow-y:auto;padding:8px}
+
+/* 玩家槽位 */
+.slot{display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:6px;
+  border:1px solid var(--line);background:rgba(5,16,24,.5)}
+.slot.empty{border-style:dashed;background:transparent}
+.slot.self{border-color:var(--cyan);background:rgba(33,230,255,.06)}
+.slot-idx{flex:none;width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-orbitron);font-size:11px;color:var(--text-2);border:1px solid var(--line)}
+.slot-empty-text{color:var(--text-3);font-size:12px;letter-spacing:1px}
+.slot-color{flex:none;width:14px;height:14px;border:1px solid rgba(255,255,255,.35);border-radius:50%}
+.slot-info{flex:1;min-width:0}
+.slot-name{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-host{flex:none;font-style:normal;font-family:var(--font-orbitron);font-size:8px;letter-spacing:1px;
+  color:var(--gold);border:1px solid var(--gold);padding:1px 4px}
+.slot-meta{display:block;font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-ready{flex:none;font-family:var(--font-orbitron);font-size:9px;letter-spacing:1px;color:var(--text-3)}
+.slot-ready.on{color:var(--ok);text-shadow:0 0 8px rgba(74,222,128,.5)}
+
+/* 地图与规则 */
+.cfg-map{margin-bottom:10px}
+.cfg-map-preview{position:relative;height:150px;margin-bottom:8px;overflow:hidden;
+  border:1px solid var(--line);background:rgba(3,10,16,.6)}
+.cfg-thumb{position:absolute;inset:0}
+.cfg-map-none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;letter-spacing:1px;background:rgba(3,10,16,.4)}
+.cfg-map-name{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gl-select{width:100%;background:rgba(5,16,24,.9);border:1px solid var(--line);color:var(--text);
+  padding:7px 8px;font-size:12px;font-family:var(--font-cn)}
+.gl-select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan)}
+.gl-select optgroup{color:var(--cyan-soft);background:rgba(5,16,24,.95);font-style:normal}
+.gl-select option{color:var(--text);background:rgba(5,16,24,.95)}
+
+.cfg-rules{margin:12px 0;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:8px}
+.cfg-row{display:flex;align-items:center;gap:8px}
+.cfg-row label{flex:none;font-size:12px;color:var(--text-3);letter-spacing:1px}
+.cfg-row .gl-select{width:auto}
+.gl-input{flex:1;min-width:0;background:rgba(5,16,24,.9);border:1px solid var(--line);color:var(--text);
+  padding:7px 8px;font-size:12px;font-family:var(--font-cn)}
+.gl-input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan)}
+.gl-input::placeholder{color:var(--text-3)}
+
+.cfg-self{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:10px}
+.cfg-self-title{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:1px}
+.cfg-self-title em{font-style:normal;font-family:var(--font-orbitron);font-size:9px;color:var(--dim)}
+.cfg-colors{display:flex;flex-wrap:wrap;gap:6px}
+.swatch{flex:none;width:22px;height:22px;border-radius:4px;border:1px solid rgba(255,255,255,.25);
+  cursor:pointer;transition:transform var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out)}
+.swatch:hover{transform:scale(1.12)}
+.swatch.on{box-shadow:0 0 0 2px var(--bg-0),0 0 0 3px var(--cyan),0 0 10px rgba(33,230,255,.6)}
+.cfg-actions{display:flex;gap:10px;margin-top:4px}
+.cfg-actions .mb-btn{flex:1}
+.cfg-actions .ready-btn{justify-content:center}
+.cfg-actions .start-btn{justify-content:center}
+
+/* 出生点映射（M3.6：地图预览叠加） */
+.spawn-layer{position:absolute;inset:0;pointer-events:none;z-index:2}
+.spawn-dot{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;
+  pointer-events:auto;cursor:pointer;border:1px solid var(--cyan);
+  background:rgba(2,10,16,.72);display:flex;align-items:center;justify-content:center;
+  transition:transform var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out)}
+.spawn-dot:hover{transform:translate(-50%,-50%) scale(1.28);box-shadow:0 0 0 2px rgba(33,230,255,.35)}
+.spawn-num{position:relative;z-index:2;font-family:var(--font-orbitron);font-size:9px;line-height:1;color:var(--cyan)}
+.spawn-owner{position:absolute;inset:0;border-radius:50%;opacity:.9;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 0 8px rgba(0,0,0,.6)}
+.spawn-dot.taken{border-color:transparent;cursor:not-allowed}
+.spawn-dot.taken .spawn-num{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.95)}
+.spawn-dot.self{border-color:var(--gold);
+  box-shadow:0 0 0 2px rgba(255,211,77,.55),0 0 12px rgba(255,211,77,.65)}
+.spawn-dot.self .spawn-num{color:var(--gold)}
+
+/* 游戏信息面板（M3.6：房间/地图详情） */
+.map-info{margin-top:10px;padding:8px 10px;border:1px dashed var(--line);
+  background:rgba(5,16,24,.32)}
+.mi-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:2px 0;font-size:11px}
+.mi-row span{flex:none;color:var(--text-3);letter-spacing:1px}
+.mi-row b{color:var(--text-2);font-weight:500;text-align:right;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi-divider{border-top:1px dashed var(--line);margin:6px 0}
+.mi-briefing{font-size:11px;color:var(--text-3);line-height:1.5;margin-top:6px;
+  max-height:46px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+
 /* ── 响应式 ───────────────────────────────────────────────────── */
 /* 720p 紧凑模式（1280×720 及类似分辨率；1920×1080 不触发） */
 @media(max-width:1440px) and (max-height:820px){
@@ -499,6 +646,13 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
   .chat-scroll{padding:8px 10px}
   .game-card{padding:6px 8px;margin-bottom:5px}
   .chat-input{padding:8px}
+  /* 游戏房间紧凑适配 */
+  .groom{padding:54px 10px 10px;gap:8px}
+  .groom-grid{gap:8px;grid-template-columns:minmax(190px,1fr) minmax(320px,1.6fr) minmax(210px,1fr)}
+  .gt-title{font-size:14px}
+  .slot{padding:6px 8px}
+  .cfg-map-preview{height:110px}
+  .swatch{width:19px;height:19px}
 }
 @media(max-width:920px){
   .stage{flex-direction:column;justify-content:center;padding:80px 6vw 80px}

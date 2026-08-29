@@ -5,6 +5,7 @@
 @using CnCNetClient.Domain.Multiplayer.CnCNet
 @using SixLabors.ImageSharp.PixelFormats
 @inject LobbyService LobbySvc
+@inject GameRoomNavigation NavData
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
@@ -36,7 +37,10 @@
         <section class="lb-panel lb-games item-in" style="animation-delay:60ms">
             <header class="lb-ph">
                 <span>房间列表 <em>@FilteredGames.Count</em></span>
-                <input class="lb-search" placeholder="筛选房间…" value="@_gameFilter" @oninput="OnGameFilterInput" />
+                <div class="lb-ph-actions">
+                    <input class="lb-search" placeholder="筛选房间…" value="@_gameFilter" @oninput="OnGameFilterInput" />
+                    <button class="mb-btn primary lb-create" @onclick="OpenCreateDialog">创建房间</button>
+                </div>
             </header>
             <div class="lb-body">
                 @if (FilteredGames.Count == 0)
@@ -197,6 +201,54 @@
             </div>
         </div>
     }
+
+    @if (_createOpen)
+    {
+        <div class="ctx-backdrop" @onclick="CloseCreateDialog"></div>
+        <div class="cr-panel pop-in">
+            <div class="cr-head">创建房间<span class="cr-en">CREATE ROOM</span></div>
+            <label class="cr-field">
+                <span>房间名</span>
+                <input maxlength="40" value="@_createRoomName" @oninput="OnCreateRoomNameInput" />
+            </label>
+            <div class="cr-row">
+                <label class="cr-field">
+                    <span>最大人数</span>
+                    <select value="@_createMaxPlayers" @onchange="OnCreateMaxPlayersChange">
+                        @for (int p = 2; p <= 8; p++)
+                        {
+                            <option value="@p">@p 人</option>
+                        }
+                    </select>
+                </label>
+                <label class="cr-field">
+                    <span>密码（可选）</span>
+                    <input maxlength="32" placeholder="留空为公开房" value="@_createPassword" @oninput="OnCreatePasswordInput" />
+                </label>
+            </div>
+            <div class="cr-actions">
+                <button type="button" class="mb-btn" @onclick="CloseCreateDialog">取消</button>
+                <button type="button" class="mb-btn primary" @onclick="OnCreateGame">创建</button>
+            </div>
+        </div>
+    }
+
+    @if (_joinPwOpen && _selectedGame is not null)
+    {
+        <div class="ctx-backdrop" @onclick="CloseJoinPw"></div>
+        <div class="cr-panel pop-in">
+            <div class="cr-head">加入房间 · <b>@_selectedGame.RoomName</b><span class="cr-en">ENTER PASSWORD</span></div>
+            <label class="cr-field">
+                <span>房间密码</span>
+                <input maxlength="32" value="@_joinPassword" @oninput="OnJoinPasswordInput"
+                       @onkeydown="OnJoinPwKeyDown" autocomplete="off" />
+            </label>
+            <div class="cr-actions">
+                <button type="button" class="mb-btn" @onclick="CloseJoinPw">取消</button>
+                <button type="button" class="mb-btn primary" @onclick="OnJoinWithPassword">加入</button>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -220,6 +272,14 @@
 
     // M3.4 选中房间信息面板（地图预览）
     private LobbyGameItem? _selectedGame;
+
+    // M3.5 创建房间 / 加入密码对话框
+    private bool _createOpen;
+    private string _createRoomName = string.Empty;
+    private int _createMaxPlayers = 8;
+    private string _createPassword = string.Empty;
+    private bool _joinPwOpen;
+    private string _joinPassword = string.Empty;
 
     private Channel? CurrentChannel => LobbySvc.CurrentChannel;
     private string CurrentChannelName => CurrentChannel?.ChannelName ?? "—";
@@ -343,7 +403,87 @@
     {
         if (_selectedGame is null)
             return;
-        _ = JS.InvokeVoidAsync("cncnet.toast", $"加入房间「{_selectedGame.RoomName}」将在 3.5 开放");
+        if (_selectedGame.Passworded)
+        {
+            _joinPassword = string.Empty;
+            _joinPwOpen = true;
+            return;
+        }
+        JoinSelectedGame(null);
+    }
+
+    private void JoinSelectedGame(string? password)
+    {
+        if (_selectedGame is null)
+            return;
+        var g = _selectedGame;
+        CloseGameDetail();
+        NavData.PendingJoin = new GameJoinRequest(
+            g.RoomName, g.HostName, g.ChannelName, g.MaxPlayers,
+            g.Passworded, g.Locked, password);
+        Nav.NavigateTo("/online/game");
+    }
+
+    // ── M3.5 创建房间 ──
+
+    private void OpenCreateDialog()
+    {
+        _createRoomName = $"{LobbySvc.LocalGame?.UIName ?? "CnCNet"} 游戏房";
+        _createMaxPlayers = 8;
+        _createPassword = string.Empty;
+        _createOpen = true;
+    }
+
+    private void CloseCreateDialog() => _createOpen = false;
+
+    private void OnCreateRoomNameInput(ChangeEventArgs e) => _createRoomName = e.Value?.ToString() ?? string.Empty;
+
+    private void OnCreateMaxPlayersChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int mp))
+            _createMaxPlayers = Math.Clamp(mp, 2, 8);
+    }
+
+    private void OnCreatePasswordInput(ChangeEventArgs e) => _createPassword = e.Value?.ToString() ?? string.Empty;
+
+    private void OnCreateGame()
+    {
+        var name = _createRoomName.Trim();
+        if (name.Length == 0)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", "请填写房间名");
+            return;
+        }
+        NavData.PendingCreate = new CreateRoomRequest(name, _createMaxPlayers, _createPassword);
+        CloseCreateDialog();
+        Nav.NavigateTo("/online/game");
+    }
+
+    // ── M3.5 加入密码对话框 ──
+
+    private void CloseJoinPw()
+    {
+        _joinPwOpen = false;
+        _joinPassword = string.Empty;
+    }
+
+    private void OnJoinPasswordInput(ChangeEventArgs e) => _joinPassword = e.Value?.ToString() ?? string.Empty;
+
+    private void OnJoinPwKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            OnJoinWithPassword();
+    }
+
+    private void OnJoinWithPassword()
+    {
+        if (string.IsNullOrWhiteSpace(_joinPassword))
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", "请填写房间密码");
+            return;
+        }
+        _joinPwOpen = false;
+        JoinSelectedGame(_joinPassword);
     }
 
     // ── M3.3 右键菜单（私聊/邀请/加友/屏蔽） ──
@@ -460,11 +600,15 @@
         _pmDraft = string.Empty;
     }
 
-    /// <summary>ESC：优先关私聊窗，其次关房间详情，再关右键菜单（不导航）。由 JS keydown 触发。</summary>
+    /// <summary>ESC：优先关密码/创建窗，其次私聊窗，再关房间详情，最后右键菜单（不导航）。由 JS keydown 触发。</summary>
     [JSInvokable]
     public Task OnLobbyEsc()
     {
-        if (_pmOpen)
+        if (_joinPwOpen)
+            CloseJoinPw();
+        else if (_createOpen)
+            CloseCreateDialog();
+        else if (_pmOpen)
             ClosePm();
         else if (_selectedGame is not null)
             CloseGameDetail();

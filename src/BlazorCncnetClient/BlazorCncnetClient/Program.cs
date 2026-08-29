@@ -101,6 +101,13 @@ namespace BlazorCncnetClient
             appBuilder.Services.AddSingleton<MapLoader>();
             appBuilder.Services.AddSingleton<MapPreviewService>();
 
+            // 游戏房间（M3.5 spec §5.3）：建房间/加入/离开 + 房间内协议（GAME/GSETTINGS/GO/PO/OR/R/START）。
+            // 依赖 CnCNetManager/MapLoader 等单例，状态按会话（scoped）隔离。
+            appBuilder.Services.AddScoped<GameRoomService>();
+
+            // 大厅 → 游戏房间页导航参数（创建/加入请求），scoped 随电路存续。
+            appBuilder.Services.AddScoped<GameRoomNavigation>();
+
             // register the root component and selector
             appBuilder.RootComponents.Add<App>("app");
 

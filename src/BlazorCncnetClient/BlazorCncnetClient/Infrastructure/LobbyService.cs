@@ -320,6 +320,7 @@ namespace BlazorCncnetClient.Infrastructure
                     locked || (isLoaded && !players.Contains(ProgramConstants.PLAYERNAME, StringComparer.OrdinalIgnoreCase)),
                     tunneled,
                     isLadder,
+                    roomChannel,
                     DateTime.Now);
 
                 if (closed)
@@ -391,6 +392,7 @@ namespace BlazorCncnetClient.Infrastructure
         bool Locked,
         bool Tunneled,
         bool IsLadder,
+        string ChannelName,
         DateTime LastRefreshTime)
     {
         public int PlayerCount => Players.Length;

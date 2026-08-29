@@ -1,0 +1,637 @@
+@page "/online/game"
+@implements IDisposable
+@using CnCNetClient.Core
+@using CnCNetClient.Online
+@using CnCNetClient.Domain.Multiplayer
+@using CnCNetClient.Domain.Multiplayer.CnCNet
+@using SixLabors.ImageSharp.PixelFormats
+@inject GameRoomService Room
+@inject GameRoomNavigation NavData
+@inject MapLoader MapLoader
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject IThemeProvider ThemeProvider
+@inject MessageBoxService MessageBox
+
+@if (!Room.IsInGameRoom)
+{
+    <div class="game-empty page-anim">
+        <div class="ge-box pop-in">
+            <div class="ge-title">GAME ROOM</div>
+            <div class="ge-sub">尚未进入任何游戏房间</div>
+            <button class="mb-btn primary" @onclick="BackToLobby">返回大厅</button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="groom page-anim">
+        <header class="groom-top item-in">
+            <div class="gt-left">
+                <span class="gt-badge @(Room.IsHost ? "host" : "")">@(Room.IsHost ? "房主" : "加入")<span class="en">@(Room.IsHost ? "HOST" : "JOIN")</span></span>
+                <div class="gt-tbox">
+                    <span class="gt-title">@Room.RoomName</span>
+                    <span class="gt-en">@(Room.GameChannel?.ChannelName ?? "—") · @(Room.IsCustomPassword ? "密码房" : "公开房")</span>
+                </div>
+            </div>
+            <div class="gt-right">
+                <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
+                <button class="mb-btn danger" @onclick="OnLeave">离开房间</button>
+            </div>
+        </header>
+
+        @if (!Room.IsJoined)
+        {
+            <div class="groom-joining">
+                <div class="gj-spinner"></div>
+                <span>正在加入房间频道…</span>
+            </div>
+        }
+        else
+        {
+            <div class="groom-grid">
+                <section class="gl-panel gl-slots item-in" style="animation-delay:50ms">
+                    <header class="gl-ph">
+                        <span>玩家 <em>@Room.Players.Count/@Room.MaxPlayers</em></span>
+                        <span class="gl-lock" title="房间锁定状态">
+                            @(Room.Locked ? "◉ 已锁定" : "○ 公开")
+                        </span>
+                    </header>
+                    <div class="gl-body">
+                        @for (int i = 0; i < Room.MaxPlayers; i++)
+                        {
+                            var slotPlayer = i < Room.Players.Count ? Room.Players.ElementAt(i) : null;
+                            <div class="slot @(slotPlayer is null ? "empty" : slotPlayer.IsSelf ? "self" : "")">
+                                <span class="slot-idx">@(i + 1)</span>
+                                @if (slotPlayer is null)
+                                {
+                                    <span class="slot-empty-text">等待玩家加入…</span>
+                                }
+                                else
+                                {
+                                    <span class="slot-color" style="background:@ToCss(GetColor(slotPlayer.Color))"></span>
+                                    <div class="slot-info">
+                                        <span class="slot-name">
+                                            @slotPlayer.Name
+                                            @if (slotPlayer.IsHost)
+                                            {
+                                                <em class="slot-host">HOST</em>
+                                            }
+                                        </span>
+                                        <span class="slot-meta">
+                                            @GetSideName(slotPlayer.Side) · 出生@(slotPlayer.Start)@(slotPlayer.Team > 0 ? " · 队" + slotPlayer.Team : "")
+                                        </span>
+                                    </div>
+                                    <span class="slot-ready @(slotPlayer.Ready ? "on" : "")">@(slotPlayer.Ready ? "READY" : "…")</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </section>
+
+                <section class="gl-panel gl-config item-in" style="animation-delay:100ms">
+                    <header class="gl-ph">
+                        <span>地图与规则 <em>MAP & RULES</em></span>
+                    </header>
+                    <div class="gl-body">
+                        <div class="cfg-map">
+                            <div class="cfg-map-preview">
+                                <MapThumbnail MapHash="Room.SelectedMap?.Map.SHA1" MapName="Room.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
+                                @if (Room.SelectedMap is null)
+                                {
+                                    <div class="cfg-map-none">@(Room.IsHost ? "请选择地图" : "等待主机选择地图…")</div>
+                                }
+                                else
+                                {
+                                    <div class="spawn-layer">
+                                        @foreach (var sp in SpawnPoints)
+                                        {
+                                            var spStyle = $"left:{sp.X * 100:0.##}%;top:{sp.Y * 100:0.##}%";
+                                            var spCls = sp.IsSelf ? "self" : sp.OccupantName is null ? "free" : "taken";
+                                            <button type="button"
+                                                    class="spawn-dot @spCls"
+                                                    style="@spStyle"
+                                                    title="@(sp.OccupantName is null ? $"出生点 {sp.Index}" : $"出生点 {sp.Index} · {sp.OccupantName}")"
+                                                    @onclick="() => OnSpawnClick(sp.Index)">
+                                                <span class="spawn-num">@sp.Index</span>
+                                                @if (sp.OccupantName is not null)
+                                                {
+                                                    <span class="spawn-owner" style="background:@ToCss(GetColor(sp.ColorIndex))"></span>
+                                                }
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            @if (Room.IsHost)
+                            {
+                                <select class="gl-select" value="@SelectedMapIndex" @onchange="OnMapChange">
+                                    <option value="-1">— 选择地图 —</option>
+                                    @foreach (var group in MapGroups)
+                                    {
+                                        <optgroup label="@group.Key">
+                                            @for (int i = 0; i < group.Items.Count; i++)
+                                            {
+                                                var opt = group.Items[i];
+                                                <option value="@opt.Index">@opt.Display</option>
+                                            }
+                                        </optgroup>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                <div class="cfg-map-name">@(Room.SelectedMap is not null ? Room.SelectedMap.ToUIString() : "—")</div>
+                            }
+
+                            <div class="map-info">
+                                <div class="mi-row"><span>游戏</span><b>@LocalGameName</b></div>
+                                <div class="mi-row"><span>版本</span><b>@ProgramConstants.GAME_VERSION</b></div>
+                                <div class="mi-row"><span>房主</span><b>@Room.HostName</b></div>
+                                <div class="mi-row"><span>人数</span><b>@Room.Players.Count / @Room.MaxPlayers</b></div>
+                                <div class="mi-row"><span>技能</span><b>@SkillLevelName</b></div>
+                                @if (Room.SelectedMap is not null)
+                                {
+                                    <div class="mi-divider"></div>
+                                    <div class="mi-row"><span>地图</span><b>@Room.SelectedMap.Map.Name</b></div>
+                                    <div class="mi-row"><span>作者</span><b>@Room.SelectedMap.Map.Author</b></div>
+                                    <div class="mi-row"><span>尺寸</span><b>@Room.SelectedMap.Map.GetSizeString()</b></div>
+                                    <div class="mi-row"><span>模式</span><b>@Room.SelectedMap.GameMode.UIName</b></div>
+                                    @if (!string.IsNullOrEmpty(Room.SelectedMap.Map.Briefing))
+                                    {
+                                        <div class="mi-briefing">@Room.SelectedMap.Map.Briefing</div>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        @if (Room.IsHost)
+                        {
+                            <div class="cfg-rules">
+                                <div class="cfg-row">
+                                    <label>房间名</label>
+                                    <input class="gl-input" maxlength="40" value="@_roomNameDraft" @oninput="OnRoomNameInput" @onchange="CommitRoomName" />
+                                </div>
+                                <div class="cfg-row">
+                                    <label>最大人数</label>
+                                    <select class="gl-select" value="@Room.MaxPlayers" @onchange="OnMaxPlayersChange">
+                                        @for (int p = 2; p <= 8; p++)
+                                        {
+                                            <option value="@p">@p 人</option>
+                                        }
+                                    </select>
+                                    <label>技能</label>
+                                    <select class="gl-select" value="@Room.SkillLevel" @onchange="OnSkillChange">
+                                        @for (int s = 0; s < SkillLevels.Length; s++)
+                                        {
+                                            <option value="@s">@SkillLevels[s]</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="cfg-row">
+                                    <button class="mb-btn @(Room.Locked ? "danger" : "")" @onclick="OnToggleLock">
+                                        @(Room.Locked ? "解除锁定" : "锁定房间")
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="cfg-self">
+                            <div class="cfg-self-title">我的配置 <em>SELF</em></div>
+                            <div class="cfg-row">
+                                <label>阵营</label>
+                                <select class="gl-select" value="@Self.Side" @onchange="OnSideChange">
+                                    @for (int s = 0; s < Sides.Length; s++)
+                                    {
+                                        <option value="@s">@Sides[s]</option>
+                                    }
+                                </select>
+                                <label>出生点</label>
+                                <select class="gl-select" value="@Self.Start" @onchange="OnStartChange">
+                                    @for (int st = 1; st <= Room.MaxPlayers; st++)
+                                    {
+                                        <option value="@st">@st</option>
+                                    }
+                                </select>
+                                <label>队伍</label>
+                                <select class="gl-select" value="@Self.Team" @onchange="OnTeamChange">
+                                    @for (int t = 0; t <= 4; t++)
+                                    {
+                                        <option value="@t">@(t == 0 ? "无" : t.ToString())</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="cfg-row">
+                                <label>颜色</label>
+                                <div class="cfg-colors">
+                                    @foreach (var c in _colors)
+                                    {
+                                        <button type="button" class="swatch @(c.Index == Self.Color ? "on" : "")"
+                                                style="background:@ToCss(c.Color)" title="@c.Name"
+                                                @onclick="() => SetColor(c.Index)"></button>
+                                    }
+                                </div>
+                            </div>
+                            <div class="cfg-actions">
+                                <button class="mb-btn @(Self.Ready ? "primary" : "") ready-btn" @onclick="OnToggleReady">
+                                    @(Self.Ready ? "已就绪" : "准备就绪")<span class="en">READY</span>
+                                </button>
+                                @if (Room.IsHost)
+                                {
+                                    <button class="mb-btn primary start-btn" disabled="@(Room.SelectedMap is null)" @onclick="OnStartGame">
+                                        开始游戏<span class="en">START</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="gl-panel gl-chat item-in" style="animation-delay:150ms">
+                    <header class="gl-ph">
+                        <span>房间聊天 <em>@(Room.GameChannel?.ChannelName ?? "—")</em></span>
+                    </header>
+                    <div class="chat-scroll">
+                        @if (RoomMessages.Count == 0)
+                        {
+                            <div class="lb-empty">暂无房间消息</div>
+                        }
+                        else
+                        {
+                            @foreach (var m in RoomMessages)
+                            {
+                                <div class="chat-msg @(m.IsUser ? "user" : "sys")">
+                                    @if (m.IsUser)
+                                    {
+                                        <span class="cm-time">@m.DateTime.ToString("HH:mm")</span>
+                                        <span class="cm-name" style="color:@ToCss(m.Color)">@m.SenderName</span>
+                                        <span class="cm-text">@m.Message</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="cm-sys">@m.Message</span>
+                                    }
+                                </div>
+                            }
+                        }
+                        <div @ref="_chatEnd"></div>
+                    </div>
+                    <div class="chat-input">
+                        <input class="ci-field" maxlength="200" placeholder="房间消息，Enter 发送…"
+                               value="@_draft" @oninput="OnDraftInput" @onkeydown="OnChatKeyDown" />
+                        <button class="mb-btn primary ci-send" @onclick="OnSend">发送</button>
+                    </div>
+                </section>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private const int MAX_VISIBLE_MESSAGES = 300;
+
+    private string _draft = string.Empty;
+    private string _roomNameDraft = string.Empty;
+    private ElementReference _chatEnd;
+    private bool _scrollToBottom;
+    private int _lastMessageCount;
+    private DotNetObjectReference<GameLobby>? _dotNetRef;
+
+    private List<ColorOption> _colors = new();
+    private string[] _sides = Array.Empty<string>();
+    private string[] _skillLevels = Array.Empty<string>();
+
+    private string[] Sides => _sides;
+    private string[] SkillLevels => _skillLevels;
+
+    private RoomPlayerState Self =>
+        Room.Players.FirstOrDefault(p => p.IsSelf)
+        ?? new RoomPlayerState { Name = ProgramConstants.PLAYERNAME };
+
+    private List<ChatMessage> RoomMessages
+    {
+        get
+        {
+            var messages = Room.GameChannel?.Messages;
+            if (messages is null || messages.Count == 0)
+                return [];
+            return messages.Count > MAX_VISIBLE_MESSAGES
+                ? messages.GetRange(messages.Count - MAX_VISIBLE_MESSAGES, MAX_VISIBLE_MESSAGES)
+                : messages;
+        }
+    }
+
+    /// <summary>地图选项（按模式分组，携带全局索引供 select 回写）。</summary>
+    private List<MapGroup> MapGroups => _mapGroups;
+
+    private List<MapGroup> _mapGroups = new();
+    private List<MapOption> _mapOptions = new();
+
+    private int SelectedMapIndex
+    {
+        get
+        {
+            if (Room.SelectedMap is null)
+                return -1;
+            for (int i = 0; i < _mapOptions.Count; i++)
+            {
+                if (_mapOptions[i].Value == Room.SelectedMap)
+                    return i;
+            }
+            return -1;
+        }
+    }
+
+    /// <summary>地图预览上的出生点（含占用者/自己高亮）。</summary>
+    private List<SpawnPointState> SpawnPoints => Room.GetSpawnPointStates();
+
+    private string LocalGameName => Room.LocalGame?.UIName ?? "—";
+
+    private string SkillLevelName =>
+        Room.SkillLevel >= 0 && Room.SkillLevel < SkillLevels.Length
+            ? SkillLevels[Room.SkillLevel]
+            : SkillLevels.FirstOrDefault() ?? "—";
+
+    protected override void OnInitialized()
+    {
+        _colors = LoadColorsSafe();
+        _sides = ClientConfiguration.Instance.Sides.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        _skillLevels = ClientConfiguration.Instance.GetSkillLevelOptions();
+        if (_sides.Length == 0)
+            _sides = new[] { "GDI", "Nod", "Allies", "Soviet" };
+
+        Room.Changed += OnChanged;
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+        MapLoader.MapLoadingComplete += OnMapLoadingComplete;
+        RefreshMaps();
+        EnterRoom();
+    }
+
+    /// <summary>加载多人颜色，失败时回退默认 8 色（GameOptions.ini 缺失等边界）。</summary>
+    private static List<ColorOption> LoadColorsSafe()
+    {
+        try
+        {
+            var colors = MultiplayerColor.LoadColors();
+            return colors.Select(c => new ColorOption(c.Name, c.GameColorIndex, c.XnaColor)).ToList();
+        }
+        catch
+        {
+            // 回退默认色板
+        }
+        return new List<ColorOption>
+        {
+            new("红", 0, new Rgba32(255, 60, 60, 255)),
+            new("蓝", 1, new Rgba32(70, 120, 255, 255)),
+            new("青", 2, new Rgba32(80, 220, 255, 255)),
+            new("绿", 3, new Rgba32(80, 220, 120, 255)),
+            new("黄", 4, new Rgba32(255, 220, 80, 255)),
+            new("橙", 5, new Rgba32(255, 150, 60, 255)),
+            new("紫", 6, new Rgba32(190, 120, 255, 255)),
+            new("粉", 7, new Rgba32(255, 130, 200, 255)),
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("cncnet.initLobbyKeyNav", _dotNetRef);
+        }
+        else if (_scrollToBottom && _chatEnd.Id is not null)
+        {
+            _scrollToBottom = false;
+            await JS.InvokeVoidAsync("cncnet.scrollToBottom", _chatEnd);
+        }
+    }
+
+    /// <summary>读取大厅传入的创建/加入请求并进入房间（scoped 请求用后即清）。</summary>
+    private void EnterRoom()
+    {
+        try
+        {
+            if (NavData.PendingJoin is { } join)
+            {
+                Room.JoinGame(new LobbyGameItem(
+                    join.RoomName, join.HostName, string.Empty, string.Empty, string.Empty,
+                    Array.Empty<string>(), Math.Max(2, join.MaxPlayers),
+                    join.Passworded, join.Locked, false, false, join.ChannelName, DateTime.Now),
+                    join.Password);
+                return;
+            }
+            if (NavData.PendingCreate is { } create)
+            {
+                Room.CreateGame(create.RoomName, create.MaxPlayers, create.Password);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+        finally
+        {
+            NavData.PendingJoin = null;
+            NavData.PendingCreate = null;
+        }
+    }
+
+    private void RefreshMaps()
+    {
+        _mapOptions = MapLoader.GameModeMaps
+            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()))
+            .ToList();
+        _mapGroups = _mapOptions.GroupBy(o => o.Mode)
+            .Select(g => new MapGroup(g.Key, g.ToList()))
+            .ToList();
+    }
+
+    private void OnMapLoadingComplete(object? sender, EventArgs e) =>
+        _ = InvokeAsync(() =>
+        {
+            RefreshMaps();
+            StateHasChanged();
+        });
+
+    private void OnChanged()
+    {
+        var count = Room.GameChannel?.Messages.Count ?? 0;
+        _scrollToBottom = count != _lastMessageCount;
+        _lastMessageCount = count;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
+
+    // ── 顶部操作 ──
+
+    private async Task OnLeave()
+    {
+        var confirm = await MessageBox.ShowAsync("离开房间",
+            "确认离开当前游戏房间？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        if (!confirm)
+            return;
+        Room.LeaveGame();
+        await JS.InvokeVoidAsync("cncnet.toast", "已离开房间");
+        Nav.NavigateTo("/online/lobby");
+    }
+
+    private void BackToLobby() => Nav.NavigateTo("/online/lobby");
+
+    // ── 地图（房主） ──
+
+    private void OnMapChange(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int index) || index < 0 || index >= _mapOptions.Count)
+            return;
+        Room.ChangeMap(_mapOptions[index].Value);
+    }
+
+    // ── 规则（房主） ──
+
+    private void OnRoomNameInput(ChangeEventArgs e) => _roomNameDraft = e.Value?.ToString() ?? string.Empty;
+
+    private void CommitRoomName() =>
+        Room.ChangeRoomSettings(_roomNameDraft, Room.MaxPlayers, Room.SkillLevel);
+
+    private void OnMaxPlayersChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int mp))
+            Room.ChangeRoomSettings(_roomNameDraft.Length == 0 ? Room.RoomName : _roomNameDraft, mp, Room.SkillLevel);
+    }
+
+    private void OnSkillChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int sl))
+            Room.ChangeRoomSettings(_roomNameDraft.Length == 0 ? Room.RoomName : _roomNameDraft, Room.MaxPlayers, sl);
+    }
+
+    private void OnToggleLock() => Room.ToggleLock();
+
+    // ── 我的配置 ──
+
+    private void OnSideChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            ApplyOwnOptions(v, Self.Color, Self.Start, Self.Team);
+    }
+
+    private void OnStartChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            ApplyOwnOptions(Self.Side, Self.Color, v, Self.Team);
+    }
+
+    private void OnTeamChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            ApplyOwnOptions(Self.Side, Self.Color, Self.Start, v);
+    }
+
+    private void SetColor(int colorIndex) =>
+        ApplyOwnOptions(Self.Side, colorIndex, Self.Start, Self.Team);
+
+    /// <summary>点击地图预览上的出生点：被他人占用则拒绝，否则分配给自己。</summary>
+    private void OnSpawnClick(int index)
+    {
+        var sp = SpawnPoints.FirstOrDefault(s => s.Index == index);
+        if (sp is null)
+            return;
+        if (sp.OccupantName is not null && !sp.IsSelf)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", $"出生点 {index} 已被 {sp.OccupantName} 占用");
+            return;
+        }
+        ApplyOwnOptions(Self.Side, Self.Color, index, Self.Team);
+    }
+
+    private void ApplyOwnOptions(int side, int color, int start, int team)
+    {
+        try
+        {
+            Room.ChangeOwnOptions(side, color, start, team);
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    private void OnToggleReady()
+    {
+        try
+        {
+            Room.ToggleReady();
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    private void OnStartGame()
+    {
+        try
+        {
+            Room.StartGame();
+            _ = JS.InvokeVoidAsync("cncnet.toast", "已开始游戏（游戏进程启动将在 M3.7 接入）");
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    // ── 房间聊天 ──
+
+    private void OnDraftInput(ChangeEventArgs e) => _draft = e.Value?.ToString() ?? string.Empty;
+
+    private void OnChatKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            OnSend();
+    }
+
+    private void OnSend()
+    {
+        if (string.IsNullOrWhiteSpace(_draft))
+            return;
+        Room.SendRoomChat(_draft);
+        _draft = string.Empty;
+    }
+
+    /// <summary>ESC：离开房间前确认（由 JS keydown 触发）。</summary>
+    [JSInvokable]
+    public Task OnLobbyEsc()
+    {
+        _ = OnLeave();
+        return Task.CompletedTask;
+    }
+
+    private string GetSideName(int side) =>
+        side >= 0 && side < Sides.Length ? Sides[side] : $"阵营{side}";
+
+    private Rgba32 GetColor(int index) =>
+        (_colors.FirstOrDefault(c => c.Index == index) ?? _colors.FirstOrDefault())?.Color
+        ?? new Rgba32(160, 220, 255, 255);
+
+    private static string ToCss(Rgba32 color) => $"rgb({color.R},{color.G},{color.B})";
+
+    public void Dispose()
+    {
+        Room.Changed -= OnChanged;
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+        MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
+        if (_dotNetRef is not null)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.disposeLobbyKeyNav");
+            _dotNetRef.Dispose();
+            _dotNetRef = null;
+        }
+    }
+
+    private sealed record MapOption(GameModeMap Value, int Index, string Mode, string Display);
+    private sealed record MapGroup(string Key, List<MapOption> Items);
+    private sealed record ColorOption(string Name, int Index, Rgba32 Color);
+}
