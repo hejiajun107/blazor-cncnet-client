@@ -79,15 +79,17 @@ app{display:block;height:100vh}
 a,.btn-link{color:var(--cyan)}
 
 /* ── 主题化滚动条（全局统一，变量驱动自适应各主题；spec §5.4 科幻风） ──
-   纤细青色/金色能量条 + 圆角，悬停微光；Firefox 走 scrollbar-width/color */
-*{scrollbar-width:thin;scrollbar-color:var(--cyan) transparent}
-::-webkit-scrollbar{width:8px;height:8px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--cyan-deep),var(--cyan));
+   纤细能量条：青色(金)发光滑块 + 内嵌暗轨 + 圆角，悬停微光增强；
+   Firefox 走 scrollbar-width/color */
+*{scrollbar-width:thin;scrollbar-color:var(--cyan) rgba(0,0,0,.25)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.22);border-left:1px solid rgba(128,200,255,.05)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--cyan),var(--cyan-deep));
   border:2px solid transparent;background-clip:padding-box;border-radius:8px;
-  transition:background var(--t-fast) var(--ease-out)}
-::-webkit-scrollbar-thumb:hover{background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
-::-webkit-scrollbar-corner{background:transparent}
+  box-shadow:inset 0 0 6px rgba(0,0,0,.35);
+  transition:background var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out)}
+::-webkit-scrollbar-thumb:hover{background:var(--cyan-soft);box-shadow:0 0 12px var(--cyan)}
+::-webkit-scrollbar-corner{background:rgba(0,0,0,.22)}
 
 /* ── 背景层（MainLayout 全局共享） ─────────────────────────────── */
 #bg-canvas{position:fixed;inset:0;z-index:0;width:100%;height:100%}
