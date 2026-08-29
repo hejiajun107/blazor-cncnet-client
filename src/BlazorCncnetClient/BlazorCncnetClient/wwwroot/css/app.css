@@ -79,17 +79,23 @@ app{display:block;height:100vh}
 a,.btn-link{color:var(--cyan)}
 
 /* ── 主题化滚动条（全局统一，变量驱动自适应各主题；spec §5.4 科幻风） ──
-   纤细能量条：青色(金)发光滑块 + 内嵌暗轨 + 圆角，悬停微光增强；
-   Firefox 走 scrollbar-width/color */
-*{scrollbar-width:thin;scrollbar-color:var(--cyan) rgba(0,0,0,.25)}
-::-webkit-scrollbar{width:9px;height:9px}
-::-webkit-scrollbar-track{background:rgba(0,0,0,.22);border-left:1px solid rgba(128,200,255,.05)}
-::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--cyan),var(--cyan-deep));
+   双引擎覆盖（关键：显式声明 ::-webkit-scrollbar 后 Chromium 会关闭系统叠加式
+   滚动条以套用本样式；scrollbar-color/width 为 Firefox 及叠加模式兜底）：
+   纤细能量条：青色(金)发光滑块 + 内嵌暗轨 + 圆角，悬停微光增强 */
+*{scrollbar-width:thin;scrollbar-color:var(--cyan) rgba(0,0,0,.28)}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:rgba(0,0,0,.28);
+  border-left:1px solid rgba(128,200,255,.06)}
+*::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--cyan-soft),var(--cyan) 55%,var(--cyan-deep));
   border:2px solid transparent;background-clip:padding-box;border-radius:8px;
-  box-shadow:inset 0 0 6px rgba(0,0,0,.35);
+  box-shadow:inset 0 0 6px rgba(0,0,0,.35),0 0 4px rgba(33,230,255,.25);
   transition:background var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out)}
-::-webkit-scrollbar-thumb:hover{background:var(--cyan-soft);box-shadow:0 0 12px var(--cyan)}
-::-webkit-scrollbar-corner{background:rgba(0,0,0,.22)}
+*::-webkit-scrollbar-thumb:hover{background:var(--cyan-soft);box-shadow:0 0 12px var(--cyan)}
+*::-webkit-scrollbar-corner{background:rgba(0,0,0,.28)}
+/* 红警主题：金色能量条（变量已随 data-theme="ra" 重定义为金，此处仅补发光色） */
+:root[data-theme="ra"] *{scrollbar-color:var(--gold) rgba(0,0,0,.32)}
+:root[data-theme="ra"] *::-webkit-scrollbar-thumb{box-shadow:inset 0 0 6px rgba(0,0,0,.35),0 0 4px rgba(255,210,63,.28)}
+:root[data-theme="ra"] *::-webkit-scrollbar-thumb:hover{box-shadow:0 0 12px var(--gold)}
 
 /* ── 背景层（MainLayout 全局共享） ─────────────────────────────── */
 #bg-canvas{position:fixed;inset:0;z-index:0;width:100%;height:100%}
