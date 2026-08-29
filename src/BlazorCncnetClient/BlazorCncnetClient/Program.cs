@@ -7,10 +7,12 @@ using Microsoft.Extensions.Logging;
 using BlazorCncnetClient.Components;
 using BlazorCncnetClient.Infrastructure;
 using BlazorCncnetClient.Infrastructure.Theme;
+using CnCNetClient.Core;
 using CnCNetClient.Domain.Multiplayer.CnCNet;
 using CnCNetClient.Integration.Lifecycle;
 using CnCNetClient.Integration.Threading;
 using CnCNetClient.Online;
+using CnCNetClient.Tools;
 
 namespace BlazorCncnetClient
 {
@@ -41,6 +43,15 @@ namespace BlazorCncnetClient
                         flushToDiskInterval: TimeSpan.FromSeconds(1)))
                     .MinimumLevel.Debug();
             });
+
+            // CnCNetClient 内部 Logger 落盘（连接/网络诊断，与 Serilog 互补；原版 DXMainClient 亦输出 client.log）
+            Logger.Initialize(Path.Combine(AppContext.BaseDirectory, "logs"), "connection.log");
+            Logger.WriteLogFile = true;
+
+            // CnCNet 用户设置（ClientSettings.ini）：原版在主窗口初始化时调用 UserINISettings.Initialize。
+            // 移植版在启动时初始化，否则创建 persistent Channel 时会访问 UserINISettings.Instance 并抛出
+            // InvalidOperationException("UserINISettings not initialized!")，导致登录一直卡在「连接中」。
+            UserINISettings.Initialize("ClientSettings.ini");
 
             // ── 宿主适配服务（M2.1）────────────────────────────────────────
             // IDispatcher：网络/后台线程 → UI 线程调度（替代 WindowManager.AddCallback）

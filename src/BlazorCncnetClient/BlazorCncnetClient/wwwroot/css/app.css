@@ -78,6 +78,17 @@ body{font-family:var(--font-cn);background:var(--bg-0);color:var(--text);overflo
 app{display:block;height:100vh}
 a,.btn-link{color:var(--cyan)}
 
+/* ── 主题化滚动条（全局统一，变量驱动自适应各主题；spec §5.4 科幻风） ──
+   纤细青色/金色能量条 + 圆角，悬停微光；Firefox 走 scrollbar-width/color */
+*{scrollbar-width:thin;scrollbar-color:var(--cyan) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--cyan-deep),var(--cyan));
+  border:2px solid transparent;background-clip:padding-box;border-radius:8px;
+  transition:background var(--t-fast) var(--ease-out)}
+::-webkit-scrollbar-thumb:hover{background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+::-webkit-scrollbar-corner{background:transparent}
+
 /* ── 背景层（MainLayout 全局共享） ─────────────────────────────── */
 #bg-canvas{position:fixed;inset:0;z-index:0;width:100%;height:100%}
 .aurora{position:fixed;inset:-20%;z-index:0;filter:blur(90px);opacity:.5;pointer-events:none;

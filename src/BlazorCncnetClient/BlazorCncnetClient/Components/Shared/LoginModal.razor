@@ -108,7 +108,18 @@
         Service.Error = null;
         Service.IsConnecting = true;
         Service.NotifyChanged();
-        _manager!.Connect();
+
+        try
+        {
+            _manager!.Connect();
+        }
+        catch (Exception ex)
+        {
+            // 连接初始化异常不得让浮窗无限停留在「连接中」：复位并展示原因。
+            Service.IsConnecting = false;
+            Service.Error = $"连接初始化失败：{ex.Message}";
+            Service.NotifyChanged();
+        }
     }
 
     /// <summary>

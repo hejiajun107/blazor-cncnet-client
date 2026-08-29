@@ -166,7 +166,24 @@ namespace CnCNetClient.Online
         /// </summary>
         private void ConnectToServer()
         {
-            IList<Server> sortedServerList = GetServerListSortedByLatency();
+            Logger.Log("Connection thread started.");
+
+            IList<Server> sortedServerList;
+            try
+            {
+                sortedServerList = GetServerListSortedByLatency();
+            }
+            catch (Exception ex)
+            {
+                // 服务器列表解析异常时连接线程不能静默退出：
+                // 复位连接标记并通知 UI，否则登录浮窗会一直停留在「连接中…」。
+                Logger.Log("Unable to build a server list to connect to. " + ex.ToString());
+                _attemptingConnection = false;
+                connectionManager.OnConnectAttemptFailed();
+                return;
+            }
+
+            Logger.Log($"Servers to try: {sortedServerList.Count}.");
 
             foreach (Server server in sortedServerList)
             {
@@ -354,8 +371,18 @@ namespace CnCNetClient.Online
                     try
                     {
                         // If hostNameOrAddress is an IP address, this address is returned without querying the DNS server.
-                        IEnumerable<IPAddress> serverIPAddresses = Dns.GetHostAddresses(serverHostnameOrIPAddress)
-                                                                      .Where(IPAddress => IPAddress.AddressFamily == AddressFamily.InterNetwork);
+                        // 限制 DNS 解析时长（10s），防止解析挂起导致登录浮窗一直停留在「连接中…」。
+                        Task<IEnumerable<IPAddress>> resolveTask = Task.Run(() =>
+                            Dns.GetHostAddresses(serverHostnameOrIPAddress)
+                               .Where(IPAddress => IPAddress.AddressFamily == AddressFamily.InterNetwork));
+
+                        if (!resolveTask.Wait(TimeSpan.FromSeconds(10)))
+                        {
+                            Logger.Log($"DNS resolve of {serverName} ({serverHostnameOrIPAddress}) timed out after 10 seconds.");
+                            return _serverInfos;
+                        }
+
+                        IEnumerable<IPAddress> serverIPAddresses = resolveTask.Result;
 
                         Logger.Log($"DNS resolved {serverName} ({serverHostnameOrIPAddress}): " +
                             $"{string.Join(", ", serverIPAddresses.Select(item => item.ToString()))}");
@@ -369,6 +396,10 @@ namespace CnCNetClient.Online
                     catch (SocketException ex)
                     {
                         Logger.Log($"Caught an exception when DNS resolving {serverName} ({serverHostnameOrIPAddress}) Lobby server: {ex.ToString()}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"Unexpected error when DNS resolving {serverName} ({serverHostnameOrIPAddress}) Lobby server: {ex.ToString()}");
                     }
 
                     return _serverInfos;

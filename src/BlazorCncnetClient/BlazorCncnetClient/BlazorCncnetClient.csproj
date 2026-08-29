@@ -6,7 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>false</PublishAot>
-    <InvariantGlobalization>true</InvariantGlobalization>
 	<UseAppHost>true</UseAppHost>
 </PropertyGroup>
 
@@ -14,7 +13,9 @@
 		<Content Update="wwwroot/**">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
+
 	</ItemGroup>
+
 
 	<ItemGroup>
 	  <PackageReference Include="InfiniLore.InfiniFrame" Version="0.60.0" />

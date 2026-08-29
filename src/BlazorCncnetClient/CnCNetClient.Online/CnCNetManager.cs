@@ -482,8 +482,25 @@ namespace CnCNetClient.Online
         public void Connect()
         {
             disconnect = false;
+            // 移植版不再由主窗口初始化 MainChannel，这里懒创建默认持久化主频道，
+            // 避免 Connect()/OnConnected/断线重连路径访问 MainChannel 时抛 NullReferenceException。
+            if (MainChannel is null)
+                SetMainChannel(CreateDefaultMainChannel());
+
             MainChannel.AddMessage(new ChatMessage("Connecting to CnCNet...".L10N("Client:Main:ConnectingToCncNet")));
             connection.ConnectAsync();
+        }
+
+        private Channel CreateDefaultMainChannel()
+        {
+            string mainChannelName = gameCollection.GameList
+                .FirstOrDefault(g => g.AlwaysEnabled && !string.IsNullOrEmpty(g.ChatChannel))?.ChatChannel
+                ?? "#cncnet";
+
+            var channel = CreateChannel("CnCNet", mainChannelName, persistent: true, isChatChannel: true, password: null);
+            AddChannel(channel);
+            channel.Join();
+            return channel;
         }
 
         /// <summary>

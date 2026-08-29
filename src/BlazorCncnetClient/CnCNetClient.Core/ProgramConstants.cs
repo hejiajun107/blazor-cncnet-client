@@ -123,9 +123,9 @@ namespace CnCNetClient.Core
         /// where DXMainClient could not refer to CnCNetClient.Core, this method is copied to both projects.
         /// Remember to keep <see cref="CnCNetClient.Core.ProgramConstants.SearchResourcesDir"/> and <see cref="DTAClient.Program.SearchResourcesDir"/> consistent if you have modified its source codes.
         /// </remarks>
-        private static string? SearchResourcesDir(string startupPath)
+        private static string SearchResourcesDir(string startupPath)
         {
-            DirectoryInfo? currentDir = new(startupPath);
+            DirectoryInfo currentDir = new(startupPath);
             for (int i = 0; i < 3; i++)
             {
                 if (currentDir is null)
@@ -136,7 +136,7 @@ namespace CnCNetClient.Core
                     return currentDir.FullName;
 
                 // Additional check. This makes developers to debug the client inside Visual Studio a little bit easier.
-                DirectoryInfo? resourcesDir = currentDir.GetDirectories("Resources", SearchOption.TopDirectoryOnly).FirstOrDefault();
+                DirectoryInfo resourcesDir = currentDir.GetDirectories("Resources", SearchOption.TopDirectoryOnly).FirstOrDefault();
                 if (resourcesDir is not null)
                     return resourcesDir.FullName;
 
@@ -148,13 +148,13 @@ namespace CnCNetClient.Core
 
         private static string GetGamePath(string startupPath)
         {
-            string? resourceDir = SearchResourcesDir(startupPath);
+            string resourceDir = SearchResourcesDir(startupPath);
             // 未找到 Resources 目录时回退到启动目录，避免类型初始化器抛异常（TypeInitializationException 会被 CLR 永久缓存）。
             // 资源缺失由 EnvironmentCheck 软提示，不再使整个 ProgramConstants 类型失效。
             if (resourceDir is null)
                 return startupPath;
 
-            return new DirectoryInfo(resourceDir).Parent!.FullName;
+            return new DirectoryInfo(resourceDir).Parent.FullName;
         }
     }
 }

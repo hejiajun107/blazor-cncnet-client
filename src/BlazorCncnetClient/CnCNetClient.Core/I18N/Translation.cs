@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -181,7 +181,18 @@ public class Translation : ICloneable
         }
 
         if (string.IsNullOrWhiteSpace(result))
-            result = new CultureInfo(localeCode).NativeName;
+        {
+            try
+            {
+                result = new CultureInfo(localeCode).NativeName;
+            }
+            catch (CultureNotFoundException)
+            {
+                // globalization-invariant 模式（InvariantGlobalization=true）下仅支持 InvariantCulture，
+                // 无法为指定区域代码构造 CultureInfo，回退到区域代码本身。
+                result = localeCode;
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(result))
             result = localeCode;
