@@ -8,6 +8,7 @@ using BlazorCncnetClient.Components;
 using BlazorCncnetClient.Infrastructure;
 using BlazorCncnetClient.Infrastructure.Theme;
 using CnCNetClient.Core;
+using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Domain.Multiplayer.CnCNet;
 using CnCNetClient.Integration.Lifecycle;
 using CnCNetClient.Integration.Threading;
@@ -93,6 +94,12 @@ namespace BlazorCncnetClient
 
             // 在线大厅（M3.2 spec §5.3.2）：聚合频道/聊天/房间/玩家状态，供 /online/lobby 读取
             appBuilder.Services.AddScoped<LobbyService>();
+
+            // 地图加载/预览（M3.4 spec §6.4）：MapLoader 单例持全量地图集合（官方 + 自定义），
+            // 首次被解析时后台 LoadMapsAsync；MapPreviewService 单例复用其提取/缓存，
+            // 预览图 base64 缓存跨页面导航保留。均不依赖 UI 线程，可安全单例。
+            appBuilder.Services.AddSingleton<MapLoader>();
+            appBuilder.Services.AddSingleton<MapPreviewService>();
 
             // register the root component and selector
             appBuilder.RootComponents.Add<App>("app");

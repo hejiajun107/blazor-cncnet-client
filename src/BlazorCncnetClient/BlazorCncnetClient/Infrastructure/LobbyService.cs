@@ -305,11 +305,14 @@ namespace BlazorCncnetClient.Infrastructure
                 string gameMode = split[8];
                 string tunnelField = split[9];
                 bool tunneled = tunnelField != "[DYN]";
+                // GAME 广播字段：10=游戏内人数 11=观战 12=地图 SHA1 哈希 13=模式ID
+                string mapHash = split[12];
 
                 var item = new LobbyGameItem(
                     roomName,
                     e.UserName,
                     mapName,
+                    mapHash,
                     gameMode,
                     players,
                     maxPlayers,
@@ -380,6 +383,7 @@ namespace BlazorCncnetClient.Infrastructure
         string RoomName,
         string HostName,
         string Map,
+        string MapHash,
         string GameMode,
         string[] Players,
         int MaxPlayers,

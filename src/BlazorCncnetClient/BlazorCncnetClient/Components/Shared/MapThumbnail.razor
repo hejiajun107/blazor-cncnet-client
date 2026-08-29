@@ -1,0 +1,58 @@
+@implements IDisposable
+@inject MapPreviewService MapPreview
+
+@if (_url is not null)
+{
+    <img src="@_url" alt="@MapName" class="map-thumb-img @CssClass" loading="lazy" />
+}
+else if (_failed)
+{
+    <div class="map-thumb-fallback @CssClass"><span>NO MAP</span></div>
+}
+else
+{
+    <div class="map-thumb-loading @CssClass"></div>
+}
+
+@code {
+    [Parameter] public string? MapHash { get; set; }
+    [Parameter] public string? MapName { get; set; }
+    [Parameter] public string CssClass { get; set; } = string.Empty;
+
+    private string? _url;
+    private bool _failed;
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var hash = MapHash;
+        var name = MapName;
+        if (string.IsNullOrEmpty(hash) && string.IsNullOrEmpty(name))
+        {
+            _failed = true;
+            return;
+        }
+
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        _url = null;
+        _failed = false;
+        try
+        {
+            var url = await MapPreview.GetPreviewUrlAsync(hash, name);
+            if (token.IsCancellationRequested)
+                return;
+            _url = url;
+            _failed = url is null;
+        }
+        catch
+        {
+            if (!token.IsCancellationRequested)
+                _failed = true;
+        }
+    }
+
+    public void Dispose() => _cts?.Cancel();
+}

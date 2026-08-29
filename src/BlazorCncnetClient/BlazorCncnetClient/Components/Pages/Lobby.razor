@@ -46,7 +46,11 @@
                 else
                 {
                     <Virtualize Items="@FilteredGames" Context="g">
-                        <div class="game-card @(g.Passworded ? "locked" : "")">
+                        <div class="game-card @(g.Passworded ? "locked" : "")"
+                             @onclick="() => OnGameClick(g)">
+                            <div class="gc-preview">
+                                <MapThumbnail MapHash="g.MapHash" MapName="g.Map" />
+                            </div>
                             <div class="gc-top">
                                 <span class="gc-name">@(g.Passworded ? "◈ " : "")@g.RoomName</span>
                                 <span class="gc-players @(g.IsFull ? "full" : "")">@g.PlayerCount/@g.MaxPlayers</span>
@@ -164,6 +168,35 @@
             </div>
         </div>
     }
+
+    @if (_selectedGame is not null)
+    {
+        <div class="ctx-backdrop" @onclick="CloseGameDetail"></div>
+        <div class="game-detail pop-in">
+            <header class="gd-head">
+                <span class="gd-name">@(_selectedGame.Passworded ? "◈ " : "")@_selectedGame.RoomName</span>
+                <button type="button" class="gd-close" @onclick="CloseGameDetail" aria-label="关闭">✕</button>
+            </header>
+            <div class="gd-map">
+                <MapThumbnail MapHash="_selectedGame.MapHash" MapName="_selectedGame.Map" />
+            </div>
+            <div class="gd-rows">
+                <div class="gd-row"><span>地图</span><b>@_selectedGame.Map</b></div>
+                <div class="gd-row"><span>房主</span><b>@_selectedGame.HostName</b></div>
+                <div class="gd-row"><span>模式</span><b>@_selectedGame.GameMode</b></div>
+                <div class="gd-row"><span>人数</span><b>@_selectedGame.PlayerCount / @_selectedGame.MaxPlayers</b></div>
+                <div class="gd-row"><span>类型</span><b>@(_selectedGame.IsLadder ? "天梯" : _selectedGame.Tunneled ? "隧道" : "动态")</b></div>
+                @if (_selectedGame.Passworded)
+                {
+                    <div class="gd-row"><span>密码</span><b class="gd-pass">已加密</b></div>
+                }
+            </div>
+            <div class="gd-actions">
+                <button type="button" class="mb-btn primary" @onclick="OnJoinGame">加入游戏</button>
+                <button type="button" class="mb-btn" @onclick="CloseGameDetail">取消</button>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -184,6 +217,9 @@
     private bool _pmOpen;
     private string _pmDraft = string.Empty;
     private DotNetObjectReference<Lobby>? _dotNetRef;
+
+    // M3.4 选中房间信息面板（地图预览）
+    private LobbyGameItem? _selectedGame;
 
     private Channel? CurrentChannel => LobbySvc.CurrentChannel;
     private string CurrentChannelName => CurrentChannel?.ChannelName ?? "—";
@@ -296,6 +332,19 @@
     }
 
     private void OnGameFilterInput(ChangeEventArgs e) => _gameFilter = e.Value?.ToString() ?? string.Empty;
+
+    // ── M3.4 选中房间详情（地图预览） ──
+
+    private void OnGameClick(LobbyGameItem game) => _selectedGame = game;
+
+    private void CloseGameDetail() => _selectedGame = null;
+
+    private void OnJoinGame()
+    {
+        if (_selectedGame is null)
+            return;
+        _ = JS.InvokeVoidAsync("cncnet.toast", $"加入房间「{_selectedGame.RoomName}」将在 3.5 开放");
+    }
 
     // ── M3.3 右键菜单（私聊/邀请/加友/屏蔽） ──
 
@@ -411,12 +460,14 @@
         _pmDraft = string.Empty;
     }
 
-    /// <summary>ESC：优先关私聊窗，其次关右键菜单（不导航）。由 JS keydown 触发。</summary>
+    /// <summary>ESC：优先关私聊窗，其次关房间详情，再关右键菜单（不导航）。由 JS keydown 触发。</summary>
     [JSInvokable]
     public Task OnLobbyEsc()
     {
         if (_pmOpen)
             ClosePm();
+        else if (_selectedGame is not null)
+            CloseGameDetail();
         else if (_menuOpen)
             CloseContextMenu();
         return Task.CompletedTask;
