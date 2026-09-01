@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -106,7 +106,8 @@ namespace CnCNetClient.Core
                 768);
 
             ClientTheme = new StringSetting(iniFile, MULTIPLAYER, "Theme", ClientConfiguration.Instance.GetThemeInfoFromIndex(0).Name);
-            Translation = new StringSetting(iniFile, OPTIONS, "Translation", I18N.Translation.GetDefaultTranslationLocaleCode());
+            // M4.2 移植适配：默认 UI 语言中文优先（zh-CN），非中文系统按原逻辑跟随系统翻译目录
+            Translation = new StringSetting(iniFile, OPTIONS, "Translation", I18N.Translation.GetDefaultUiLocaleCode());
             TranslationGameFilesVersion = new StringSetting(iniFile, OPTIONS, nameof(TranslationGameFilesVersion), string.Empty);
 
             DetailLevel = new IntSetting(iniFile, OPTIONS, "DetailLevel", 2);

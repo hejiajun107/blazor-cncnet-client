@@ -3,7 +3,11 @@
 
 <header class="hud">
     <div class="sys">
-        <span class="live @(Status ? "" : "off")"></span>
+        <span class="live @StatusClass"></span>
+        @if (!string.IsNullOrEmpty(StatusText))
+        {
+            <span class="live-txt @StatusClass">@StatusText</span>
+        }
         <b>@Brand</b>
         @if (!string.IsNullOrEmpty(SubText))
         {
@@ -33,8 +37,11 @@
     /// <summary>副标题（分隔点后的小字）。</summary>
     [Parameter] public string? SubText { get; set; }
 
-    /// <summary>连接状态：true=青色呼吸灯（pulse），false=离线红灯常亮。</summary>
-    [Parameter] public bool Status { get; set; } = true;
+    /// <summary>状态灯修饰类：""=在线（青呼吸）、retry=重连（琥珀）、off=离线（红常亮）。</summary>
+    [Parameter] public string StatusClass { get; set; } = string.Empty;
+
+    /// <summary>状态文本（如 ONLINE / RECONNECT / OFFLINE），空则省略。</summary>
+    [Parameter] public string? StatusText { get; set; }
 
     /// <summary>当前玩家名（未连接时省略）。</summary>
     [Parameter] public string? PlayerName { get; set; }

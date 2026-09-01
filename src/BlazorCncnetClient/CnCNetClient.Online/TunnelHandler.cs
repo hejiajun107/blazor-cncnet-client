@@ -66,6 +66,11 @@ namespace CnCNetClient.Online
             connectionManager.Connected += ConnectionManager_Connected;
             connectionManager.Disconnected += ConnectionManager_Disconnected;
             connectionManager.ConnectionLost += ConnectionManager_ConnectionLost;
+
+            // 懒实例化（DI 首次解析时）若已连接，则立即启动刷新循环；
+            // 否则仅依赖 Connected 事件，事件早已触发后将永不 Start（隧道列表始终为空）。
+            if (connectionManager.IsConnected)
+                Start();
         }
 
         public List<CnCNetTunnel> Tunnels { get; private set; } = new List<CnCNetTunnel>();

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- M4.2 UI 文案 中文卫星资源（spec §6.8：zh-CN 为客户端默认 UI 语言） -->
+  <data name="Client:UI:Settings.Title" xml:space="preserve">
+    <value>设置中心</value>
+  </data>
+  <data name="Client:UI:Settings.Back" xml:space="preserve">
+    <value>返回</value>
+  </data>
+  <data name="Client:UI:Settings.Language" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Display" xml:space="preserve">
+    <value>显示</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Audio" xml:space="preserve">
+    <value>音频</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Game" xml:space="preserve">
+    <value>游戏</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Network" xml:space="preserve">
+    <value>网络</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Update" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Privacy" xml:space="preserve">
+    <value>隐私</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Display" xml:space="preserve">
+    <value>显示 DISPLAY</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Audio" xml:space="preserve">
+    <value>音频 AUDIO</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Game" xml:space="preserve">
+    <value>游戏 GAME</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Network" xml:space="preserve">
+    <value>网络 NETWORK</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Update" xml:space="preserve">
+    <value>更新 UPDATE</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Privacy" xml:space="preserve">
+    <value>隐私 PRIVACY</value>
+  </data>
+</root>

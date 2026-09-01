@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
@@ -80,9 +80,16 @@ public static class StringExtensions
     /// source code to match.
     /// </remarks>
     public static string L10N(this string defaultValue, string key, bool notify = true)
-        => string.IsNullOrEmpty(defaultValue)
-            ? defaultValue
-            : Translation.Instance.LookUp(key, defaultValue, notify);
+    {
+        if (string.IsNullOrEmpty(defaultValue))
+            return defaultValue;
+
+        // M4.2 双轨桥接（spec §6.8）：UI 键（Client:UI: 前缀）→ Resx；其余 → INI 游戏/内容翻译。
+        if (key.StartsWith(UIStrings.KeyPrefix, StringComparison.Ordinal))
+            return UIStrings.Lookup(key, defaultValue);
+
+        return Translation.Instance.LookUp(key, defaultValue, notify);
+    }
 
     /// <summary>
     /// Replace special characters with spaces in the filename to avoid conflicts with WIN32API.

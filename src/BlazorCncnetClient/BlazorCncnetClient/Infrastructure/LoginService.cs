@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 
+using CnCNetClient.Core;
+
 namespace BlazorCncnetClient.Infrastructure;
 
 /// <summary>登录浮窗结果（spec §5.3.1 在线登录 Modal）。</summary>
@@ -29,7 +31,7 @@ public sealed class LoginService
     /// <summary>关闭动画进行中（模态层保留以播 fade-out 120ms，随后 <see cref="CompleteClose"/>）。</summary>
     public bool IsClosing { get; private set; }
 
-    /// <summary>玩家名（输入框值；M3 过渡期读 localStorage，M4 由 UserINISettings 落盘）。</summary>
+    /// <summary>玩家名（输入框值；M4 4.1.1 起由 UserINISettings 落盘 settings INI）。</summary>
     public string PlayerName { get; set; } = string.Empty;
 
     /// <summary>记住我：下次进入主菜单跳过登录浮窗直接连接（SkipConnectDialog）。</summary>
@@ -48,6 +50,20 @@ public sealed class LoginService
     public string? Error { get; set; }
 
     private TaskCompletionSource<LoginResult>? _tcs;
+
+    /// <summary>
+    /// 登录偏好初始值来自 settings INI（M4 4.1.1，spec §6.10）：
+    /// PlayerName=「[MultiPlayer] Handle」、RememberMe=「[MultiPlayer] SkipConnectDialog」、
+    /// PersistentMode=「[MultiPlayer] PersistentMode」、AutoConnect=「[MultiPlayer] AutomaticCnCNetLogin」。
+    /// </summary>
+    public LoginService()
+    {
+        var ini = UserINISettings.Instance;
+        PlayerName = ini.PlayerName.Value;
+        RememberMe = ini.SkipConnectDialog.Value;
+        PersistentMode = ini.PersistentMode.Value;
+        AutoConnect = ini.AutomaticCnCNetLogin.Value;
+    }
 
     /// <summary>打开登录浮窗并等待结果。</summary>
     public Task<LoginResult> ShowAsync()

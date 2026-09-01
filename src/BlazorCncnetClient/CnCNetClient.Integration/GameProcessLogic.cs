@@ -1,24 +1,166 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using CnCNetClient.Core;
+using CnCNetClient.Tools;
+
 namespace CnCNetClient.Integration;
 
 /// <summary>
 /// Controls launching and exiting of the game executable.
 /// Migrated from ClientGUI.GameProcessLogic. UI-dependent dialogs (XNAMessageBox)
-/// will be replaced by host-provided error callbacks during integration.
-/// <see cref="UseQres"/> / <see cref="SingleCoreAffinity"/> are the only members
-/// referenced by Domain (DirectDrawWrapperManager) at this stage.
+/// are replaced by host-provided error callbacks (<see cref="GameProcessLaunchFailed"/>).
+/// <see cref="UseQres"/> / <see cref="SingleCoreAffinity"/> are set by
+/// <c>DirectDrawWrapperManager</c> (Domain) at renderer selection time.
 /// </summary>
 public static class GameProcessLogic
 {
+    /// <summary>Raised after the game process has started successfully.</summary>
     public static event Action? GameProcessStarted;
 
+    /// <summary>Raised just before the game process is launched (after spawn files are written).</summary>
     public static event Action? GameProcessStarting;
 
+    /// <summary>Raised when the game process exits.</summary>
     public static event Action? GameProcessExited;
+
+    /// <summary>
+    /// Raised when the game process could not be launched (replaces the original
+    /// XNAMessageBox dialog). Parameters: (title, message).
+    /// </summary>
+    public static event Action<string, string>? GameProcessLaunchFailed;
 
     public static bool UseQres { get; set; }
 
     public static bool SingleCoreAffinity { get; set; }
 
-    // TODO(integration): migrate StartGameProcess from ClientGUI, replacing
-    // XNAMessageBox dialogs with host-provided error callbacks (no XNAUI dependency).
+    /// <summary>
+    /// Starts the main game process.
+    /// </summary>
+    public static void StartGameProcess()
+    {
+        Logger.Log("About to launch main game executable.");
+
+        OSVersion osVersion = ClientConfiguration.Instance.GetOperatingSystemVersion();
+
+        string gameExecutableName;
+        string additionalExecutableName = string.Empty;
+
+        const string errorLaunchingTitle = "启动游戏出错";
+        const string errorLaunchingText = "启动 {0} 出错。请检查杀毒软件是否拦截了 CnCNet Client。" +
+            "你也可以尝试以管理员身份运行客户端。\n\n你无法参与本局比赛。\n\n返回错误：{1}";
+
+        if (osVersion == OSVersion.UNIX)
+        {
+            gameExecutableName = ClientConfiguration.Instance.UnixGameExecutableName;
+        }
+        else
+        {
+            string launcherExecutableName = ClientConfiguration.Instance.GameLauncherExecutableName;
+            if (string.IsNullOrEmpty(launcherExecutableName))
+                gameExecutableName = ClientConfiguration.Instance.GetGameExecutableName();
+            else
+            {
+                gameExecutableName = launcherExecutableName;
+                additionalExecutableName = "\"" + ClientConfiguration.Instance.GetGameExecutableName() + "\" ";
+            }
+        }
+
+        string extraCommandLine = ClientConfiguration.Instance.ExtraExeCommandLineParameters;
+
+        SafePath.DeleteFileIfExists(ProgramConstants.GamePath, "DTA.LOG");
+        SafePath.DeleteFileIfExists(ProgramConstants.GamePath, "TI.LOG");
+        SafePath.DeleteFileIfExists(ProgramConstants.GamePath, "TS.LOG");
+
+        GameProcessStarting?.Invoke();
+
+        if (UserINISettings.Instance.WindowedMode && UseQres && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Logger.Log("Windowed mode is enabled - using QRes.");
+            Process qresProcess = new Process();
+            qresProcess.StartInfo.FileName = ProgramConstants.QRES_EXECUTABLE;
+            qresProcess.StartInfo.UseShellExecute = false;
+
+            if (!string.IsNullOrEmpty(extraCommandLine))
+                qresProcess.StartInfo.Arguments = "c=16 /R " + "\"" + SafePath.CombineFilePath(ProgramConstants.GamePath, gameExecutableName) + "\" " + additionalExecutableName + "-SPAWN " + extraCommandLine;
+            else
+                qresProcess.StartInfo.Arguments = "c=16 /R " + "\"" + SafePath.CombineFilePath(ProgramConstants.GamePath, gameExecutableName) + "\" " + additionalExecutableName + "-SPAWN";
+            qresProcess.EnableRaisingEvents = true;
+            qresProcess.Exited += Process_Exited;
+            Logger.Log("Launch executable: " + qresProcess.StartInfo.FileName);
+            Logger.Log("Launch arguments: " + qresProcess.StartInfo.Arguments);
+            try
+            {
+                qresProcess.Start();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Error launching QRes: " + ex.ToString());
+                GameProcessLaunchFailed?.Invoke(errorLaunchingTitle,
+                    string.Format(errorLaunchingText, ProgramConstants.QRES_EXECUTABLE, ex.Message));
+                Process_Exited(qresProcess, EventArgs.Empty);
+                return;
+            }
+
+            if (Environment.ProcessorCount > 1 && SingleCoreAffinity)
+                qresProcess.ProcessorAffinity = (IntPtr)2;
+        }
+        else
+        {
+            string arguments;
+
+            if (!string.IsNullOrWhiteSpace(extraCommandLine))
+                arguments = " " + additionalExecutableName + "-SPAWN " + extraCommandLine;
+            else
+                arguments = additionalExecutableName + "-SPAWN";
+
+            FileInfo gameFileInfo = SafePath.GetFile(ProgramConstants.GamePath, gameExecutableName);
+
+            var gameProcess = new Process();
+            gameProcess.StartInfo.FileName = gameFileInfo.FullName;
+            gameProcess.StartInfo.Arguments = arguments;
+            gameProcess.StartInfo.UseShellExecute = false;
+
+            gameProcess.EnableRaisingEvents = true;
+            gameProcess.Exited += Process_Exited;
+
+            Logger.Log("Launch executable: " + gameProcess.StartInfo.FileName);
+            Logger.Log("Launch arguments: " + gameProcess.StartInfo.Arguments);
+            try
+            {
+                gameProcess.Start();
+                Logger.Log("GameProcessLogic: Process started.");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Error launching " + gameFileInfo.Name + ": " + ex.ToString());
+                GameProcessLaunchFailed?.Invoke(errorLaunchingTitle,
+                    string.Format(errorLaunchingText, gameFileInfo.Name, ex.Message));
+                Process_Exited(gameProcess, EventArgs.Empty);
+                return;
+            }
+
+            if ((RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                && Environment.ProcessorCount > 1 && SingleCoreAffinity)
+            {
+                gameProcess.ProcessorAffinity = (IntPtr)2;
+            }
+        }
+
+        GameProcessStarted?.Invoke();
+
+        Logger.Log("Waiting for qres.dat or " + gameExecutableName + " to exit.");
+    }
+
+    private static void Process_Exited(object? sender, EventArgs e)
+    {
+        Logger.Log("GameProcessLogic: Process exited.");
+        if (sender is Process proc)
+        {
+            proc.Exited -= Process_Exited;
+            proc.Dispose();
+        }
+        GameProcessExited?.Invoke();
+    }
 }

@@ -12,6 +12,7 @@
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
+@inject GameLaunchService GameLauncher
 
 @if (!Room.IsInGameRoom)
 {
@@ -574,8 +575,8 @@ else
     {
         try
         {
+            // START 广播 + GameStartRequested → GameLaunchService 生成配置、跳转加载页并启动游戏进程
             Room.StartGame();
-            _ = JS.InvokeVoidAsync("cncnet.toast", "已开始游戏（游戏进程启动将在 M3.7 接入）");
         }
         catch (Exception ex)
         {

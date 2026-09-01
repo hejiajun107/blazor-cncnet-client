@@ -10,7 +10,8 @@ using CnCNetClient.Tools;
 
 namespace CnCNetClient.Domain.LAN
 {
-    class HostedLANGame : GenericHostedGame
+    /// <summary>LAN 广播 GAME 消息解析出的房（D3.1/D3.2）。由 UI 层 LanLobbyService 直接使用。</summary>
+    public class HostedLANGame : GenericHostedGame
     {
         public IPEndPoint EndPoint { get; set; }
 

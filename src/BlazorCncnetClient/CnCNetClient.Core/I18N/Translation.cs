@@ -295,6 +295,23 @@ public class Translation : ICloneable
     }
 
     /// <summary>
+    /// 中文客户端的默认 UI 语言（M4.2 移植适配）：系统 UI 语言为中文时默认 <c>zh-CN</c>，
+    /// 否则沿用 <see cref="GetDefaultTranslationLocaleCode"/>（跟随系统匹配的游戏翻译目录）。
+    /// </summary>
+    /// <remarks>
+    /// 原版为英文优先（<see cref="ProgramConstants.HARDCODED_LOCALE_CODE"/>）；本移植版以中文为默认 UI。
+    /// 该值仅决定「首次启动」默认；用户一旦在设置页切换语言即持久化到 <c>[Options] Translation</c>，此后不再改写。
+    /// </remarks>
+    public static string GetDefaultUiLocaleCode()
+    {
+        string system = CultureInfo.CurrentUICulture.Name;
+        if (system.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+            return "zh-CN";
+
+        return GetDefaultTranslationLocaleCode();
+    }
+
+    /// <summary>
     /// Dump the translation table to an ini file.
     /// </summary>
     /// <returns>An ini file that contains the translation table.</returns>

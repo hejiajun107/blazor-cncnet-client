@@ -6,6 +6,7 @@
 @using SixLabors.ImageSharp.PixelFormats
 @inject LobbyService LobbySvc
 @inject GameRoomNavigation NavData
+@inject ConnectionMonitor Mon
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
@@ -28,7 +29,7 @@
         </div>
         <div class="lt-right">
             <span class="lt-player">@ProgramConstants.PLAYERNAME</span>
-            <span class="lt-online">在线 <em>@OnlineCount</em></span>
+            <span class="lt-conn @Mon.StatusClass"><i class="dot"></i>@Mon.StateCn@(Mon.IsConnected ? $" · {OnlineCount} 在线" : "")</span>
             <button class="mb-btn item-in" @onclick="OnLogout">离开</button>
         </div>
     </header>
@@ -75,6 +76,23 @@
             <header class="lb-ph">
                 <span>频道聊天 <em>@CurrentChannelName</em></span>
             </header>
+            @if (!Mon.IsConnected)
+            {
+                <div class="conn-banner @Mon.StatusClass">
+                    @if (Mon.State == ConnectionState.Reconnecting)
+                    {
+                        <text>⚠ 连接已断开，正在自动重连…</text>
+                    }
+                    else
+                    {
+                        <text>⚠ 已与 CnCNet 断开连接</text>
+                    }
+                    @if (!string.IsNullOrEmpty(Mon.LastError))
+                    {
+                        <span class="cb-reason">@Mon.LastError</span>
+                    }
+                </div>
+            }
             <div class="chat-scroll">
                 @if (VisibleMessages.Count == 0)
                 {
@@ -102,7 +120,24 @@
                 <div @ref="_chatEnd"></div>
             </div>
             <div class="chat-input">
-                <input class="ci-field" maxlength="200" placeholder="输入消息，Enter 发送…"
+                @if (CommandHints.Count > 0)
+                {
+                    <div class="cmd-hint pop-in">
+                        @foreach (var c in CommandHints)
+                        {
+                            <div class="cmd-hint-item @(c.RequiresAdmin && !LobbySvc.IsCurrentChannelAdmin ? "locked" : "")"
+                                 @onclick="() => ApplyCommandHint(c)">
+                                <span class="ch-cmd">/@c.Command</span>
+                                <span class="ch-desc">@c.Description</span>
+                                @if (c.RequiresAdmin)
+                                {
+                                    <span class="ch-admin">管理员</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                <input class="ci-field" maxlength="200" placeholder="输入消息，Enter 发送；/ 开头为频道指令（/help）"
                        value="@_draft" disabled="@(CurrentChannel is null)"
                        @oninput="OnDraftInput" @onkeydown="OnChatKeyDown" />
                 <button class="mb-btn primary ci-send" @onclick="OnSend" disabled="@(CurrentChannel is null)">发送</button>
@@ -151,6 +186,16 @@
             <button type="button" class="ctx-item" @onclick="OnPrivateMessage">私聊<span class="en">PM</span></button>
             <button type="button" class="ctx-item" disabled="@(!LobbySvc.CanInvite)" @onclick="OnInvite">
                 邀请加入<span class="en">INVITE</span></button>
+            @if (LobbySvc.IsCurrentChannelAdmin)
+            {
+                <div class="ctx-sep"></div>
+                <button type="button" class="ctx-item warn" @onclick="OnKickPlayer">
+                    踢出频道<span class="en">KICK</span></button>
+                <button type="button" class="ctx-item warn" @onclick="OnBanPlayer">
+                    封禁<span class="en">BAN</span></button>
+                <button type="button" class="ctx-item warn" @onclick="OnToggleMute">
+                    @(_menuUser.HasVoice ? "禁言" : "解除禁言")<span class="en">@(_menuUser.HasVoice ? "MUTE" : "VOICE")</span></button>
+            }
             <div class="ctx-sep"></div>
             <button type="button" class="ctx-item" @onclick="OnToggleFriend">
                 @(_menuUser.IRCUser.IsFriend ? "取消加友" : "加为好友")<span class="en">FRIEND</span></button>
@@ -159,17 +204,62 @@
         </div>
     }
 
-    @if (_pmOpen && _pmUser is not null)
+    @if (_pmOpen)
     {
         <div class="ctx-backdrop" @onclick="ClosePm"></div>
         <div class="pm-panel pop-in">
-            <div class="pm-head">私聊 · <b>@_pmUser.IRCUser.Name</b><span class="pm-en">PRIVATE MSG</span></div>
-            <input class="pm-field" maxlength="200" placeholder="输入消息，Enter 发送…"
-                   value="@_pmDraft" @oninput="OnPmInput" @onkeydown="OnPmKeyDown" />
-            <div class="pm-actions">
-                <button type="button" class="mb-btn" @onclick="ClosePm">取消</button>
-                <button type="button" class="mb-btn primary" @onclick="OnPmSend">发送</button>
+            <div class="pm-head">
+                <span>私聊中心</span><span class="pm-en">PRIVATE MSG</span>
+                <button type="button" class="pm-close" @onclick="ClosePm" aria-label="关闭">✕</button>
             </div>
+            @if (LobbySvc.PmSessions.Count == 0)
+            {
+                <div class="pm-empty">暂无私聊会话</div>
+            }
+            else
+            {
+                <div class="pm-tabs">
+                    @foreach (var s in LobbySvc.PmSessions)
+                    {
+                        <div class="pm-tab @(string.Equals(s.UserName, _activePmName, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                             @onclick="() => ActivatePm(s.UserName)">
+                            <span class="pt-name">@s.UserName</span>
+                            @if (s.UnreadCount > 0)
+                            {
+                                <span class="pt-badge">@s.UnreadCount</span>
+                            }
+                            <button type="button" class="pt-close" @onclick="() => ClosePmSession(s.UserName)"
+                                    @onclick:stopPropagation="true" aria-label="关闭会话">✕</button>
+                        </div>
+                    }
+                </div>
+            }
+            @if (ActivePmSession is { } active)
+            {
+                <div class="pm-body">
+                    @if (active.Messages.Count == 0)
+                    {
+                        <div class="pm-empty">尚无消息，说点什么吧</div>
+                    }
+                    else
+                    {
+                        @foreach (var m in active.Messages)
+                        {
+                            <div class="pm-msg @(m.IsMine ? "mine" : "")">
+                                <span class="pm-time">@m.Time.ToString("HH:mm")</span>
+                                <span class="pm-name">@(m.IsMine ? "我" : m.SenderName)</span>
+                                <span class="pm-text">@m.Text</span>
+                            </div>
+                        }
+                    }
+                    <div @ref="_pmChatEnd"></div>
+                </div>
+                <div class="pm-input">
+                    <input class="pm-field" maxlength="200" placeholder="输入消息，Enter 发送…"
+                           value="@_pmDraft" @oninput="OnPmInput" @onkeydown="OnPmKeyDown" />
+                    <button type="button" class="mb-btn primary" @onclick="OnPmSend">发送</button>
+                </div>
+            }
         </div>
     }
 
@@ -260,14 +350,16 @@
     private bool _scrollToBottom;
     private int _lastMessageCount;
 
-    // M3.3 右键菜单 / 私聊浮窗状态
+    // M3.3 右键菜单 / 私聊中心状态（M3.8 多标签）
     private ChannelUser? _menuUser;
     private bool _menuOpen;
     private double _menuX;
     private double _menuY;
-    private ChannelUser? _pmUser;
     private bool _pmOpen;
+    private string? _activePmName;
     private string _pmDraft = string.Empty;
+    private ElementReference _pmChatEnd;
+    private bool _pmScroll;
     private DotNetObjectReference<Lobby>? _dotNetRef;
 
     // M3.4 选中房间信息面板（地图预览）
@@ -335,9 +427,15 @@
         }
     }
 
+    // M3.8 私聊中心：当前激活会话
+    private PmSession? ActivePmSession =>
+        _activePmName is null ? null : LobbySvc.FindPmSession(_activePmName);
+
     protected override void OnInitialized()
     {
         LobbySvc.Changed += OnChanged;
+        LobbySvc.PmChanged += OnPmChanged;
+        LobbySvc.PmReceived += OnPmReceived;
         ThemeProvider.ThemeChanged += OnThemeChanged;
     }
 
@@ -355,6 +453,11 @@
             _scrollToBottom = false;
             await JS.InvokeVoidAsync("cncnet.scrollToBottom", _chatEnd);
         }
+        else if (_pmScroll && _pmChatEnd.Id is not null)
+        {
+            _pmScroll = false;
+            await JS.InvokeVoidAsync("cncnet.scrollToBottom", _pmChatEnd);
+        }
     }
 
     private void OnChanged()
@@ -362,6 +465,23 @@
         var count = CurrentChannel?.Messages.Count ?? 0;
         _scrollToBottom = count != _lastMessageCount;
         _lastMessageCount = count;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // M3.8 私聊中心事件：存储变化（含已读清零）→ 刷新；收到新消息 → 打开并激活会话
+    private void OnPmChanged()
+    {
+        if (ActivePmSession is { } s && s.UnreadCount != 0)
+            LobbySvc.MarkPmRead(s.UserName);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPmReceived(string name)
+    {
+        _pmOpen = true;
+        _activePmName = name;
+        LobbySvc.MarkPmRead(name);
+        _pmScroll = true;
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -518,7 +638,7 @@
         {
             var vp = await JS.InvokeAsync<ViewportDto>("cncnet.getViewport");
             _menuX = Math.Min(e.ClientX, Math.Max(0, vp.Width - 190));
-            _menuY = Math.Min(e.ClientY, Math.Max(0, vp.Height - 210));
+            _menuY = Math.Min(e.ClientY, Math.Max(0, vp.Height - (LobbySvc.IsCurrentChannelAdmin ? 300 : 210)));
         }
     }
 
@@ -532,9 +652,12 @@
     {
         if (_menuUser is null)
             return;
-        _pmUser = _menuUser;
+        var name = _menuUser.IRCUser.Name;
+        LobbySvc.OpenPmSession(name);
+        _activePmName = name;
         _pmDraft = string.Empty;
         _pmOpen = true;
+        LobbySvc.MarkPmRead(name);
         CloseContextMenu();
     }
 
@@ -547,6 +670,53 @@
         }
         CloseContextMenu();
     }
+
+    // ── M3.9 频道指令：管理员右键动作（踢出/封禁/禁言），复用 ExecuteChannelCommand ──
+
+    private void OnKickPlayer()
+    {
+        if (_menuUser is not null)
+            LobbySvc.ExecuteChannelCommand($"/kick {_menuUser.IRCUser.Name}");
+        CloseContextMenu();
+    }
+
+    private void OnBanPlayer()
+    {
+        if (_menuUser is not null)
+            LobbySvc.ExecuteChannelCommand($"/ban {_menuUser.IRCUser.Name}");
+        CloseContextMenu();
+    }
+
+    private void OnToggleMute()
+    {
+        if (_menuUser is not null)
+            LobbySvc.ExecuteChannelCommand($"/{(_menuUser.HasVoice ? "mute" : "voice")} {_menuUser.IRCUser.Name}");
+        CloseContextMenu();
+    }
+
+    // ── M3.9 频道指令：聊天输入 / 指令提示浮层 ──
+
+    /// <summary>根据当前草稿（/ 开头）过滤出匹配指令列表，供提示浮层渲染。</summary>
+    private List<ChannelCommand> CommandHints
+    {
+        get
+        {
+            var trimmed = _draft.Trim();
+            if (!trimmed.StartsWith('/') || trimmed.Length < 2)
+                return [];
+            var input = trimmed.Substring(1).TrimStart();
+            var space = input.IndexOf(' ');
+            var prefix = space == -1 ? input : input.Substring(0, space);
+            if (prefix.Length == 0)
+                return LobbySvc.ChannelCommands.ToList();
+            return LobbySvc.ChannelCommands
+                .Where(c => c.Command.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    /// <summary>点击提示项：将指令补全到输入框并聚焦参数输入。</summary>
+    private void ApplyCommandHint(ChannelCommand command) => _draft = $"/{command.Command} ";
 
     private void OnToggleFriend()
     {
@@ -574,7 +744,7 @@
         CloseContextMenu();
     }
 
-    // ── 私聊快捷窗（M3.8 扩展多标签私聊中心） ──
+    // ── 私聊中心（M3.8 多标签：激活/切换/关闭/发送） ──
 
     private void OnPmInput(ChangeEventArgs e) => _pmDraft = e.Value?.ToString() ?? string.Empty;
 
@@ -584,19 +754,41 @@
             OnPmSend();
     }
 
-    private void OnPmSend()
+    private void ActivatePm(string name)
     {
-        if (_pmUser is null || string.IsNullOrWhiteSpace(_pmDraft))
+        if (_activePmName is not null && string.Equals(_activePmName, name, StringComparison.OrdinalIgnoreCase))
             return;
-        LobbySvc.SendPrivateMessage(_pmUser.IRCUser.Name, _pmDraft);
-        _ = JS.InvokeVoidAsync("cncnet.toast", $"私聊消息已发送给 {_pmUser.IRCUser.Name}");
-        ClosePm();
+        _activePmName = name;
+        _pmDraft = string.Empty;
+        LobbySvc.MarkPmRead(name);
+        _pmScroll = true;
     }
 
+    private void ClosePmSession(string name)
+    {
+        var activeWas = _activePmName is not null
+            && string.Equals(_activePmName, name, StringComparison.OrdinalIgnoreCase);
+        LobbySvc.ClosePmSession(name);
+        if (activeWas)
+        {
+            _activePmName = null;
+            _pmDraft = string.Empty;
+        }
+    }
+
+    private void OnPmSend()
+    {
+        if (ActivePmSession is not { } session || string.IsNullOrWhiteSpace(_pmDraft))
+            return;
+        LobbySvc.SendPrivateMessage(session.UserName, _pmDraft);
+        _pmDraft = string.Empty;
+        _pmScroll = true;
+    }
+
+    /// <summary>关闭私聊中心面板（会话与消息历史保留，再次打开可恢复）。</summary>
     private void ClosePm()
     {
         _pmOpen = false;
-        _pmUser = null;
         _pmDraft = string.Empty;
     }
 
@@ -635,6 +827,8 @@
     public void Dispose()
     {
         LobbySvc.Changed -= OnChanged;
+        LobbySvc.PmChanged -= OnPmChanged;
+        LobbySvc.PmReceived -= OnPmReceived;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         if (_dotNetRef is not null)
         {

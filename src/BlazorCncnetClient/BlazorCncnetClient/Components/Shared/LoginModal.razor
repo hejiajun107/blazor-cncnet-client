@@ -4,6 +4,7 @@
 @using CnCNetClient.Domain.Multiplayer.CnCNet
 @using CnCNetClient.Online
 @inject LoginService Service
+@inject SettingsService Settings
 @inject IJSRuntime JS
 @inject IServiceProvider Services
 
@@ -102,7 +103,7 @@
 
         // 昵称即身份（CnCNet 无密码认证）：写入进程级 PLAYERNAME 后发起 IRC 连接。
         ProgramConstants.PLAYERNAME = Service.PlayerName.Trim();
-        await PersistPrefsAsync();
+        PersistPrefs();
         EnsureManager();
 
         Service.Error = null;
@@ -181,18 +182,16 @@
         StateHasChanged();
     }
 
-    /* ── M3 过渡持久化（localStorage；M4 4.1.1 改由 UserINISettings 写 settings INI） ── */
-    private async Task PersistPrefsAsync()
+    /* ── M4 4.1.1 持久化（spec §6.10）：登录偏好写 settings INI，变更即存 ── */
+    private void PersistPrefs()
     {
-        try
+        Settings.SetAndSave(ini =>
         {
-            await JS.InvokeVoidAsync("cncnet.saveLoginPrefs",
-                Service.PlayerName, Service.RememberMe, Service.PersistentMode, Service.AutoConnect);
-        }
-        catch
-        {
-            // 持久化失败不阻塞登录
-        }
+            ini.PlayerName.Value = Service.PlayerName.Trim();
+            ini.SkipConnectDialog.Value = Service.RememberMe;
+            ini.PersistentMode.Value = Service.PersistentMode;
+            ini.AutomaticCnCNetLogin.Value = Service.AutoConnect;
+        });
     }
 
     public void Dispose()

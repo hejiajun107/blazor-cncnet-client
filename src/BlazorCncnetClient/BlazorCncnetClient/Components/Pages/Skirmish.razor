@@ -1,0 +1,607 @@
+@page "/skirmish"
+@implements IDisposable
+@using CnCNetClient.Core
+@using CnCNetClient.Domain.Multiplayer
+@using SixLabors.ImageSharp.PixelFormats
+@inject SkirmishService Svc
+@inject MapLoader MapLoader
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject IThemeProvider ThemeProvider
+@inject MessageBoxService MessageBox
+@inject SkirmishLaunchService GameLauncher
+
+@if (!Svc.IsActive)
+{
+    <div class="game-empty page-anim">
+        <div class="ge-box pop-in">
+            <div class="ge-title">SKIRMISH</div>
+            <div class="ge-sub">遭遇战配置初始化中…</div>
+            <button class="mb-btn primary" @onclick="BackToMenu">返回主菜单</button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="groom page-anim">
+        <header class="groom-top item-in">
+            <div class="gt-left">
+                <span class="gt-badge host">遭遇战<span class="en">SKIRMISH</span></span>
+                <div class="gt-tbox">
+                    <span class="gt-title">本地对战配置</span>
+                    <span class="gt-en">@(Svc.LocalGame?.UIName ?? "—") · 单机 · 人类 @(1) + AI @(Svc.AIPlayers.Count)</span>
+                </div>
+            </div>
+            <div class="gt-right">
+                <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
+                <button class="mb-btn" @onclick="BackToMenu">返回主菜单</button>
+            </div>
+        </header>
+
+        <div class="groom-grid">
+            <!-- 左列：地图选择（参考原版 lbMapList） -->
+            <section class="gl-panel gl-maplist item-in" style="animation-delay:50ms">
+                <header class="gl-ph">
+                    <span>地图选择 <em>MAP LIST</em></span>
+                </header>
+                <div class="gl-body">
+                    <select class="gl-select" value="@SelectedMapIndex" @onchange="OnMapChange">
+                        <option value="-1">— 选择地图 —</option>
+                        @foreach (var group in MapGroups)
+                        {
+                            <optgroup label="@group.Key">
+                                @for (int i = 0; i < group.Items.Count; i++)
+                                {
+                                    var opt = group.Items[i];
+                                    <option value="@opt.Index">@opt.Display</option>
+                                }
+                            </optgroup>
+                        }
+                    </select>
+
+                    @if (Svc.SelectedMap is not null)
+                    {
+                        <div class="map-info">
+                            <div class="mi-row"><span>地图</span><b>@Svc.SelectedMap.Map.Name</b></div>
+                            <div class="mi-row"><span>作者</span><b>@Svc.SelectedMap.Map.Author</b></div>
+                            <div class="mi-row"><span>尺寸</span><b>@Svc.SelectedMap.Map.GetSizeString()</b></div>
+                            <div class="mi-row"><span>模式</span><b>@Svc.SelectedMap.GameMode.UIName</b></div>
+                            <div class="mi-row"><span>人数</span><b>@(Svc.SelectedMap.MinPlayers)–@(Svc.SelectedMap.MaxPlayers)</b></div>
+                            @if (!string.IsNullOrEmpty(Svc.SelectedMap.Map.Briefing))
+                            {
+                                <div class="mi-divider"></div>
+                                <div class="mi-briefing">@Svc.SelectedMap.Map.Briefing</div>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- 右上·左：玩家配置（参考原版 PlayerOptionsPanel 紧凑槽位表格：每行=玩家，列=阵营/颜色/队伍） -->
+            <section class="gl-panel gl-players item-in" style="animation-delay:100ms">
+                <header class="gl-ph">
+                    <span>玩家配置 <em>@TotalPlayers/@Svc.MaxPlayers</em></span>
+                    <span class="gl-lock">@(Svc.IsCoop ? "合作" : "对战")</span>
+                </header>
+
+                <div class="gl-body">
+                    <!-- 表头行（参考原版 PLAYER/SIDE/COLOR/TEAM 标题） -->
+                    <div class="gl-tr gl-tr-head">
+                        <span class="gl-tc-name">玩家 <em>PLAYER</em></span>
+                        <span>阵营 <em>SIDE</em></span>
+                        <span>颜色 <em>COLOR</em></span>
+                        <span>队伍 <em>TEAM</em></span>
+                    </div>
+
+                    <!-- 人类玩家行 -->
+                    <div class="gl-tr human">
+                        <div class="gl-tc-name">
+                            <span class="slot-color" style="background:@ToCss(GetColor(HumanColorId))"></span>
+                            <span class="nm">@ProgramConstants.PLAYERNAME</span>
+                            <em class="slot-host">YOU</em>
+                        </div>
+                        <select class="gl-select" value="@HumanSideId" @onchange="OnHumanSideChange">
+                            @for (int s = 0; s < Sides.Length; s++)
+                            {
+                                <option value="@s">@Sides[s]</option>
+                            }
+                            <option value="@Sides.Length">Spectator</option>
+                        </select>
+                        <select class="gl-select" value="@HumanColorId" @onchange="OnHumanColorChange">
+                            @for (int c = 0; c < _colors.Count; c++)
+                            {
+                                <option value="@_colors[c].Index">@_colors[c].Name</option>
+                            }
+                        </select>
+                        <select class="gl-select" value="@HumanTeamId" disabled="@(!Svc.TeamsEnabled || Svc.UseTeamStartMappings)" @onchange="OnHumanTeamChange">
+                            <option value="0">-</option>
+                            @for (int t = 0; t < TeamNames.Count; t++)
+                            {
+                                <option value="@(t + 1)">@TeamNames[t]</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- AI 玩家行 -->
+                    @for (int i = 0; i < Svc.AIPlayers.Count; i++)
+                    {
+                        var ai = Svc.AIPlayers[i];
+                        <div class="gl-tr">
+                            <div class="gl-tc-name">
+                                <span class="slot-color" style="background:@ToCss(GetColor(ai.ColorId))"></span>
+                                <span class="nm">AI @(i + 1)</span>
+                                <select class="gl-select ai-level" value="@ai.AILevel" @onchange="(e) => OnAILevelChange(ai, e)">
+                                    <option value="0">简单</option>
+                                    <option value="1">中等</option>
+                                    <option value="2">困难</option>
+                                </select>
+                                <button class="ai-remove" title="移除" @onclick="() => OnRemoveAI(ai)">✕</button>
+                            </div>
+                            <select class="gl-select" value="@ai.SideId" @onchange="(e) => OnAISideChange(ai, e)">
+                                @for (int s = 0; s < Sides.Length; s++)
+                                {
+                                    <option value="@s">@Sides[s]</option>
+                                }
+                            </select>
+                            <select class="gl-select" value="@ai.ColorId" @onchange="(e) => OnAIColorChange(ai, e)">
+                                @for (int c = 0; c < _colors.Count; c++)
+                                {
+                                    <option value="@_colors[c].Index">@_colors[c].Name</option>
+                                }
+                            </select>
+                            <select class="gl-select" value="@ai.TeamId" disabled="@(!Svc.TeamsEnabled || Svc.UseTeamStartMappings)" @onchange="(e) => OnAITeamChange(ai, e)">
+                                <option value="0">-</option>
+                                @for (int t = 0; t < TeamNames.Count; t++)
+                                {
+                                    <option value="@(t + 1)">@TeamNames[t]</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
+                    @if (Svc.AIPlayers.Count < SkirmishService.MaxAIPlayersConst)
+                    {
+                        <button class="mb-btn add-ai-btn" @onclick="OnAddAI">
+                            + 添加 AI 玩家<span class="en">ADD AI</span>
+                        </button>
+                    }
+
+                    <!-- 自动结盟出生点映射（启用时显示，随表体滚动） -->
+                    @if (Svc.UseTeamStartMappings)
+                    {
+                        <div class="ally-grid">
+                            @for (int st = 1; st <= Svc.MaxPlayers; st++)
+                            {
+                                var teamValue = GetMappingTeam(st);
+                                <div class="ally-cell">
+                                    <span class="ally-idx">@st</span>
+                                    <select class="gl-select ally-sel" value="@teamValue"
+                                            disabled="@(!Svc.AllowedTeamStartMappingLocations.Contains(st))"
+                                            @onchange="(e) => OnMappingChange(st, e)">
+                                        @foreach (var opt in MappingTeamOptions)
+                                        {
+                                            <option value="@opt.Value">@opt.Label</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- 自动结盟开关 + 预设（固定条） -->
+                <div class="gl-ally">
+                    <div class="ally-head">
+                        <label class="gl-check">
+                            <input type="checkbox" checked="@Svc.UseTeamStartMappings"
+                                   disabled="@(!Svc.TeamStartMappingsAllowed)"
+                                   @onchange="OnToggleAutoAlly" />
+                            <span>自动结盟<span class="en">AUTO ALLY</span></span>
+                        </label>
+                        <select class="gl-select ally-preset" value="0"
+                                disabled="@(!Svc.UseTeamStartMappings || Svc.TeamStartMappingPresets.Count == 0)"
+                                @onchange="OnAutoAllyPresetChange">
+                            <option value="0">自定义</option>
+                            @for (int p = 0; p < Svc.TeamStartMappingPresets.Count; p++)
+                            {
+                                <option value="@(p + 1)">@Svc.TeamStartMappingPresets[p].Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="cfg-actions">
+                    <button class="mb-btn danger" @onclick="OnResetAI">重置 AI<span class="en">RESET AI</span></button>
+                    <button class="mb-btn primary start-btn" disabled="@(Svc.SelectedMap is null)" @onclick="OnStartGame">
+                        开始游戏<span class="en">START</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 右上·右：游戏选项（参考原版 GameOptionsPanel） -->
+            <section class="gl-panel gl-options item-in" style="animation-delay:150ms">
+                <header class="gl-ph">
+                    <span>游戏选项 <em>GAME OPTIONS</em></span>
+                </header>
+                <div class="gl-body">
+                    <div class="go-grid">
+                        @foreach (var opt in CheckBoxOptions)
+                        {
+                            <label class="gl-check go-check">
+                                <input type="checkbox" checked="@opt.Checked"
+                                       @onchange="(e) => OnCheckBoxOptionChange(opt, e)" />
+                                <span>@opt.DisplayName</span>
+                            </label>
+                        }
+                    </div>
+                    @foreach (var dd in DropDownOptions)
+                    {
+                        <div class="go-dd">
+                            <label>@dd.DisplayName</label>
+                            <select class="gl-select" value="@dd.SelectedIndex" @onchange="(e) => OnDropDownOptionChange(dd, e)">
+                                @for (int i = 0; i < dd.Items.Count; i++)
+                                {
+                                    <option value="@i">@dd.Items[i]</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- 右下：地图预览（参考原版 MapPreviewBox） -->
+            <section class="gl-panel gl-preview item-in" style="animation-delay:200ms">
+                <header class="gl-ph">
+                    <span>地图预览 <em>MAP PREVIEW</em></span>
+                    <span class="gl-mapname">@(Svc.SelectedMap?.Map.Name ?? "未选择地图")</span>
+                </header>
+                <div class="gl-body">
+                    <div class="cfg-map-preview">
+                        <MapThumbnail MapHash="Svc.SelectedMap?.Map.SHA1" MapName="Svc.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
+                        @if (Svc.SelectedMap is null)
+                        {
+                            <div class="cfg-map-none">请选择地图</div>
+                        }
+                        else
+                        {
+                            <div class="spawn-layer">
+                                @foreach (var sp in SpawnPoints)
+                                {
+                                    var spStyle = $"left:{sp.X * 100:0.##}%;top:{sp.Y * 100:0.##}%";
+                                    var spCls = sp.IsSelf ? "self" : sp.OccupantName is null ? "free" : "taken";
+                                    <button type="button"
+                                            class="spawn-dot @spCls"
+                                            style="@spStyle"
+                                            title="@(sp.OccupantName is null ? $"出生点 {sp.Index}" : $"出生点 {sp.Index} · {sp.OccupantName}")"
+                                            @onclick="() => OnSpawnClick(sp.Index)">
+                                        <span class="spawn-num">@sp.Index</span>
+                                        @if (sp.OccupantName is not null)
+                                        {
+                                            <span class="spawn-owner" style="background:@ToCss(GetColor(sp.ColorIndex))"></span>
+                                        }
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ColorOption> _colors = new();
+    private string[] _sides = Array.Empty<string>();
+    private string[] Sides => _sides;
+
+    private List<MapGroup> MapGroups => _mapGroups;
+    private List<MapGroup> _mapGroups = new();
+    private List<MapOption> _mapOptions = new();
+
+    private int TotalPlayers => 1 + Svc.AIPlayers.Count;
+
+    /// <summary>游戏选项：复选框（G7，按原版 GameLobbyBase.ini 顺序）。</summary>
+    private List<GameSessionCheckBoxOption> CheckBoxOptions =>
+        Svc.GameOptions.OfType<GameSessionCheckBoxOption>().ToList();
+
+    /// <summary>游戏选项：下拉框（G7，cmbCredits / cmbStartingUnits）。</summary>
+    private List<GameSessionDropDownOption> DropDownOptions =>
+        Svc.GameOptions.OfType<GameSessionDropDownOption>().ToList();
+
+    private int HumanSideId => Svc.HumanPlayer?.SideId ?? 0;
+    private int HumanColorId => Svc.HumanPlayer?.ColorId ?? 0;
+    private int HumanStartLocation => Svc.HumanPlayer?.StartingLocation ?? 0;
+    private int HumanTeamId => Svc.HumanTeamId;
+
+    /// <summary>队伍下拉显示名（1..4 → A..D）。</summary>
+    private static List<string> TeamNames => ProgramConstants.TEAMS;
+
+    /// <summary>自动结盟出生点下拉选项（x=阻挡 / -=无 / A..D=队伍）。</summary>
+    private static List<TeamOption> MappingTeamOptions => new()
+    {
+        new(TeamStartMapping.NO_PLAYER, "阻挡"),
+        new(TeamStartMapping.NO_TEAM, "无队伍"),
+        new("A", "A"),
+        new("B", "B"),
+        new("C", "C"),
+        new("D", "D"),
+    };
+
+    private int SelectedMapIndex
+    {
+        get
+        {
+            if (Svc.SelectedMap is null)
+                return -1;
+            for (int i = 0; i < _mapOptions.Count; i++)
+            {
+                if (_mapOptions[i].Value == Svc.SelectedMap)
+                    return i;
+            }
+            return -1;
+        }
+    }
+
+    private List<SpawnPointState> SpawnPoints => Svc.GetSpawnPointStates();
+
+    protected override void OnInitialized()
+    {
+        _colors = LoadColorsSafe();
+        _sides = ClientConfiguration.Instance.Sides.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        if (_sides.Length == 0)
+            _sides = new[] { "GDI", "Nod", "Allies", "Soviet" };
+
+        Svc.Changed += OnChanged;
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+        MapLoader.MapLoadingComplete += OnMapLoadingComplete;
+        RefreshMaps();
+        Svc.Initialize();
+    }
+
+    private static List<ColorOption> LoadColorsSafe()
+    {
+        try
+        {
+            var colors = MultiplayerColor.LoadColors();
+            return colors.Select(c => new ColorOption(c.Name, c.GameColorIndex, c.XnaColor)).ToList();
+        }
+        catch
+        {
+            // 回退默认色板
+        }
+        return new List<ColorOption>
+        {
+            new("红", 0, new Rgba32(255, 60, 60, 255)),
+            new("蓝", 1, new Rgba32(70, 120, 255, 255)),
+            new("青", 2, new Rgba32(80, 220, 255, 255)),
+            new("绿", 3, new Rgba32(80, 220, 120, 255)),
+            new("黄", 4, new Rgba32(255, 220, 80, 255)),
+            new("橙", 5, new Rgba32(255, 150, 60, 255)),
+            new("紫", 6, new Rgba32(190, 120, 255, 255)),
+            new("粉", 7, new Rgba32(255, 130, 200, 255)),
+        };
+    }
+
+    private void RefreshMaps()
+    {
+        _mapOptions = MapLoader.GameModeMaps
+            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()))
+            .ToList();
+        _mapGroups = _mapOptions.GroupBy(o => o.Mode)
+            .Select(g => new MapGroup(g.Key, g.ToList()))
+            .ToList();
+    }
+
+    private void OnMapLoadingComplete(object? sender, EventArgs e) =>
+        _ = InvokeAsync(() =>
+        {
+            RefreshMaps();
+            StateHasChanged();
+        });
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
+
+    // ── 顶部 / 地图 ──
+
+    private async Task BackToMenu()
+    {
+        var confirm = await MessageBox.ShowAsync("返回主菜单",
+            "返回将丢失当前未开始的遭遇战配置。确认返回？",
+            MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        if (!confirm)
+            return;
+        Nav.NavigateTo("/menu");
+    }
+
+    private void OnMapChange(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int index) || index < 0 || index >= _mapOptions.Count)
+            return;
+        try
+        {
+            Svc.ChangeMap(_mapOptions[index].Value);
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    // ── 人类玩家 ──
+
+    private void OnHumanSideChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            SetHuman(v, HumanColorId, HumanStartLocation);
+    }
+
+    private void OnHumanTeamChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Svc.SetHumanTeam(v);
+    }
+
+    private void OnHumanColorChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            SetHuman(HumanSideId, v, HumanStartLocation);
+    }
+
+    private void OnSpawnClick(int index)
+    {
+        // 强制随机出生地图：禁用地图点击选点（同原版 EnableContextMenu 条件）
+        if (Svc.ForceRandomStarts)
+            return;
+        var sp = SpawnPoints.FirstOrDefault(s => s.Index == index);
+        if (sp is null)
+            return;
+        if (sp.OccupantName is not null && !sp.IsSelf)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", $"出生点 {index} 已被 {sp.OccupantName} 占用");
+            return;
+        }
+        SetHuman(HumanSideId, HumanColorId, index);
+    }
+
+    private void SetHuman(int side, int color, int start) => Svc.SetHumanOption(side, color, start);
+
+    // ── AI 玩家 ──
+
+    private void OnAddAI()
+    {
+        try
+        {
+            Svc.AddAI();
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    private void OnRemoveAI(PlayerInfo ai) => Svc.RemoveAI(ai);
+
+    private void OnAISideChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Svc.SetAIOption(ai, v, ai.ColorId, ai.StartingLocation);
+    }
+
+    private void OnAIColorChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Svc.SetAIOption(ai, ai.SideId, v, ai.StartingLocation);
+    }
+
+    private void OnAIStartChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Svc.SetAIOption(ai, ai.SideId, ai.ColorId, v);
+    }
+
+    private void OnAILevelChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Svc.SetAILevel(ai, v);
+    }
+
+    private void OnAITeamChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Svc.SetAITeam(ai, v);
+    }
+
+    /// <summary>重置 AI：移除全部 AI 后重新添加一个默认 Easy AI（同原版 InitDefaultSettings 语义）。</summary>
+    private void OnResetAI()
+    {
+        while (Svc.AIPlayers.Count > 0)
+            Svc.RemoveAI(Svc.AIPlayers[0]);
+        try
+        {
+            Svc.AddAI();
+        }
+        catch
+        {
+            // 忽略（无 AI 时添加必然成功）
+        }
+    }
+
+    // ── 自动结盟（G6：出生点→队伍映射） ──
+
+    private void OnToggleAutoAlly(ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value?.ToString(), out bool use))
+            Svc.SetUseTeamStartMappings(use);
+    }
+
+    /// <summary>应用选中的预设：下拉第 0 项为 Custom（自定义），其后依次为地图预设；应用后回到 Custom。</summary>
+    private void OnAutoAllyPresetChange(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int v) || v <= 0)
+            return;
+        Svc.ApplyTeamStartMappingPreset(v - 1);
+    }
+
+    /// <summary>读取指定出生点的自动结盟队伍（未配置回退“无队伍”）。</summary>
+    private string GetMappingTeam(int start)
+    {
+        var mapping = Svc.ExtraOptions.TeamStartMappings.FirstOrDefault(m => m.Start == start);
+        return mapping?.Team ?? TeamStartMapping.NO_TEAM;
+    }
+
+    private void OnMappingChange(int start, ChangeEventArgs e)
+    {
+        Svc.SetTeamStartMapping(start, e.Value?.ToString() ?? TeamStartMapping.NO_TEAM);
+    }
+
+    // ── 游戏选项（G7：复选/下拉） ──
+
+    private void OnCheckBoxOptionChange(GameSessionCheckBoxOption opt, ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value?.ToString(), out bool v))
+            Svc.SetCheckBoxOption(opt, v);
+    }
+
+    private void OnDropDownOptionChange(GameSessionDropDownOption opt, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Svc.SetDropDownOption(opt, v);
+    }
+
+    // ── 开始 ──
+
+    private void OnStartGame()
+    {
+        try
+        {
+            Svc.StartGame();
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    // ── 工具 ──
+
+    private Rgba32 GetColor(int index) =>
+        (_colors.FirstOrDefault(c => c.Index == index) ?? _colors.FirstOrDefault())?.Color
+        ?? new Rgba32(160, 220, 255, 255);
+
+    private static string ToCss(Rgba32 color) => $"rgb({color.R},{color.G},{color.B})";
+
+    public void Dispose()
+    {
+        Svc.Changed -= OnChanged;
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+        MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
+    }
+
+    private sealed record MapOption(GameModeMap Value, int Index, string Mode, string Display);
+    private sealed record MapGroup(string Key, List<MapOption> Items);
+    private sealed record ColorOption(string Name, int Index, Rgba32 Color);
+    private sealed record TeamOption(string Value, string Label);
+}

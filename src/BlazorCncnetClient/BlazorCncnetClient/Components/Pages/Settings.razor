@@ -1,0 +1,542 @@
+@page "/settings"
+@implements IDisposable
+@using System.Globalization
+@using CnCNetClient.Core
+@using CnCNetClient.Updater
+@using BlazorCncnetClient.Infrastructure.Theme
+@inject SettingsService SettingsSvc
+@inject ITranslationService TranslationSvc
+@inject IThemeProvider ThemeProvider
+@inject UpdateService UpdateSvc
+@inject NavigationManager Nav
+
+<div class="settings page-anim">
+    <header class="settings-top item-in">
+        <div class="st-left">
+            <button class="mb-btn item-in" @onclick="GoBack">‹ @Ui("Settings.Back", "返回")</button>
+        </div>
+        <div class="st-mid">
+            <span class="st-title">@Ui("Settings.Title", "设置中心")</span>
+            <span class="st-en">SETTINGS TERMINAL · 即改即存</span>
+        </div>
+        <div class="st-right">
+            <span class="st-player">@(ProgramConstants.PLAYERNAME.Length > 0 ? ProgramConstants.PLAYERNAME : "未连接")</span>
+        </div>
+    </header>
+
+    <div class="settings-grid">
+        <nav class="set-nav item-in">
+            @foreach (var s in Sections)
+            {
+                <button class="set-nav-item @(s.Key == Active ? "active" : "")" @onclick="() => Active = s.Key">
+                    <span class="set-nav-ic">@s.Icon</span>
+                    <span class="set-nav-tx"><span class="cn">@Ui("Settings.Nav." + s.Key, s.Cn)</span><span class="en">@s.En</span></span>
+                </button>
+            }
+        </nav>
+
+        <section class="set-panel item-in" style="animation-delay:60ms">
+            @switch (Active)
+            {
+                case "display":
+                    @RenderDisplay()
+                    break;
+                case "audio":
+                    @RenderAudio()
+                    break;
+                case "game":
+                    @RenderGame()
+                    break;
+                case "network":
+                    @RenderNetwork()
+                    break;
+                case "update":
+                    @RenderUpdate()
+                    break;
+                case "privacy":
+                    @RenderPrivacy()
+                    break;
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    private sealed record Section(string Key, string Cn, string En, string Icon);
+
+    private static readonly Section[] Sections =
+    [
+        new("display", "显示", "DISPLAY", "▦"),
+        new("audio", "音频", "AUDIO", "♪"),
+        new("game", "游戏", "GAME", "⚙"),
+        new("network", "网络", "NETWORK", "⌗"),
+        new("update", "更新", "UPDATE", "↻"),
+        new("privacy", "隐私", "PRIVACY", "⬢"),
+    ];
+
+    private string Active { get; set; } = "display";
+    private string _playerName = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _playerName = SettingsSvc.Ini.PlayerName.Value;
+        SettingsSvc.SettingsChanged += OnSettingsChanged;
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
+        // M4.3：进入设置即尝试初始化更新服务（环境就绪时读取本地版本/镜像表）。
+        UpdateSvc.EnsureInitialized();
+        UpdateSvc.StateChanged += OnUpdateStateChanged;
+    }
+
+    private void OnUpdateStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnSettingsChanged() => InvokeAsync(StateHasChanged);
+    private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    private void GoBack() => Nav.NavigateTo("/menu");
+
+    /// <summary>按当前 UI 文化取 Resx 文案（UI 键走 Resx，spec §6.8；缺失回退默认值）。</summary>
+    private static string Ui(string key, string fallback) => fallback.L10N(UIStrings.KeyPrefix + key);
+
+    /// <summary>当前分区标题（本地化；默认回退「中文 英文」双语占位）。</summary>
+    private string CurrentSectionTitle()
+    {
+        return Sections.FirstOrDefault(s => s.Key == Active) is { } sec
+            ? Ui("Settings.Section." + Active, $"{sec.Cn} {sec.En}")
+            : Active;
+    }
+
+    private void OnLanguageChange(ChangeEventArgs e)
+    {
+        if (e.Value?.ToString() is { Length: > 0 } code)
+            TranslationSvc.SetLanguage(code);
+    }
+
+    /* ── 通用「即改即存」处理器 ── */
+    private void ToggleBool(Action<bool> setter, ChangeEventArgs e)
+    {
+        setter(e.Value is bool b && b);
+        SettingsSvc.Save();
+    }
+
+    private void SetInt(Action<int> setter, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v))
+        {
+            setter(v);
+            SettingsSvc.Save();
+        }
+    }
+
+    private void SetDouble(Action<double> setter, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
+        {
+            setter(v);
+            SettingsSvc.Save();
+        }
+    }
+
+    private async Task OnThemeChange(ChangeEventArgs e)
+    {
+        var key = e.Value?.ToString() ?? ThemeProvider.Current.Key;
+        await ThemeProvider.ApplyAsync(key);
+    }
+
+    private void SavePlayerName(ChangeEventArgs e)
+    {
+        var name = (e.Value ?? string.Empty).ToString()!.Trim();
+        _playerName = name;
+        SettingsSvc.SetAndSave(ini => ini.PlayerName.Value = name);
+    }
+
+    /* ── 各分区渲染 ── */
+
+    private RenderFragment RenderDisplay() => __builder =>
+    {
+        <div class="set-sec-title">@CurrentSectionTitle()</div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">@Ui("Settings.Language", "语言")</span><span class="set-hint">LANGUAGE · 即切即用</span></div>
+            <div class="set-ctl">
+                <select class="set-select" value="@TranslationSvc.Current" @onchange="OnLanguageChange">
+                    @foreach (var lang in TranslationSvc.Languages)
+                    {
+                        <option value="@lang.Code">@lang.DisplayName</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">界面主题</span><span class="set-hint">THEME · 全局换肤</span></div>
+            <div class="set-ctl">
+                <select class="set-select" value="@ThemeProvider.Current.Key" @onchange="OnThemeChange">
+                    @foreach (var t in ThemeProvider.Themes)
+                    {
+                        <option value="@t.Key">@t.Name · @t.Hint</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">窗口化运行</span><span class="set-hint">WINDOWED MODE</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.WindowedMode.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.WindowedMode.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">无边框窗口</span><span class="set-hint">BORDERLESS WINDOW</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.BorderlessWindowedMode.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.BorderlessWindowedMode.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">客户端帧率</span><span class="set-hint">CLIENT FPS</span></div>
+            <div class="set-ctl">
+                <input class="set-range" type="range" min="30" max="240" step="15"
+                       value="@SettingsSvc.Ini.ClientFPS.Value"
+                       @onchange="e => SetInt(v => SettingsSvc.Ini.ClientFPS.Value = v, e)" />
+                <span class="set-val">@SettingsSvc.Ini.ClientFPS.Value</span>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">启动游戏时最小化窗口</span><span class="set-hint">MINIMIZE ON GAME START</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.MinimizeWindowsOnGameStart.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.MinimizeWindowsOnGameStart.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">强制最低画质</span><span class="set-hint">FORCE LOW DETAIL</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.ForceLowestDetailLevel.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.ForceLowestDetailLevel.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+    };
+
+    private RenderFragment RenderAudio() => __builder =>
+    {
+        <div class="set-sec-title">@CurrentSectionTitle()</div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">主音量</span><span class="set-hint">MASTER VOLUME</span></div>
+            <div class="set-ctl">
+                <input class="set-range" type="range" min="0" max="1" step="0.05"
+                       value="@SettingsSvc.Ini.SoundVolume.Value.ToString(CultureInfo.InvariantCulture)"
+                       @onchange="e => SetDouble(v => SettingsSvc.Ini.SoundVolume.Value = v, e)" />
+                <span class="set-val">@((int)(SettingsSvc.Ini.SoundVolume.Value * 100))%</span>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">背景音乐音量</span><span class="set-hint">SCORE VOLUME</span></div>
+            <div class="set-ctl">
+                <input class="set-range" type="range" min="0" max="1" step="0.05"
+                       value="@SettingsSvc.Ini.ScoreVolume.Value.ToString(CultureInfo.InvariantCulture)"
+                       @onchange="e => SetDouble(v => SettingsSvc.Ini.ScoreVolume.Value = v, e)" />
+                <span class="set-val">@((int)(SettingsSvc.Ini.ScoreVolume.Value * 100))%</span>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">语音音量</span><span class="set-hint">VOICE VOLUME</span></div>
+            <div class="set-ctl">
+                <input class="set-range" type="range" min="0" max="1" step="0.05"
+                       value="@SettingsSvc.Ini.VoiceVolume.Value.ToString(CultureInfo.InvariantCulture)"
+                       @onchange="e => SetDouble(v => SettingsSvc.Ini.VoiceVolume.Value = v, e)" />
+                <span class="set-val">@((int)(SettingsSvc.Ini.VoiceVolume.Value * 100))%</span>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">主菜单音乐</span><span class="set-hint">MAIN MENU MUSIC</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.PlayMainMenuMusic.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.PlayMainMenuMusic.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">聊天消息音效</span><span class="set-hint">MESSAGE SOUND</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.MessageSound.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.MessageSound.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+    };
+
+    private RenderFragment RenderGame() => __builder =>
+    {
+        <div class="set-sec-title">@CurrentSectionTitle()</div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">滚动速度</span><span class="set-hint">SCROLL RATE</span></div>
+            <div class="set-ctl">
+                <input class="set-range" type="range" min="1" max="8" step="1"
+                       value="@SettingsSvc.Ini.ScrollRate.Value"
+                       @onchange="e => SetInt(v => SettingsSvc.Ini.ScrollRate.Value = v, e)" />
+                <span class="set-val">@SettingsSvc.Ini.ScrollRate.Value</span>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">双击间隔（毫秒）</span><span class="set-hint">DOUBLE TAP INTERVAL</span></div>
+            <div class="set-ctl">
+                <input class="set-range" type="range" min="10" max="100" step="5"
+                       value="@SettingsSvc.Ini.DoubleTapInterval.Value"
+                       @onchange="e => SetInt(v => SettingsSvc.Ini.DoubleTapInterval.Value = v, e)" />
+                <span class="set-val">@SettingsSvc.Ini.DoubleTapInterval.Value</span>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">游戏速度</span><span class="set-hint">GAME SPEED</span></div>
+            <div class="set-ctl">
+                <input class="set-range" type="range" min="0" max="4" step="1"
+                       value="@SettingsSvc.Ini.GameSpeed.Value"
+                       @onchange="e => SetInt(v => SettingsSvc.Ini.GameSpeed.Value = v, e)" />
+                <span class="set-val">@SettingsSvc.Ini.GameSpeed.Value</span>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">游戏难度</span><span class="set-hint">DIFFICULTY</span></div>
+            <div class="set-ctl">
+                <select class="set-select" value="@SettingsSvc.Ini.Difficulty.Value"
+                        @onchange="e => SetInt(v => SettingsSvc.Ini.Difficulty.Value = v, e)">
+                    <option value="1">难度 1</option>
+                    <option value="2">难度 2</option>
+                    <option value="3">难度 3</option>
+                    <option value="4">难度 4</option>
+                </select>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">自动去除昵称下划线</span><span class="set-hint">AUTO TRIM UNDERSCORES</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.AutoRemoveUnderscoresFromName.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.AutoRemoveUnderscoresFromName.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+    };
+
+    private RenderFragment RenderNetwork() => __builder =>
+    {
+        <div class="set-sec-title">@CurrentSectionTitle()</div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">玩家名</span><span class="set-hint">PLAYER NAME · 下次登录生效</span></div>
+            <div class="set-ctl">
+                <input class="set-text" maxlength="30" spellcheck="false" autocomplete="off"
+                       value="@_playerName" @onchange="SavePlayerName" />
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">记住我（跳过登录窗口）</span><span class="set-hint">SKIP CONNECT DIALOG</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.SkipConnectDialog.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.SkipConnectDialog.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">离开大厅保持连接</span><span class="set-hint">PERSISTENT MODE</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.PersistentMode.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.PersistentMode.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">启动自动连接</span><span class="set-hint">AUTO CONNECT</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.AutomaticCnCNetLogin.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.AutomaticCnCNetLogin.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">Ping 自定义隧道</span><span class="set-hint">PING CUSTOM TUNNELS</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.PingUnofficialCnCNetTunnels.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.PingUnofficialCnCNetTunnels.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">允许地图分享</span><span class="set-hint">ENABLE MAP SHARING</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.EnableMapSharing.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.EnableMapSharing.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">始终显示隧道列表</span><span class="set-hint">ALWAYS SHOW TUNNEL LIST</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.AlwaysDisplayTunnelList.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.AlwaysDisplayTunnelList.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+    };
+
+    private RenderFragment RenderUpdate() => __builder =>
+    {
+        <div class="set-sec-title">@CurrentSectionTitle()</div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">启动时检查更新</span><span class="set-hint">CHECK FOR UPDATES ON START</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.CheckForUpdates.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.CheckForUpdates.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">本地版本</span><span class="set-hint">LOCAL VERSION</span></div>
+            <div class="set-ctl"><span class="set-val">@UpdateSvc.GameVersion</span></div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">服务器版本</span><span class="set-hint">SERVER VERSION</span></div>
+            <div class="set-ctl"><span class="set-val">@UpdateSvc.ServerGameVersion</span></div>
+        </div>
+
+        @if (UpdateSvc.VersionState == VersionState.UPDATECHECKINPROGRESS)
+        {
+            <div class="set-hint-block">正在检查更新…</div>
+        }
+        else if (UpdateSvc.VersionState == VersionState.UPDATEINPROGRESS)
+        {
+            <div class="set-hint-block">
+                <div>正在下载：@(UpdateSvc.CurrentFileName.Length > 0 ? UpdateSvc.CurrentFileName : "准备中…")</div>
+                <div class="upd-progress"><i style="width:@(UpdateSvc.CurrentFilePercentage)%;background:var(--cyan)"></i></div>
+                <div>当前文件 @UpdateSvc.CurrentFilePercentage% · 总进度 @UpdateSvc.TotalPercentage%</div>
+            </div>
+            <div class="upd-actions">
+                <button class="mb-btn" @onclick="OnUpdateCancel">取消更新</button>
+            </div>
+        }
+        else if (UpdateSvc.VersionState == VersionState.OUTDATED && UpdateSvc.ManualUpdateRequired)
+        {
+            <div class="set-hint-block">发现新版本 v@(UpdateSvc.ServerGameVersion)，需要手动下载安装。</div>
+            <div class="upd-actions">
+                <button class="mb-btn primary" @onclick="OnManualDownload" disabled="@(string.IsNullOrEmpty(UpdateSvc.ManualDownloadURL))">手动下载</button>
+            </div>
+        }
+        else if (UpdateSvc.VersionState == VersionState.OUTDATED)
+        {
+            <div class="set-hint-block">发现新版本 v@(UpdateSvc.ServerGameVersion) · 更新大小 @(UpdateSvc.UpdateSizeInKb) KB</div>
+            <div class="upd-actions">
+                <button class="mb-btn primary" @onclick="OnUpdateNow">立即更新</button>
+            </div>
+        }
+        else if (UpdateSvc.VersionState == VersionState.UPTODATE)
+        {
+            <div class="set-hint-block">客户端已是最新版本。</div>
+            <div class="upd-actions">
+                <button class="mb-btn" @onclick="OnUpdateCheck">重新检查</button>
+            </div>
+        }
+        else if (!UpdateSvc.IsAvailable)
+        {
+            <div class="set-hint-block">更新服务不可用：环境未就绪或未配置更新镜像。</div>
+        }
+        else if (UpdateSvc.LastError.Length > 0)
+        {
+            <div class="set-hint-block">检查更新失败：@UpdateSvc.LastError</div>
+            <div class="upd-actions">
+                <button class="mb-btn" @onclick="OnUpdateCheck">重试</button>
+            </div>
+        }
+        else
+        {
+            <div class="set-hint-block">尚未检查更新。</div>
+            <div class="upd-actions">
+                <button class="mb-btn primary" @onclick="OnUpdateCheck">立即检查</button>
+            </div>
+        }
+    };
+
+    private void OnUpdateCheck() => UpdateSvc.CheckForUpdates();
+
+    private void OnUpdateNow() => UpdateSvc.StartUpdate();
+
+    private void OnUpdateCancel() => UpdateSvc.StopUpdate();
+
+    private void OnManualDownload()
+    {
+        if (!string.IsNullOrEmpty(UpdateSvc.ManualDownloadURL))
+            ProcessLauncher.StartShellProcess(UpdateSvc.ManualDownloadURL);
+    }
+
+    private RenderFragment RenderPrivacy() => __builder =>
+    {
+        <div class="set-sec-title">@CurrentSectionTitle()</div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">已接受隐私政策</span><span class="set-hint">PRIVACY POLICY ACCEPTED</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.PrivacyPolicyAccepted.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.PrivacyPolicyAccepted.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">Discord 集成</span><span class="set-hint">DISCORD INTEGRATION</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.DiscordIntegration.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.DiscordIntegration.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">Steam 集成</span><span class="set-hint">STEAM INTEGRATION</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@SettingsSvc.Ini.SteamIntegration.Value"
+                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.SteamIntegration.Value = v, e)" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+    };
+
+    public void Dispose()
+    {
+        SettingsSvc.SettingsChanged -= OnSettingsChanged;
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
+        UpdateSvc.StateChanged -= OnUpdateStateChanged;
+    }
+}

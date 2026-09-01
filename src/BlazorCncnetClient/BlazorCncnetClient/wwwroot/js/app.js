@@ -34,6 +34,12 @@
     function getTheme() {
         try { return localStorage.getItem(THEME_KEY) || 'menu'; } catch (e) { return 'menu'; }
     }
+    // 主题首帧前回显（M4.1 spec §6.10：localStorage 仅作缓存，正式以 settings INI 为准）：
+    // 在 Blazor 首帧渲染前应用缓存主题，避免启动闪变；首帧后 ThemeProvider 以 INI 校正。
+    (function () {
+        const cached = getTheme();
+        if (cached) document.documentElement.dataset.theme = cached;
+    })();
 
     /* ── 背景星粒（MainLayout #bg-canvas） ─────────────────────── */
     function initStars(canvasId) {
@@ -162,14 +168,15 @@
     }
 
     /* ── Toast ─────────────────────────────────────────────────── */
+    // kind: 可选 ''(默认青) | 'err'(红) | 'warn'(琥珀)，驱动断线/重连提示样式（M3.10）
     let toastTimer;
-    function toast(msg) {
+    function toast(msg, kind) {
         const t = document.getElementById('toast');
         if (!t) return;
         t.innerHTML = msg;
-        t.classList.add('show');
+        t.className = 'toast show' + (kind ? ' ' + kind : '');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => t.classList.remove('show'), 1500);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
     }
 
     /* ── 主菜单键盘导航（ESC 返回首页，实现「可退」） ──────────── */
@@ -186,15 +193,6 @@
             window.removeEventListener('keydown', menuKeyHandler);
             menuKeyHandler = null;
         }
-    }
-
-    /* ── 登录偏好（M3 过渡：localStorage；M4 4.1.1 改由 UserINISettings 写 settings INI） ── */
-    const LOGIN_KEY = 'cncnet.login';
-    function saveLoginPrefs(name, remember, persistent, auto) {
-        try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ name, remember, persistent, auto })); } catch (e) { /* 忽略持久化失败 */ }
-    }
-    function loadLoginPrefs() {
-        try { return JSON.parse(localStorage.getItem(LOGIN_KEY) || 'null'); } catch (e) { return null; }
     }
 
     /* ── 聊天区滚动到底部（在线大厅） ─────────────────────────── */
@@ -224,5 +222,5 @@
         }
     }
 
-    window.cncnet = { initStars, initGlobe, initReadout, toast, applyTheme, getTheme, initMenuKeyNav, disposeMenuKeyNav, saveLoginPrefs, loadLoginPrefs, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav };
+    window.cncnet = { initStars, initGlobe, initReadout, toast, applyTheme, getTheme, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav };
 })();

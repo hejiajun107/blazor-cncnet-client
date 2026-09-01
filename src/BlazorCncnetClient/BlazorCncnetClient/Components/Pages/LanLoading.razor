@@ -1,0 +1,93 @@
+@page "/lan/loading"
+@implements IDisposable
+@using System.Threading
+@using CnCNetClient.Core
+@inject LanGameRoomService Room
+@inject NavigationManager Nav
+@inject MessageBoxService MessageBox
+
+@if (!Room.IsInGameRoom)
+{
+    <div class="game-empty page-anim">
+        <div class="ge-box pop-in">
+            <div class="ge-title">LAN LOADING</div>
+            <div class="ge-sub">当前没有正在进行的对局</div>
+            <button class="mb-btn primary" @onclick="BackToLobby">返回大厅</button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="gload page-anim">
+        <div class="gload-center pop-in">
+            <!-- 雷达式加载环（与在线加载页同款） -->
+            <div class="gload-radar">
+                <div class="radar-ring r1"></div>
+                <div class="radar-ring r2"></div>
+                <div class="radar-ring r3"></div>
+                <div class="radar-sweep"></div>
+                <div class="radar-core">
+                    <span class="rc-en">LAN SPAWN</span>
+                    <span class="rc-cn">局域网对局</span>
+                </div>
+            </div>
+
+            <div class="gload-title">LAN GAME LOADING</div>
+            <div class="gload-sub">局域网对局加载中 · 请稍候</div>
+
+            <div class="gload-info">
+                <div class="gi-row"><span>房间</span><b>@Room.RoomName</b></div>
+                <div class="gi-row"><span>GameID</span><b>#@Room.UniqueGameId</b></div>
+                <div class="gi-row"><span>地图</span><b>@(Room.SelectedMap?.Map.UntranslatedName ?? "—")</b></div>
+                <div class="gi-row"><span>模式</span><b>@(Room.SelectedMap?.GameMode.UIName ?? "—")</b></div>
+                <div class="gi-row"><span>玩家</span><b>@Room.Players.Count 人</b></div>
+            </div>
+
+            <div class="gload-status">
+                <span class="gs-dot"></span>
+                游戏进程已启动，窗口已最小化 · 对局结束后将自动返回房间（已运行 <b>@ElapsedSeconds</b>s）
+            </div>
+
+            <div class="gload-actions">
+                <button class="mb-btn" @onclick="BackToLobby">返回大厅</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Timer? _timer;
+    private int _elapsedSeconds;
+
+    private int ElapsedSeconds => _elapsedSeconds;
+
+    protected override void OnInitialized()
+    {
+        // 对局进行中计时显示；每秒刷新一次
+        _timer = new Timer(_ => InvokeAsync(() =>
+        {
+            _elapsedSeconds++;
+            StateHasChanged();
+        }), null, 1000, 1000);
+    }
+
+    private async Task BackToLobby()
+    {
+        if (Room.IsInGameRoom)
+        {
+            var confirm = await MessageBox.ShowAsync("返回大厅",
+                "对局仍在进行中，返回大厅将离开当前房间。确认继续？",
+                MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+            if (!confirm)
+                return;
+            Room.LeaveGame();
+        }
+        Nav.NavigateTo("/lan/lobby");
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _timer = null;
+    }
+}

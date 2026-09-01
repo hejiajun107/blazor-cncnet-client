@@ -30,13 +30,21 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>房间状态变化（玩家/地图/设置/就绪）。</summary>
         public event Action? Changed;
 
-        /// <summary>开始游戏请求（M3.7 接入：隐藏窗口 + GameProcessLogic 启动游戏）。</summary>
+        /// <summary>开始游戏请求（M3.7：GameLaunchService 接此生成配置并启动游戏进程）。</summary>
         public event Action? GameStartRequested;
+
+        /// <summary>本局唯一 GameID（START 广播第一段，写入 spawn.ini [Settings] GameID）。</summary>
+        public int UniqueGameId { get; private set; }
+
+        /// <summary>本局隧道服务器地址/端口（M3.11：房主在 StartGame 选定；加入者从 START 解析），写 spawn.ini [Tunnel] 节。</summary>
+        public string TunnelAddress { get; private set; } = string.Empty;
+        public int TunnelPort { get; private set; }
 
         private readonly CnCNetManager _manager;
         private readonly GameCollection _gameCollection;
         private readonly MapLoader _mapLoader;
         private readonly IDispatcher _dispatcher;
+        private readonly TunnelHandler _tunnelHandler;
         private readonly Random _random = new();
 
         private Channel? _gameChannel;
@@ -67,14 +75,23 @@ namespace BlazorCncnetClient.Infrastructure
         public Channel? GameChannel => _gameChannel;
         public IReadOnlyCollection<RoomPlayerState> Players => _players.Values;
 
-        public GameRoomService(CnCNetManager manager, GameCollection gameCollection, MapLoader mapLoader, IDispatcher dispatcher)
+        public GameRoomService(
+            CnCNetManager manager,
+            GameCollection gameCollection,
+            MapLoader mapLoader,
+            IDispatcher dispatcher,
+            TunnelHandler tunnelHandler)
         {
             _manager = manager;
             _gameCollection = gameCollection;
             _mapLoader = mapLoader;
             _dispatcher = dispatcher;
+            _tunnelHandler = tunnelHandler;
             LocalGame = _gameCollection.GameList.Find(g =>
                 string.Equals(g.InternalName, ClientConfiguration.Instance.LocalGame, StringComparison.InvariantCultureIgnoreCase));
+
+            // 隧道列表就绪后：房主在房间内且未选定隧道 → 自动选优并刷新 GAME 广播（房间列表显示真实隧道）
+            _tunnelHandler.TunnelsRefreshed += OnTunnelsRefreshed;
         }
 
         // ── 建房间 / 加入 / 离开 ──
@@ -105,10 +122,17 @@ namespace BlazorCncnetClient.Infrastructure
             Locked = false;
             SelectedMap = null;
             _players.Clear();
+            TunnelAddress = string.Empty;
+            TunnelPort = 0;
 
             _gameChannel = channel;
             WireChannel(channel);
             channel.Join();
+
+            // M3.11：隧道列表已就绪则建房时立即选优并广播（房间列表显示真实隧道）；
+            // 列表未就绪时由 OnTunnelsRefreshed 在下次刷新兜底（此前仍为 [DYN]）。
+            EnsureTunnelSelected();
+            BroadcastGame();
 
             _manager.MainChannel.AddMessage(new ChatMessage(ColorConstants.Cyan,
                 $"正在创建房间「{roomName}」..."));
@@ -154,6 +178,8 @@ namespace BlazorCncnetClient.Infrastructure
             Locked = game.Locked;
             SelectedMap = null;
             _players.Clear();
+            TunnelAddress = string.Empty;
+            TunnelPort = 0;
 
             _gameChannel = channel;
             WireChannel(channel);
@@ -184,6 +210,8 @@ namespace BlazorCncnetClient.Infrastructure
             HostName = string.Empty;
             _password = string.Empty;
             _players.Clear();
+            TunnelAddress = string.Empty;
+            TunnelPort = 0;
             NotifyChanged();
         }
 
@@ -300,7 +328,10 @@ namespace BlazorCncnetClient.Infrastructure
             NotifyChanged();
         }
 
-        /// <summary>房主开始游戏（M3.5 先广播 START，实际启动在 M3.7 接入）。</summary>
+        /// <summary>
+        /// 房主开始游戏（M3.11：多人局先选优隧道并向隧道服务器请求端口，再广播 START；
+        /// GameLaunchService 接 GameStartRequested 启动游戏）。单人局无需隧道。
+        /// </summary>
         public void StartGame()
         {
             if (!IsHost || _gameChannel is null || !IsJoined)
@@ -310,17 +341,84 @@ namespace BlazorCncnetClient.Infrastructure
             if (Locked && _players.Values.Count(p => !p.Ready) > 0)
                 throw new InvalidOperationException("仍有玩家未就绪");
 
+            int playerCount = _players.Count;
+
+            // 多人对局：选定隧道服务器并请求各玩家端口（迁移自原版 HostLaunchGame / HostStartGame）。
+            if (playerCount > 1)
+            {
+                EnsureTunnelSelected();
+                var tunnel = _tunnelHandler.CurrentTunnel;
+                if (tunnel is null)
+                    throw new InvalidOperationException("无法选择隧道服务器（列表尚未加载），请稍后重试");
+
+                List<int> playerPorts = tunnel.GetPlayerPortInfo(playerCount);
+                if (playerPorts.Count < playerCount)
+                    throw new InvalidOperationException(
+                        $"隧道服务器「{tunnel.Name}」端口不足（需要 {playerCount} 个，仅分配 {playerPorts.Count} 个），请稍后重试");
+
+                int index = 0;
+                foreach (var p in _players.Values)
+                {
+                    p.Port = playerPorts[index];
+                    index++;
+                }
+
+                TunnelAddress = tunnel.Address;
+                TunnelPort = tunnel.Port;
+            }
+
             // 原版 START 消息：START {UniqueGameID};{Name};{address}:{port};...
-            // 端口分配依赖隧道服务器，M3.7 接入 GameProcessLogic 时一并实现。
-            int uniqueGameId = _random.Next();
-            StringBuilder sb = new StringBuilder("START ").Append(uniqueGameId);
+            // 多人时 address 为隧道服务器地址，单人时保持 0.0.0.0。
+            UniqueGameId = _random.Next();
+            string address = playerCount > 1 ? TunnelAddress : "0.0.0.0";
+            StringBuilder sb = new StringBuilder("START ").Append(UniqueGameId);
             foreach (var p in _players.Values)
             {
-                sb.Append(';').Append(p.Name).Append(";0.0.0.0:0");
+                sb.Append(';').Append(p.Name).Append(';').Append(address).Append(':').Append(p.Port);
             }
             _gameChannel.SendCTCPMessage(sb.ToString(), QueuedMessageType.SYSTEM_MESSAGE, 10);
 
             GameStartRequested?.Invoke();
+        }
+
+        /// <summary>
+        /// 选择最优隧道服务器（迁移自原版 TunnelListBox 评分：仅 Official/Recommended 且 ping 有效，
+        /// rating = ping² × 负载率取最低；无候选时退化为列表首个）。已选定（CurrentTunnel 非空）则不覆盖。
+        /// </summary>
+        private void EnsureTunnelSelected()
+        {
+            if (_tunnelHandler.CurrentTunnel is not null || _tunnelHandler.Tunnels.Count == 0)
+                return;
+
+            CnCNetTunnel? best = null;
+            long lowestRating = long.MaxValue;
+            foreach (var tunnel in _tunnelHandler.Tunnels)
+            {
+                if (!(tunnel.Official || tunnel.Recommended) || tunnel.PingInMs <= -1)
+                    continue;
+                double usageRatio = (double)tunnel.Clients / Math.Max(1, tunnel.MaxClients);
+                if (usageRatio == 0)
+                    usageRatio = 0.1;
+                usageRatio *= 100.0;
+                long rating = (long)(Math.Pow(tunnel.PingInMs, 2.0) * usageRatio);
+                if (rating < lowestRating)
+                {
+                    lowestRating = rating;
+                    best = tunnel;
+                }
+            }
+            _tunnelHandler.CurrentTunnel = best ?? _tunnelHandler.Tunnels[0];
+        }
+
+        /// <summary>隧道列表刷新后：房主在房间内且未选定隧道 → 自动选优并刷新 GAME 广播（房间列表显示真实隧道）。</summary>
+        private void OnTunnelsRefreshed(object? sender, EventArgs e)
+        {
+            if (IsHost && IsJoined && _tunnelHandler.CurrentTunnel is null)
+            {
+                EnsureTunnelSelected();
+                BroadcastGame();
+                NotifyChanged();
+            }
         }
 
         // ── 房间协议：主机 → 大厅（GAME 广播） ──
@@ -352,7 +450,11 @@ namespace BlazorCncnetClient.Infrastructure
                 sb.Append(string.Join(",", names));
             sb.Append(';').Append(SelectedMap?.Map.UntranslatedName ?? string.Empty);
             sb.Append(';').Append(SelectedMap?.GameMode.UntranslatedUIName ?? string.Empty);
-            sb.Append(";[DYN]"); // 隧道：M3.5 未接隧道，动态
+            // 隧道：已选定则广播真实 address:port（房间列表识别为隧道房），否则动态 [DYN]
+            sb.Append(';')
+              .Append(_tunnelHandler.CurrentTunnel is not null
+                  ? $"{_tunnelHandler.CurrentTunnel.Address}:{_tunnelHandler.CurrentTunnel.Port}"
+                  : "[DYN]");
             sb.Append(";0"); // LoadedGameId
             sb.Append(';').Append(SkillLevel);
             sb.Append(';').Append(SelectedMap?.Map.SHA1 ?? string.Empty);
@@ -696,14 +798,69 @@ namespace BlazorCncnetClient.Infrastructure
 
         private void HandleStartMessage(string sender, string args)
         {
-            if (IsHost)
+            if (IsHost || sender != HostName)
                 return;
+
+            // START 格式：{UniqueGameID};{Name};{ip}:{port};...（M3.11：多人局 ip 为隧道服务器地址）
+            string[] parts = args.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 1 || !int.TryParse(parts[0], out int gameId))
+                return;
+            UniqueGameId = gameId;
+
+            string tunnelAddress = string.Empty;
+            for (int i = 1; i + 1 < parts.Length; i += 2)
+            {
+                string name = parts[i];
+                string[] ipPort = parts[i + 1].Split(':');
+                int port = ipPort.Length > 1 && int.TryParse(ipPort[^1], out var p) ? p : 0;
+                if (ipPort.Length > 0 && ipPort[0] != "0.0.0.0")
+                    tunnelAddress = ipPort[0];
+                if (_players.TryGetValue(name, out var ps))
+                    ps.Port = port;
+            }
+
+            // 记录隧道地址；监听端口从隧道列表按地址反查（START 广播的是玩家端口，非隧道监听端口）
+            TunnelAddress = tunnelAddress;
+            TunnelPort = string.IsNullOrEmpty(tunnelAddress) ? 0
+                : (_tunnelHandler.Tunnels.FirstOrDefault(t =>
+                    string.Equals(t.Address, tunnelAddress, StringComparison.OrdinalIgnoreCase))?.Port ?? 0);
+
             _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan, "主机已开始游戏"));
             GameStartRequested?.Invoke();
         }
 
         /// <summary>加入者视角记录的随机种子（供 M3.6 出生点随机化对齐）。</summary>
         public int RandomSeed { get; private set; }
+
+        // ── spawn 生成数据（M3.7：GameLaunchService 读取） ──
+
+        /// <summary>
+        /// 将房间内玩家状态映射为 <see cref="PlayerInfo"/> 列表，供 spawn.ini 生成。
+        /// 端口来自 START 广播分配（房主分配 / 加入者解析），Ip 无隧道恒为 0.0.0.0。
+        /// </summary>
+        public List<PlayerInfo> GetPlayerInfos()
+        {
+            var result = new List<PlayerInfo>(_players.Count);
+            foreach (var p in _players.Values)
+            {
+                result.Add(new PlayerInfo
+                {
+                    Name = p.Name,
+                    SideId = p.Side,
+                    ColorId = p.Color,
+                    StartingLocation = p.Start,
+                    TeamId = p.Team,
+                    Ready = p.Ready,
+                    IPAddress = "0.0.0.0",
+                    Port = p.Port
+                });
+            }
+            return result;
+        }
+
+        /// <summary>本局阵营数量（spawn.ini 地图强制选项用，取 Sides 逗号分隔数量）。</summary>
+        public int SideCount =>
+            Math.Max(1, ClientConfiguration.Instance.Sides.Split(',', StringSplitOptions.RemoveEmptyEntries).Length);
 
         // ── 出生点映射（M3.6 spec §5.3：地图预览叠加出生点） ──
 
@@ -764,13 +921,14 @@ namespace BlazorCncnetClient.Infrastructure
 
         public void Dispose()
         {
+            _tunnelHandler.TunnelsRefreshed -= OnTunnelsRefreshed;
             StopBroadcastTimer();
             if (_gameChannel is not null)
                 UnwireChannel(_gameChannel);
         }
     }
 
-    /// <summary>房间内单个玩家的实时状态（队伍/颜色/出生点/阵营/就绪）。</summary>
+    /// <summary>房间内单个玩家的实时状态（队伍/颜色/出生点/阵营/就绪/端口）。</summary>
     public sealed class RoomPlayerState
     {
         public required string Name { get; init; }
@@ -780,6 +938,8 @@ namespace BlazorCncnetClient.Infrastructure
         public int Start { get; set; }
         public int Team { get; set; }
         public bool Ready { get; set; }
+        /// <summary>本局游戏端口（房主分配 / 加入者从 START 解析，写 spawn.ini）。</summary>
+        public int Port { get; set; }
         public bool IsSelf => string.Equals(Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase);
     }
 

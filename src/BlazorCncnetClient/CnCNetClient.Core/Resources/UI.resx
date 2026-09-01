@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- M4.2 UI 文案（spec §6.8 双轨制：UI 键走 Resx，neutral=en；中文走卫星 UI.zh-CN.resx） -->
+  <data name="Client:UI:Settings.Title" xml:space="preserve">
+    <value>Settings Center</value>
+  </data>
+  <data name="Client:UI:Settings.Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Client:UI:Settings.Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Display" xml:space="preserve">
+    <value>Display</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Audio" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Game" xml:space="preserve">
+    <value>Game</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Network" xml:space="preserve">
+    <value>Network</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Update" xml:space="preserve">
+    <value>Update</value>
+  </data>
+  <data name="Client:UI:Settings.Nav.Privacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Display" xml:space="preserve">
+    <value>Display</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Audio" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Game" xml:space="preserve">
+    <value>Game</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Network" xml:space="preserve">
+    <value>Network</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Update" xml:space="preserve">
+    <value>Update</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Privacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+</root>

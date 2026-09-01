@@ -1,0 +1,339 @@
+@page "/lan/lobby"
+@implements IDisposable
+@using CnCNetClient.Core
+@using CnCNetClient.Domain.LAN
+@using CnCNetClient.Online
+@inject LanLobbyService LanSvc
+@inject LanGameNavigation NavData
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject IThemeProvider ThemeProvider
+@inject MessageBoxService MessageBox
+
+<div class="lobby page-anim">
+    <header class="lobby-top item-in">
+        <div class="lt-left">
+            <span class="lt-t">LAN</span>
+            <span class="lt-select" style="line-height:34px;padding:0 14px">局域网大厅 · UDP @(LanSvc.IsRunning ? $"{ProgramConstants.LAN_LOBBY_PORT}" : "未启动")</span>
+        </div>
+        <div class="lt-mid">
+            <span class="lt-title">局域网大厅</span>
+            <span class="lt-en">LAN LOBBY · @(LanSvc.LocalGame.Length > 0 ? LanSvc.LocalGame : "—")</span>
+        </div>
+        <div class="lt-right">
+            <span class="lt-player">@ProgramConstants.PLAYERNAME</span>
+            <span class="lt-conn @(LanSvc.IsRunning ? "online" : "err")"><i class="dot"></i>@(LanSvc.IsRunning ? "广播中" : "未启动")</span>
+            <button class="mb-btn item-in" @onclick="OnLeave">离开</button>
+        </div>
+    </header>
+
+    @if (!LanSvc.IsRunning)
+    {
+        <div class="conn-banner err">
+            ⚠ LAN 广播未启动
+            @if (!string.IsNullOrEmpty(LanSvc.LastError))
+            {
+                <span class="cb-reason">@LanSvc.LastError</span>
+            }
+        </div>
+    }
+
+    <div class="lobby-grid">
+        <section class="lb-panel lb-games item-in" style="animation-delay:60ms">
+            <header class="lb-ph">
+                <span>房间列表 <em>@FilteredGames.Count</em></span>
+                <div class="lb-ph-actions">
+                    <input class="lb-search" placeholder="筛选房间…" value="@_gameFilter" @oninput="OnGameFilterInput" />
+                    <button class="mb-btn primary lb-create" @onclick="OnCreateRoom">创建房间</button>
+                </div>
+            </header>
+            <div class="lb-body">
+                @if (FilteredGames.Count == 0)
+                {
+                    <div class="lb-empty">@(_gameFilter.Length == 0 ? "暂无 LAN 房间（同网段多开客户端后互相可见）" : "无匹配房间")</div>
+                }
+                else
+                {
+                    <Virtualize Items="@FilteredGames" Context="g">
+                        <div class="game-card @(g.Locked ? "locked" : "") @(g.Incompatible ? "ver-mismatch" : "")"
+                             @onclick="() => OnGameClick(g)">
+                            <div class="gc-preview">
+                                <MapThumbnail MapHash="g.MapHash" MapName="g.Map" />
+                            </div>
+                            <div class="gc-top">
+                                <span class="gc-name">@g.RoomName</span>
+                                <span class="gc-players">@g.Players.Length/@g.MaxPlayers</span>
+                            </div>
+                            <div class="gc-sub" title="@g.Map">@g.Map</div>
+                            <div class="gc-meta">
+                                <span class="gc-mode">@g.GameMode</span>
+                                <span class="gc-host">@g.HostName</span>
+                                <span class="gc-tag">@(g.IsLoadedGame ? "存档局" : "LAN")@(g.Incompatible ? " · 版本不符" : "")</span>
+                            </div>
+                        </div>
+                    </Virtualize>
+                }
+            </div>
+        </section>
+
+        <section class="lb-panel lb-chat item-in" style="animation-delay:110ms">
+            <header class="lb-ph">
+                <span>大厅聊天 <em>@LanSvc.ChatMessages.Count</em></span>
+            </header>
+            <div class="chat-scroll">
+                @if (LanSvc.ChatMessages.Count == 0)
+                {
+                    <div class="lb-empty">尚无消息，打个招呼吧</div>
+                }
+                else
+                {
+                    @foreach (var m in LanSvc.ChatMessages)
+                    {
+                        @if (m.IsUser)
+                        {
+                            <div class="chat-msg user">
+                                <span class="cm-time">@m.DateTime.ToString("HH:mm")</span>
+                                <span class="cm-name" style="color:@LanLobbyService.ToCssHex(m.Color)">@m.SenderName</span>
+                                <span class="cm-text">@m.Message</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="chat-msg sys"><span class="cm-sys">@m.Message</span></div>
+                        }
+                    }
+                }
+                <div @ref="_chatEnd"></div>
+            </div>
+            <div class="chat-input">
+                <select class="ci-color" title="聊天颜色" value="@LanSvc.ChatColorIndex" @onchange="OnColorChange">
+                    @for (int i = 0; i < LanLobbyService.ChatColors.Length; i++)
+                    {
+                        <option value="@i" style="color:@LanLobbyService.ToCssHex(LanLobbyService.ChatColors[i].XNAColor)">@LanLobbyService.ChatColors[i].Name</option>
+                    }
+                </select>
+                <input class="ci-field" maxlength="200" placeholder="输入消息，Enter 发送…"
+                       value="@_draft" disabled="@(!LanSvc.IsRunning)"
+                       @oninput="OnDraftInput" @onkeydown="OnChatKeyDown" />
+                <button class="mb-btn primary ci-send" @onclick="OnSend" disabled="@(!LanSvc.IsRunning)">发送</button>
+            </div>
+        </section>
+
+        <section class="lb-panel lb-users item-in" style="animation-delay:160ms">
+            <header class="lb-ph">
+                <span>玩家 <em>@LanSvc.PlayerNames.Count</em></span>
+            </header>
+            <div class="lb-body">
+                @if (LanSvc.PlayerNames.Count == 0)
+                {
+                    <div class="lb-empty">同网段暂无玩家（约 5s 后可见）</div>
+                }
+                else
+                {
+                    <Virtualize Items="@PlayerList" Context="name">
+                        <div class="user-item @(IsSelf(name) ? "self" : "")">
+                            <span class="u-mark">·</span>
+                            <span class="u-name">@name</span>
+                        </div>
+                    </Virtualize>
+                }
+            </div>
+        </section>
+    </div>
+
+    @if (_selectedGame is not null)
+    {
+        <div class="ctx-backdrop" @onclick="CloseGameDetail"></div>
+        <div class="game-detail pop-in">
+            <header class="gd-head">
+                <span class="gd-name">@_selectedGame.RoomName</span>
+                <button type="button" class="gd-close" @onclick="CloseGameDetail" aria-label="关闭">✕</button>
+            </header>
+            <div class="gd-map">
+                <MapThumbnail MapHash="_selectedGame.MapHash" MapName="_selectedGame.Map" />
+            </div>
+            <div class="gd-rows">
+                <div class="gd-row"><span>地图</span><b>@_selectedGame.Map</b></div>
+                <div class="gd-row"><span>房主</span><b>@_selectedGame.HostName</b></div>
+                <div class="gd-row"><span>模式</span><b>@_selectedGame.GameMode</b></div>
+                <div class="gd-row"><span>人数</span><b>@_selectedGame.Players.Length / @_selectedGame.MaxPlayers</b></div>
+                <div class="gd-row"><span>地址</span><b>@_selectedGame.EndPoint</b></div>
+                @if (_selectedGame.Incompatible)
+                {
+                    <div class="gd-row"><span>版本</span><b class="gd-pass">版本不匹配 @(_selectedGame.GameVersion)</b></div>
+                }
+            </div>
+            <div class="gd-actions">
+                <button type="button" class="mb-btn primary" @onclick="OnJoinGame">加入游戏</button>
+                <button type="button" class="mb-btn" @onclick="CloseGameDetail">取消</button>
+            </div>
+        </div>
+    }
+
+    @if (_showCreate)
+    {
+        <div class="ctx-backdrop" @onclick="CancelCreate"></div>
+        <div class="game-detail pop-in">
+            <header class="gd-head">
+                <span class="gd-name">创建 LAN 房间</span>
+                <button type="button" class="gd-close" @onclick="CancelCreate" aria-label="关闭">✕</button>
+            </header>
+            <div class="gd-rows">
+                <div class="gd-row"><span>房间名</span></div>
+                <input class="gl-input gc-name-input" maxlength="40" placeholder="默认：@(ProgramConstants.PLAYERNAME)'s Game"
+                       value="@_roomNameDraft" @oninput="OnRoomNameInput" @onkeydown="OnCreateKeyDown" />
+                <div class="gd-row"><span>人数</span><b>最多 @(LanGameRoomService.MaxPlayersConst) 人</b></div>
+            </div>
+            <div class="gd-actions">
+                <button type="button" class="mb-btn primary" @onclick="ConfirmCreate">创建</button>
+                <button type="button" class="mb-btn" @onclick="CancelCreate">取消</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string _draft = string.Empty;
+    private string _gameFilter = string.Empty;
+    private string _roomNameDraft = string.Empty;
+    private bool _showCreate;
+    private ElementReference _chatEnd;
+    private bool _scrollToBottom;
+    private int _lastMessageCount;
+    private HostedLANGame? _selectedGame;
+
+    private List<HostedLANGame> FilteredGames
+    {
+        get
+        {
+            var filter = _gameFilter.Trim();
+            if (filter.Length == 0)
+                return LanSvc.Games.ToList();
+            return LanSvc.Games
+                .Where(g => g.RoomName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                            || g.Map.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                            || g.HostName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                            || g.GameMode.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private bool IsSelf(string name)
+        => string.Equals(name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>玩家昵称快照（Virtualize 需 ICollection）。</summary>
+    private List<string> PlayerList => LanSvc.PlayerNames.ToList();
+
+    protected override void OnInitialized()
+    {
+        LanSvc.StateChanged += OnStateChanged;
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            LanSvc.Start();
+        }
+        else if (_scrollToBottom && _chatEnd.Id is not null)
+        {
+            _scrollToBottom = false;
+            await JS.InvokeVoidAsync("cncnet.scrollToBottom", _chatEnd);
+        }
+    }
+
+    private void OnStateChanged()
+    {
+        var count = LanSvc.ChatMessages.Count;
+        _scrollToBottom = count != _lastMessageCount;
+        _lastMessageCount = count;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
+
+    private void OnDraftInput(ChangeEventArgs e) => _draft = e.Value?.ToString() ?? string.Empty;
+
+    private void OnChatKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            OnSend();
+    }
+
+    private void OnSend()
+    {
+        if (string.IsNullOrWhiteSpace(_draft) || !LanSvc.IsRunning)
+            return;
+        LanSvc.SendChat(_draft);
+        _draft = string.Empty;
+    }
+
+    private void OnColorChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int idx))
+            LanSvc.ChatColorIndex = idx;
+    }
+
+    private void OnGameFilterInput(ChangeEventArgs e) => _gameFilter = e.Value?.ToString() ?? string.Empty;
+
+    // ── 房间详情（D3.1 展示；D3.2 加入流程） ──
+
+    private void OnGameClick(HostedLANGame game) => _selectedGame = game;
+
+    private void CloseGameDetail() => _selectedGame = null;
+
+    private void OnJoinGame()
+    {
+        var game = _selectedGame;
+        CloseGameDetail();
+        if (game is null)
+            return;
+        NavData.PendingJoin = game;
+        Nav.NavigateTo("/lan/game");
+    }
+
+    private void OnCreateRoom()
+    {
+        _roomNameDraft = string.Empty;
+        _showCreate = true;
+    }
+
+    private void OnRoomNameInput(ChangeEventArgs e) => _roomNameDraft = e.Value?.ToString() ?? string.Empty;
+
+    private void OnCreateKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            ConfirmCreate();
+    }
+
+    private void ConfirmCreate()
+    {
+        _showCreate = false;
+        string roomName = _roomNameDraft.Trim();
+        if (roomName.Length == 0)
+            roomName = ProgramConstants.PLAYERNAME + "'s Game";
+        NavData.PendingCreate = roomName;
+        Nav.NavigateTo("/lan/game");
+    }
+
+    private void CancelCreate() => _showCreate = false;
+
+    private async Task OnLeave()
+    {
+        var confirm = await MessageBox.ShowAsync("离开大厅",
+            "确认退出局域网大厅？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        if (!confirm)
+            return;
+        LanSvc.Stop();
+        await JS.InvokeVoidAsync("cncnet.toast", "已离开局域网大厅");
+        Nav.NavigateTo("/menu");
+    }
+
+    public void Dispose()
+    {
+        LanSvc.StateChanged -= OnStateChanged;
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+        LanSvc.Stop();
+    }
+}

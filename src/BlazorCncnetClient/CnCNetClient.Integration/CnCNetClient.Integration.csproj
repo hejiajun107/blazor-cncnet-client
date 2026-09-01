@@ -3,12 +3,18 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <RootNamespace>CnCNetClient.Integration</RootNamespace>
     <Description>Integration adapter layer: IDispatcher, XNA type compat (ImageSharp), app lifecycle bridges.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CnCNetClient.Core\CnCNetClient.Core.csproj" />
+    <ProjectReference Include="..\CnCNetClient.Tools\CnCNetClient.Tools.csproj" />
   </ItemGroup>
 
 </Project>
