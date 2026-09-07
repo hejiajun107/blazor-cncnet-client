@@ -1,0 +1,232 @@
+@page "/campaign"
+@implements IDisposable
+@using CnCNetClient.Core
+@using CnCNetClient.Domain
+@inject CampaignService Svc
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject IThemeProvider ThemeProvider
+@inject MessageBoxService MessageBox
+@inject CampaignLaunchService GameLauncher
+
+@if (!Svc.IsActive)
+{
+    <div class="game-empty page-anim">
+        <div class="ge-box pop-in">
+            <div class="ge-title">CAMPAIGN</div>
+            <div class="ge-sub">战役任务加载中…</div>
+            <button class="mb-btn primary" @onclick="BackToMenu">返回主菜单</button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="groom page-anim">
+        <header class="groom-top item-in">
+            <div class="gt-left">
+                <span class="gt-badge host">战役<span class="en">CAMPAIGN</span></span>
+                <div class="gt-tbox">
+                    <span class="gt-title">任务选择</span>
+                    <span class="gt-en">SINGLEPLAYER · 共 @Svc.Missions.Count 项 · 难度 @CampaignService.GetDifficultyName(Svc.Difficulty)</span>
+                </div>
+            </div>
+            <div class="gt-right">
+                <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
+                <button class="mb-btn" @onclick="BackToMenu">返回主菜单</button>
+            </div>
+        </header>
+
+        <div class="groom-grid camp-grid">
+            <!-- 左列：任务列表（参考原版 lbCampaignList：header 不可选，任务可选，EMPTY 空行） -->
+            <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
+                <header class="gl-ph">
+                    <span>任务列表 <em>MISSIONS</em></span>
+                </header>
+                <div class="gl-body">
+                    @if (Svc.Missions.Count == 0)
+                    {
+                        <div class="camp-empty">未找到任何任务（缺少 Battle.ini / BattleFS.ini）</div>
+                    }
+                    else
+                    {
+                        @foreach (var m in Svc.Missions)
+                        {
+                            @if (string.IsNullOrEmpty(m.Scenario))
+                            {
+                                <div class="camp-item header">@m.GUIName</div>
+                            }
+                            else
+                            {
+                                <button type="button"
+                                        class="camp-item @(m == Svc.SelectedMission ? "on" : "")"
+                                        disabled="@(!m.Enabled)"
+                                        @onclick="() => Svc.SelectMission(m)">
+                                    <span class="ci-chip" style="background:@SideColor(m.Side)"></span>
+                                    <span class="ci-txt">@m.GUIName</span>
+                                    @if (m.RequiredAddon)
+                                    {
+                                        <span class="ci-tag">FS</span>
+                                    }
+                                </button>
+                            }
+                        }
+                    }
+                </div>
+            </section>
+
+            <!-- 右上：任务描述（参考原版 tbMissionDescription） -->
+            <section class="gl-panel camp-desc item-in" style="animation-delay:100ms">
+                <header class="gl-ph">
+                    <span>任务描述 <em>MISSION DESCRIPTION</em></span>
+                </header>
+                <div class="gl-body camp-desc-body">
+                    @if (Selected is null)
+                    {
+                        <div class="camp-empty">从左侧选择任务以查看描述</div>
+                    }
+                    else
+                    {
+                        <div class="cd-title">@Selected.GUIName</div>
+                        <div class="cd-meta">
+                            <span class="cm-chip" style="background:@SideColor(Selected.Side)">@SideName(Selected)</span>
+                            @if (Selected.RequiredAddon)
+                            {
+                                <span class="ci-tag">Firestorm 扩展包</span>
+                            }
+                            @if (Selected.IsCustomMission)
+                            {
+                                <span class="ci-tag">自定义任务</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(Selected.GUIDescription))
+                        {
+                            <div class="cd-desc">@Selected.GUIDescription</div>
+                        }
+                    }
+                </div>
+            </section>
+
+            <!-- 右下：难度 + 启动（参考原版 trbDifficultySelector / btnLaunch / btnCancel） -->
+            <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
+                <header class="gl-ph">
+                    <span>难度 <em>DIFFICULTY LEVEL</em></span>
+                </header>
+                <div class="gl-body">
+                    <div class="diff-seg">
+                        @for (int d = CampaignService.MinDifficulty; d <= CampaignService.MaxDifficulty; d++)
+                        {
+                            <button type="button" class="diff-btn @(Svc.Difficulty == d ? "on" : "")"
+                                    @onclick="() => Svc.SetDifficulty(d)">
+                                @CampaignService.GetDifficultyName(d)
+                            </button>
+                        }
+                    </div>
+                    <div class="diff-hint">
+                        <span>玩家难度 <b>@CampaignService.GetDifficultyName(Svc.Difficulty)</b></span>
+                        <span>电脑难度 <b>@CampaignService.GetDifficultyName(CampaignService.GetComputerDifficulty(Svc.Difficulty))</b></span>
+                    </div>
+                    <div class="cfg-actions">
+                        <button class="mb-btn danger" @onclick="BackToMenu">取消<span class="en">CANCEL</span></button>
+                        <button class="mb-btn primary start-btn" disabled="@(!CanLaunch)" @onclick="OnStartGame">
+                            开始任务<span class="en">LAUNCH</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    private Mission? Selected => Svc.SelectedMission;
+
+    /// <summary>启动按钮可用性：已选任务且配置了地图且未禁用（原版 btnLaunch.AllowClick 条件）。</summary>
+    private bool CanLaunch =>
+        Selected is not null
+        && !string.IsNullOrEmpty(Selected.Scenario)
+        && Selected.Enabled;
+
+    protected override void OnInitialized()
+    {
+        Svc.Changed += OnChanged;
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+        Svc.CheaterDetected += OnCheaterDetected;
+        Svc.Initialize();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>作弊检测命中：弹窗确认后放行启动（原版 CheaterWindow.YesClicked 语义）。</summary>
+    private void OnCheaterDetected(Mission mission)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            var confirm = await MessageBox.ShowAsync("检测到文件改动",
+                "检测到游戏文件被修改（可能为作弊修改或损坏文件）。\n\n" +
+                "继续启动该任务？\n" + mission.GUIName,
+                MessageBoxButtons.YesNo, MessageBoxKind.Warn);
+            if (!confirm)
+                return;
+            try
+            {
+                Svc.StartGame(ignoreCheater: true);
+            }
+            catch (Exception ex)
+            {
+                _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+            }
+        });
+    }
+
+    private async Task OnStartGame()
+    {
+        try
+        {
+            Svc.StartGame();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    private async Task BackToMenu()
+    {
+        var confirm = await MessageBox.ShowAsync("返回主菜单",
+            "返回将丢失当前未开始的战役配置。确认返回？",
+            MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        if (!confirm)
+            return;
+        Nav.NavigateTo("/menu");
+    }
+
+    // ── 工具 ──
+
+    /// <summary>阵营显示名：优先任务配置的 SideName（如 GDI / Nod），否则回退全局阵营表。</summary>
+    private static string SideName(Mission m)
+    {
+        if (!string.IsNullOrEmpty(m.IconPath))
+            return m.IconPath;
+        var sides = ClientConfiguration.Instance.Sides.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        return m.Side >= 0 && m.Side < sides.Length ? sides[m.Side] : $"Side {m.Side}";
+    }
+
+    /// <summary>阵营标识色（TS 四阵营色板；未知阵营回退青色）。</summary>
+    private static string SideColor(int side) => side switch
+    {
+        0 => "rgb(80,190,255)",  // GDI 蓝青
+        1 => "rgb(255,95,80)",   // Nod 红
+        2 => "rgb(120,220,120)", // Allies 绿
+        3 => "rgb(255,200,80)",  // Soviet 黄
+        _ => "rgb(160,220,255)"
+    };
+
+    public void Dispose()
+    {
+        Svc.Changed -= OnChanged;
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+        Svc.CheaterDetected -= OnCheaterDetected;
+    }
+}

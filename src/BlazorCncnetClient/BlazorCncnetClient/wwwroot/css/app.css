@@ -767,6 +767,47 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .mi-briefing{font-size:11px;color:var(--text-3);line-height:1.5;margin-top:6px;
   max-height:46px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 
+/* ── 战役/任务选择（M4.6：/campaign，参考原版 CampaignSelector） ── */
+.camp-grid{grid-template-columns:minmax(280px,1fr) minmax(0,1.6fr);
+  grid-template-rows:minmax(0,1fr) auto}
+.camp-list{grid-row:1 / 3}
+.camp-list .gl-body{display:flex;flex-direction:column;gap:4px}
+.camp-empty{display:flex;align-items:center;justify-content:center;height:100%;min-height:120px;
+  color:var(--text-3);font-size:12px;letter-spacing:1px;text-align:center;padding:12px}
+.camp-item{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;
+  border:1px solid var(--line);background:rgba(5,16,24,.5);color:var(--text);
+  font-size:12px;text-align:left;cursor:pointer;
+  transition:border-color var(--t-fast) var(--ease-out),background var(--t-fast) var(--ease-out),transform var(--t-fast) var(--ease-out)}
+.camp-item:hover:not(:disabled){border-color:var(--cyan);background:rgba(33,230,255,.07);transform:translateX(4px)}
+.camp-item.on{border-color:var(--cyan);background:rgba(33,230,255,.12);
+  box-shadow:0 0 10px rgba(33,230,255,.18)}
+.camp-item.header{border:none;background:transparent;color:var(--text-3);font-size:10px;
+  letter-spacing:2px;font-family:var(--font-orbitron);cursor:default;padding:8px 10px 2px;
+  border-bottom:1px dashed var(--line);border-radius:0}
+.camp-item:disabled{cursor:not-allowed;opacity:.42;color:var(--text-3);background:rgba(5,16,24,.25)}
+.ci-chip{flex:none;width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.35)}
+.ci-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci-tag{flex:none;font-family:var(--font-orbitron);font-size:8px;letter-spacing:1px;
+  color:var(--gold);border:1px solid var(--gold);padding:1px 4px}
+.camp-desc-body{display:flex;flex-direction:column;gap:10px}
+.cd-title{font-size:16px;font-weight:700;color:var(--text);letter-spacing:1px}
+.cd-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cm-chip{flex:none;font-size:10px;letter-spacing:1px;color:#fff;padding:2px 8px;
+  border:1px solid rgba(255,255,255,.25)}
+.cd-desc{font-size:12px;color:var(--text-2);line-height:1.7;letter-spacing:.5px;
+  padding:10px 12px;border:1px dashed var(--line);background:rgba(5,16,24,.32)}
+.camp-launch .gl-body{display:flex;flex-direction:column;gap:10px}
+.diff-seg{display:flex;border:1px solid var(--line);overflow:hidden}
+.diff-btn{flex:1;padding:9px 0;background:rgba(5,16,24,.6);color:var(--text-2);font-size:12px;
+  letter-spacing:2px;font-family:var(--font-orbitron);cursor:pointer;border-right:1px solid var(--line);
+  transition:background var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out)}
+.diff-btn:last-child{border-right:none}
+.diff-btn:hover{color:var(--text)}
+.diff-btn.on{background:rgba(33,230,255,.18);color:var(--cyan);
+  box-shadow:inset 0 0 12px rgba(33,230,255,.15)}
+.diff-hint{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--text-3);letter-spacing:1px}
+.diff-hint b{color:var(--text-2);font-weight:600}
+
 /* ── 对局加载等待页（M3.7：/online/loading，雷达式加载环） ── */
 .gload{position:relative;z-index:5;height:100vh;display:flex;align-items:center;justify-content:center;
   padding:60px 16px 14px}

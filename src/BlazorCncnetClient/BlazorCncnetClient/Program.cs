@@ -170,6 +170,12 @@ namespace BlazorCncnetClient
             appBuilder.Services.AddScoped<SkirmishService>();
             appBuilder.Services.AddScoped<SkirmishLaunchService>();
 
+            // 战役（M4.6 spec §5.3）：单机任务选择（Battle.ini / BattleFS.ini 解析 + 自定义任务）。
+            // CampaignService：任务列表/选择/难度（UserINISettings 持久化）+ 作弊检查 + GameStartRequested。
+            // CampaignLaunchService：生成任务 spawn.ini + 启动游戏进程 + 窗口管理（注入 Campaign.razor 触发订阅）。
+            appBuilder.Services.AddScoped<CampaignService>();
+            appBuilder.Services.AddScoped<CampaignLaunchService>();
+
             // register the root component and selector
             appBuilder.RootComponents.Add<App>("app");
 

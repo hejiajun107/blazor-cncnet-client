@@ -1,0 +1,102 @@
+@page "/campaign/loading"
+@implements IDisposable
+@using System.Threading
+@using CnCNetClient.Core
+@using CnCNetClient.Domain
+@inject CampaignService Svc
+@inject NavigationManager Nav
+@inject MessageBoxService MessageBox
+
+@if (!Svc.IsActive)
+{
+    <div class="game-empty page-anim">
+        <div class="ge-box pop-in">
+            <div class="ge-title">CAMPAIGN LOADING</div>
+            <div class="ge-sub">当前没有进行中的战役</div>
+            <button class="mb-btn primary" @onclick="BackToCampaign">返回战役选择</button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="gload page-anim">
+        <div class="gload-center pop-in">
+            <!-- 雷达式加载环（与在线/局域网/遭遇战加载页同款） -->
+            <div class="gload-radar">
+                <div class="radar-ring r1"></div>
+                <div class="radar-ring r2"></div>
+                <div class="radar-ring r3"></div>
+                <div class="radar-sweep"></div>
+                <div class="radar-core">
+                    <span class="rc-en">CAMPAIGN</span>
+                    <span class="rc-cn">战役</span>
+                </div>
+            </div>
+
+            <div class="gload-title">CAMPAIGN LOADING</div>
+            <div class="gload-sub">战役加载中 · 请稍候</div>
+
+            <div class="gload-info">
+                <div class="gi-row"><span>任务</span><b>@(Svc.SelectedMission?.GUIName ?? "—")</b></div>
+                <div class="gi-row"><span>难度</span><b>@CampaignService.GetDifficultyName(Svc.Difficulty)</b></div>
+                <div class="gi-row"><span>阵营</span><b>@(SideName)</b></div>
+            </div>
+
+            <div class="gload-status">
+                <span class="gs-dot"></span>
+                游戏进程已启动，窗口已最小化 · 任务结束后将自动返回战役选择页（已运行 <b>@ElapsedSeconds</b>s）
+            </div>
+
+            <div class="gload-actions">
+                <button class="mb-btn" @onclick="BackToCampaign">返回战役选择</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Timer? _timer;
+    private int _elapsedSeconds;
+
+    private int ElapsedSeconds => _elapsedSeconds;
+
+    private string SideName
+    {
+        get
+        {
+            var m = Svc.SelectedMission;
+            if (m is null)
+                return "—";
+            if (!string.IsNullOrEmpty(m.IconPath))
+                return m.IconPath;
+            var sides = ClientConfiguration.Instance.Sides.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            return m.Side >= 0 && m.Side < sides.Length ? sides[m.Side] : $"Side {m.Side}";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // 任务进行中计时显示；每秒刷新一次
+        _timer = new Timer(_ => InvokeAsync(() =>
+        {
+            _elapsedSeconds++;
+            StateHasChanged();
+        }), null, 1000, 1000);
+    }
+
+    private async Task BackToCampaign()
+    {
+        var confirm = await MessageBox.ShowAsync("返回战役选择",
+            "任务仍在进行中，返回将中断当前流程。确认继续？",
+            MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        if (!confirm)
+            return;
+        Nav.NavigateTo("/campaign");
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _timer = null;
+    }
+}
