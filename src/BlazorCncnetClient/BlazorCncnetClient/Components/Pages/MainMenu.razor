@@ -6,6 +6,7 @@
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
+@inject ExtrasService Extras
 @inject LoginService Login
 @inject IServiceProvider Services
 @inject UpdateService UpdateSvc
@@ -195,9 +196,8 @@
                 Nav.NavigateTo("/lan/lobby");
                 break;
             case "credits":
-                var ok = await MessageBox.ShowAsync("鸣谢", "是否查看开发人员与致谢名单？",
-                    MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
-                await JS.InvokeVoidAsync("cncnet.toast", ok ? "已打开鸣谢" : "已取消");
+                // M4.7 附加功能窗（原版 ExtrasWindow）：地图编辑器/更新日志/鸣谢/关于
+                await Extras.ShowAsync();
                 break;
             default:
                 await JS.InvokeVoidAsync("cncnet.toast", $"进入{item.Cn}…");

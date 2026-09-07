@@ -96,6 +96,9 @@ namespace BlazorCncnetClient
             // 登录浮窗（M3.1 spec §5.3.1）：LoginService 驱动 <LoginModal /> 宿主组件
             appBuilder.Services.AddScoped<LoginService>();
 
+            // 附加功能窗（M4.7）：ExtrasService 驱动 <ExtrasWindow /> 宿主组件（地图编辑器/更新日志/鸣谢/关于）
+            appBuilder.Services.AddScoped<ExtrasService>();
+
             // 设置中心（M4.1 spec §5.3/§6.10）：包装 UserINISettings（settings INI），
             // 提供变更即存 Save() 与 SettingsChanged；退出兜底订阅 IAppExitNotifier。
             appBuilder.Services.AddScoped<SettingsService>();

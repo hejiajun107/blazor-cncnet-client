@@ -1,0 +1,140 @@
+@namespace BlazorCncnetClient.Components.Shared
+@using CnCNetClient.Core
+@implements IDisposable
+@inject IJSRuntime JS
+@inject ExtrasService Service
+@inject MessageBoxService MessageBox
+
+@if (Service.IsOpen || Service.IsClosing)
+{
+    <div class="msgbox-overlay @(Service.IsClosing ? "closing" : "")" @onclick="OnOverlayClick">
+        <div class="msgbox exw @(Service.IsClosing ? "pop-out" : "pop-in")" role="dialog" aria-modal="true"
+             aria-label="附加功能" @onclick:stopPropagation="true">
+            <div class="mb-head">
+                <span class="mb-ic">▤</span>
+                <span class="mb-title">附加功能</span>
+                <span class="mb-en">EXTRAS MENU</span>
+            </div>
+            <div class="exw-body">
+                <button type="button" class="exw-btn item-in" style="animation-delay:40ms"
+                        @onclick="() => OnAction(ActionKind.MapEditor)">
+                    <span class="exw-ic">✎</span>
+                    <span class="exw-txt"><span class="cn">地图编辑器</span><br><span class="en">MAP EDITOR</span></span>
+                    <span class="exw-go">›</span>
+                </button>
+                <button type="button" class="exw-btn item-in" style="animation-delay:90ms"
+                        @onclick="() => OnAction(ActionKind.Changelog)">
+                    <span class="exw-ic">↻</span>
+                    <span class="exw-txt"><span class="cn">更新日志</span><br><span class="en">CHANGELOG</span></span>
+                    <span class="exw-go">›</span>
+                </button>
+                <button type="button" class="exw-btn item-in" style="animation-delay:140ms"
+                        @onclick="() => OnAction(ActionKind.Credits)">
+                    <span class="exw-ic">✦</span>
+                    <span class="exw-txt"><span class="cn">鸣谢</span><br><span class="en">CREDITS</span></span>
+                    <span class="exw-go">›</span>
+                </button>
+                <button type="button" class="exw-btn item-in" style="animation-delay:190ms"
+                        @onclick="() => OnAction(ActionKind.About)">
+                    <span class="exw-ic">ⓘ</span>
+                    <span class="exw-txt"><span class="cn">关于</span><br><span class="en">ABOUT</span></span>
+                    <span class="exw-go">›</span>
+                </button>
+                <button type="button" class="exw-btn cancel item-in" style="animation-delay:240ms"
+                        @onclick="() => OnAction(ActionKind.Cancel)">
+                    <span class="exw-ic">✕</span>
+                    <span class="exw-txt"><span class="cn">取消</span><br><span class="en">CANCEL</span></span>
+                    <span class="exw-go">›</span>
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum ActionKind
+    {
+        MapEditor,
+        Changelog,
+        Credits,
+        About,
+        Cancel
+    }
+
+    protected override void OnInitialized() => Service.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task OnAction(ActionKind kind)
+    {
+        if (!Service.IsOpen || Service.IsClosing)
+            return;
+
+        switch (kind)
+        {
+            case ActionKind.MapEditor:
+            {
+                string? err = Service.LaunchMapEditor();
+                if (err is not null)
+                {
+                    await JS.InvokeVoidAsync("cncnet.toast", $"地图编辑器启动失败：{err}", "err");
+                    return; // 失败保持窗口打开，允许重试
+                }
+                await Close("已启动地图编辑器");
+                break;
+            }
+            case ActionKind.Changelog:
+            {
+                string? err = Service.OpenUrl(ClientConfiguration.Instance.ChangelogURL);
+                if (err is not null)
+                {
+                    await JS.InvokeVoidAsync("cncnet.toast", $"无法打开更新日志：{err}", "err");
+                    return;
+                }
+                await Close("已在浏览器打开更新日志");
+                break;
+            }
+            case ActionKind.Credits:
+            {
+                string? err = Service.OpenUrl(ClientConfiguration.Instance.CreditsURL);
+                if (err is not null)
+                {
+                    await JS.InvokeVoidAsync("cncnet.toast", $"无法打开鸣谢：{err}", "err");
+                    return;
+                }
+                await Close("已在浏览器打开鸣谢");
+                break;
+            }
+            case ActionKind.About:
+                Service.BeginClose();
+                await Task.Delay(120);
+                Service.CompleteClose();
+                await MessageBox.ShowAsync("关于", Service.GetAboutText(), MessageBoxButtons.Ok, MessageBoxKind.Info);
+                break;
+            default:
+                await Close();
+                break;
+        }
+    }
+
+    private async Task Close(string? toast = null)
+    {
+        if (!Service.IsOpen || Service.IsClosing)
+            return;
+        Service.BeginClose();
+        await Task.Delay(120);
+        Service.CompleteClose();
+        if (toast is not null)
+            await JS.InvokeVoidAsync("cncnet.toast", toast);
+    }
+
+    // 点击遮罩等同取消
+    private Task OnOverlayClick()
+    {
+        if (Service.IsOpen && !Service.IsClosing)
+            return Close();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => Service.Changed -= OnChanged;
+}

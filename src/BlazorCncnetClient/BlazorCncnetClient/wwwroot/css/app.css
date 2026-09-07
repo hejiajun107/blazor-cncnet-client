@@ -313,6 +313,30 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .login .mb-actions{justify-content:space-between}
 .login .mb-btn{min-width:96px}
 
+/* ── 附加功能窗（M4.7 ExtrasWindow，复用 .msgbox 骨架 + .exw 定制：地图编辑器/更新日志/鸣谢/关于） ── */
+.exw{width:min(320px,86vw)}
+.exw-body{display:flex;flex-direction:column;gap:8px;padding:14px 16px 16px}
+.exw-btn{display:flex;align-items:center;gap:12px;width:100%;padding:9px 12px;
+  border:1px solid var(--line);background:rgba(10,30,42,.85);color:var(--text);
+  font-family:var(--font-cn);cursor:pointer;text-align:left;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+  transition:border-color var(--t-fast) var(--ease-out),background var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),transform .12s var(--ease-out)}
+.exw-btn:hover{border-color:var(--cyan);background:rgba(33,230,255,.1);
+  box-shadow:0 0 14px rgba(33,230,255,.22);transform:translateX(4px)}
+.exw-btn:active{transform:scale(.98)}
+.exw-btn.cancel:hover{border-color:var(--red);background:rgba(255,59,59,.08);
+  box-shadow:0 0 14px rgba(255,59,59,.18)}
+.exw-ic{width:30px;height:30px;flex:none;display:grid;place-items:center;font-size:14px;color:var(--cyan);
+  border:1px solid var(--line);background:rgba(33,230,255,.06)}
+.exw-btn.cancel .exw-ic{color:var(--text-2)}
+.exw-txt{display:flex;flex-direction:column;line-height:1.25}
+.exw-txt .cn{font-size:13px;color:var(--text)}
+.exw-txt .en{font-family:var(--font-orbitron);font-size:9px;letter-spacing:2px;color:var(--text-3)}
+.exw-go{margin-left:auto;color:var(--text-3);font-size:16px;
+  transition:transform var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out)}
+.exw-btn:hover .exw-go{color:var(--cyan);transform:translateX(3px)}
+
 /* ── 启动环境检测页（M2.2，升级为青单色 HUD 风） ───────────────── */
 .env-check{position:relative;z-index:5;max-width:640px;margin:10vh auto 0;padding:2rem 2.5rem;
   border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(16px);color:var(--text);font-size:14px;
