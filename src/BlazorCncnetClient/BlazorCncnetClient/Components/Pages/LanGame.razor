@@ -247,12 +247,12 @@ else
                                     <div class="chat-msg user">
                                         <span class="cm-time">@m.DateTime.ToString("HH:mm")</span>
                                         <span class="cm-name" style="color:@ToCss(m.Color)">@m.SenderName</span>
-                                        <span class="cm-text">@m.Message</span>
+                                        <span class="cm-text"><ChatText Text="@m.Message" /></span>
                                     </div>
                                 }
                                 else
                                 {
-                                    <div class="chat-msg sys"><span class="cm-sys">@m.Message</span></div>
+                                    <div class="chat-msg sys"><span class="cm-sys"><ChatText Text="@m.Message" /></span></div>
                                 }
                             }
                         }

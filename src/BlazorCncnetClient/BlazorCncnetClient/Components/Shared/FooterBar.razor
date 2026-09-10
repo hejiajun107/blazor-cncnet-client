@@ -1,0 +1,7 @@
+@inject ConnectionMonitor Mon
+
+<!-- 底栏（全局；SYSTEM STATUS 反映连接状态，M3.10）——F2 可替换槽位 layout.footer 默认实现 -->
+<footer class="foot">
+    <div>SYSTEM STATUS: <b class="foot-status @Mon.StatusClass">@Mon.StateText</b> <span>· 渲染引擎 ACTIVE</span></div>
+    <div class="r"><span>分辨率自适应</span><span>60 FPS</span><span>WEBGL OK</span></div>
+</footer>

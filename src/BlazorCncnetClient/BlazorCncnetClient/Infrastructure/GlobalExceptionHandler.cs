@@ -54,6 +54,7 @@ public sealed class GlobalExceptionHandler : IDisposable
     {
         var ex = e.ExceptionObject as Exception;
         _logger.LogCritical(ex, "进程级未处理异常（IsTerminating={IsTerminating}）", e.IsTerminating);
+        ClassifyCrossThreadViolation(ex);
         if (e.IsTerminating)
             DisplayError("客户端发生未处理异常", ex?.ToString() ?? "未知错误", exit: true);
     }
@@ -62,7 +63,25 @@ public sealed class GlobalExceptionHandler : IDisposable
     {
         // 未观察的 Task 异常（fire-and-forget / async void）：仅记录，避免误杀进程。
         _logger.LogError(e.Exception, "未观察的 Task 异常");
+        ClassifyCrossThreadViolation(e.Exception);
         e.SetObserved();
+    }
+
+    /// <summary>C3：把 Blazor「非调度器线程触发渲染/组件状态」异常单独标记，便于走查核对零跨线程违规。</summary>
+    [System.Diagnostics.Conditional("DEBUG")]
+    private void ClassifyCrossThreadViolation(Exception? ex)
+    {
+        if (ex is null)
+            return;
+        for (Exception? cur = ex; cur is not null; cur = cur.InnerException)
+        {
+            if (cur.Message.Contains("not associated with the Dispatcher", StringComparison.Ordinal))
+            {
+                _logger.LogError(cur,
+                    "C3 跨线程 UI 变更违规：非调度器线程触发了渲染/组件状态变更，应经 IDispatcher.Post / InvokeAsync 调度回 UI 线程");
+                return;
+            }
+        }
     }
 
     /// <summary>

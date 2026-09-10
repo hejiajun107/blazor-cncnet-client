@@ -1,17 +1,21 @@
 using System;
 using System.IO;
 using CnCNetClient.Core;
+using CnCNetClient.Integration.Resources;
 using CnCNetClient.Tools;
 
 namespace BlazorCncnetClient.Infrastructure;
 
 /// <summary>
 /// 启动环境检测（M2.2）：定位游戏资源目录并尝试初始化 <see cref="ClientConfiguration"/>。
-/// 与原 XNA 客户端一致，通过从可执行文件目录向上查找 <c>Resources</c> 目录来确定 GamePath。
-/// 未找到游戏资源时 UI 仍可正常显示（返回 <see cref="IsReady"/> = false 与原因），不会崩溃。
+/// 路径定位复用 Integration 的 <see cref="IAssetPathProvider"/>（权威实现在 Core 的
+/// <see cref="ProgramConstants.FindGamePath"/>），未找到游戏资源时 UI 仍可正常显示
+/// （返回 <see cref="IsReady"/> = false 与原因），不会崩溃。
 /// </summary>
 public sealed class EnvironmentCheck
 {
+    private readonly IAssetPathProvider _assetPaths;
+
     /// <summary>可执行文件所在目录（原 <c>ProgramConstants.StartupPath</c> 逻辑）。</summary>
     public string StartupPath { get; }
 
@@ -33,8 +37,9 @@ public sealed class EnvironmentCheck
     /// <summary>供首页展示的检测信息。</summary>
     public string Message { get; private set; } = "正在检测…";
 
-    public EnvironmentCheck()
+    public EnvironmentCheck(IAssetPathProvider assetPaths)
     {
+        _assetPaths = assetPaths;
         StartupPath = SafePath.CombineDirectoryPath(
             new FileInfo(Environment.ProcessPath ?? AppContext.BaseDirectory).Directory!.FullName);
     }
@@ -44,7 +49,7 @@ public sealed class EnvironmentCheck
     /// </summary>
     public void Detect()
     {
-        GamePath = FindGamePath(StartupPath);
+        GamePath = _assetPaths.FindGamePath(StartupPath);
         ResourcesFound = GamePath != null;
 
         if (!ResourcesFound)
@@ -53,12 +58,12 @@ public sealed class EnvironmentCheck
             return;
         }
 
-        string clientDefs = SafePath.CombineFilePath(GamePath!, ProgramConstants.BASE_RESOURCE_PATH, ClientConfiguration.CLIENT_DEFS);
+        string clientDefs = SafePath.CombineFilePath(GamePath!, _assetPaths.BaseResourcePath, ClientConfiguration.CLIENT_DEFS);
         ClientDefinitionsFound = File.Exists(clientDefs);
 
         if (!ClientDefinitionsFound)
         {
-            Message = $"已定位游戏目录：{GamePath}，但未找到 {ProgramConstants.BASE_RESOURCE_PATH}\\{ClientConfiguration.CLIENT_DEFS}。该 MOD 可能尚未安装客户端资源。";
+            Message = $"已定位游戏目录：{GamePath}，但未找到 {_assetPaths.BaseResourcePath}\\{ClientConfiguration.CLIENT_DEFS}。该 MOD 可能尚未安装客户端资源。";
             return;
         }
 
@@ -74,30 +79,5 @@ public sealed class EnvironmentCheck
             ConfigurationReady = false;
             Message = $"客户端配置初始化失败：{ex.Message}";
         }
-    }
-
-    /// <summary>
-    /// 从启动目录向上最多 3 层查找名为 <c>Resources</c> 的目录，返回其父目录（游戏根目录）。
-    /// 与 <c>ProgramConstants.SearchResourcesDir</c> 保持同一策略。
-    /// </summary>
-    private static string? FindGamePath(string startupPath)
-    {
-        DirectoryInfo? currentDir = new(startupPath);
-        for (int i = 0; i < 3; i++)
-        {
-            if (currentDir is null) break;
-
-            if (string.Equals(currentDir.Name, "Resources", StringComparison.OrdinalIgnoreCase))
-                return currentDir.Parent?.FullName;
-
-            DirectoryInfo? resourcesDir = currentDir.GetDirectories("Resources", SearchOption.TopDirectoryOnly)
-                .FirstOrDefault();
-            if (resourcesDir is not null)
-                return resourcesDir.Parent?.FullName;
-
-            currentDir = currentDir.Parent;
-        }
-
-        return null;
     }
 }

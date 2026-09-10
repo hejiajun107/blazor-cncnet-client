@@ -10,11 +10,16 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
     /// </summary>
     public static class CnCNetPlayerCountTask
     {
-        public static int PlayerCount { get; private set; }
+        /// <summary>当前游戏标识（如 cncnet5_ts）的在线人数（原版字段，-1 表示不可用）。</summary>
+        public static int PlayerCount { get; private set; } = -1;
+
+        /// <summary>CnCNet 全部游戏在线总人数（status API 的 total 字段，-1 表示不可用）。</summary>
+        public static int TotalPlayerCount { get; private set; } = -1;
 
         private static int REFRESH_INTERVAL = 60000; // 1 minute
 
-        internal static event EventHandler<PlayerCountEventArgs>? CnCNetGameCountUpdated;
+        /// <summary>在线人数刷新事件（首次拉取与每轮刷新均在后台线程触发）。</summary>
+        public static event EventHandler<PlayerCountEventArgs>? CnCNetGameCountUpdated;
 
         private static string? cncnetLiveStatusIdentifier;
 
@@ -22,10 +27,7 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
         {
             cncnetLiveStatusIdentifier = ClientConfiguration.Instance.CnCNetLiveStatusIdentifier;
 
-            // This call is synchronous. Therefore, we use a short timeout to avoid blocking the main thread for too long.
-            PlayerCount = GetCnCNetPlayerCount(timeoutMilliseconds: 1000);
-
-            CnCNetGameCountUpdated?.Invoke(null, new PlayerCountEventArgs(PlayerCount));
+            // 首次拉取同样放入后台线程，避免同步 HTTP 阻塞 UI（原版在闪屏期同步拉取会卡顿）。
             ThreadPool.QueueUserWorkItem(new WaitCallback(RunService), cts);
         }
 
@@ -35,19 +37,21 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
 
             while (true)
             {
+                (int game, int total) = GetCnCNetPlayerCount(timeoutMilliseconds: 5000);
+                PlayerCount = game;
+                TotalPlayerCount = total;
+                CnCNetGameCountUpdated?.Invoke(null, new PlayerCountEventArgs(game, total));
+
                 if (waitHandle.WaitOne(REFRESH_INTERVAL))
                 {
                     // Cancellation signaled
                     return;
                 }
-                else
-                {
-                    CnCNetGameCountUpdated?.Invoke(null, new PlayerCountEventArgs(GetCnCNetPlayerCount(timeoutMilliseconds: 5000)));
-                }
             }
         }
 
-        private static int GetCnCNetPlayerCount(int timeoutMilliseconds = 5000)
+        /// <summary>拉取 CnCNet 状态 API，返回（当前游戏标识人数, 全部游戏总人数）。</summary>
+        private static (int GameCount, int TotalCount) GetCnCNetPlayerCount(int timeoutMilliseconds = 5000)
         {
             try
             {
@@ -55,7 +59,7 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
                 // For example, the official CnCNet server might be unavailable/unstable in a country with Internet censorship,
                 // which causes lags in the splash screen. In the worst case, say if packets are dropped, it waits until timeouts.
                 if (string.IsNullOrWhiteSpace(ClientConfiguration.Instance.CnCNetPlayerCountURL))
-                    return -1;
+                    return (-1, -1);
 
                 string info = new TimedHttpClient(timeoutMilliseconds)
                     .GetString(ClientConfiguration.Instance.CnCNetPlayerCountURL);
@@ -65,33 +69,39 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
                 info = info.Replace("\"", string.Empty);
                 string[] values = info.Split(new char[] { ',' });
 
-                int numGames = -1;
+                int gameCount = -1;
+                int totalCount = -1;
 
                 foreach (string value in values)
                 {
-                    if (value.Contains(cncnetLiveStatusIdentifier!))
-                    {
-                        numGames = Convert.ToInt32(value.Substring(cncnetLiveStatusIdentifier!.Length + 1));
-                        return numGames;
-                    }
+                    if (cncnetLiveStatusIdentifier is not null && value.Contains(cncnetLiveStatusIdentifier))
+                        gameCount = Convert.ToInt32(value.Substring(cncnetLiveStatusIdentifier.Length + 1));
+                    else if (value.StartsWith("total", StringComparison.OrdinalIgnoreCase))
+                        totalCount = Convert.ToInt32(value.Substring("total".Length + 1));
                 }
 
-                return numGames;
+                return (gameCount, totalCount);
             }
             catch
             {
-                return -1;
+                return (-1, -1);
             }
         }
     }
 
-    internal class PlayerCountEventArgs : EventArgs
+    /// <summary>在线人数事件参数（当前游戏人数 + 全部游戏总人数）。</summary>
+    public sealed class PlayerCountEventArgs : EventArgs
     {
-        public PlayerCountEventArgs(int playerCount)
+        public PlayerCountEventArgs(int playerCount, int totalPlayerCount)
         {
             PlayerCount = playerCount;
+            TotalPlayerCount = totalPlayerCount;
         }
 
+        /// <summary>当前游戏标识的在线人数（原版字段，保留兼容）。</summary>
         public int PlayerCount { get; set; }
+
+        /// <summary>CnCNet 全部游戏在线总人数。</summary>
+        public int TotalPlayerCount { get; set; }
     }
 }

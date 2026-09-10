@@ -1,14 +1,19 @@
 @using System.Threading
 @using BlazorCncnetClient.Components.Layouts
 @using BlazorCncnetClient.Components.Pages
+@using BlazorCncnetClient.Components.Shared
 @inject InfiniFrameDispatcher Dispatcher
 @inject GlobalExceptionHandler GlobalErrors
+@inject GameLogCollector GameLogs
 
 <Router AppAssembly="@typeof(Program).Assembly" NotFoundPage="@typeof(PageNotFound)">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
     </Found>
 </Router>
+
+<!-- 启动闪屏（M5 2.3 LoadingScreen）：ClientDefinitions.ini [LoadingScreen] 配置，最高层级覆盖 -->
+<SplashScreen />
 
 @code {
     protected override void OnInitialized()

@@ -8,6 +8,7 @@
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
 @inject CampaignLaunchService GameLauncher
+@inject DiscordPresenceService Discord
 
 @if (!Svc.IsActive)
 {
@@ -42,6 +43,19 @@ else
                 <header class="gl-ph">
                     <span>任务列表 <em>MISSIONS</em></span>
                 </header>
+                @if (Svc.TagSelectorEnabled)
+                {
+                    <!-- r9-2：标签筛选（原版 CampaignTagSelector：单选标签过滤；「全部」清除筛选） -->
+                    <div class="camp-tags">
+                        <button type="button" class="ct-btn @(Svc.ActiveTag is null ? "on" : "")"
+                                @onclick="() => Svc.SetTagFilter(null)">全部</button>
+                        @foreach (var t in Svc.AvailableTags)
+                        {
+                            <button type="button" class="ct-btn @(string.Equals(Svc.ActiveTag, t, StringComparison.OrdinalIgnoreCase) ? "on" : "")"
+                                    @onclick="() => Svc.SetTagFilter(t)">@t</button>
+                        }
+                    </div>
+                }
                 <div class="gl-body">
                     @if (Svc.Missions.Count == 0)
                     {
@@ -154,7 +168,20 @@ else
         Svc.Initialize();
     }
 
-    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnChanged()
+    {
+        // r9-4：Discord 呈现同步（原版 CampaignSelector 在选择任务/难度时推送）
+        if (Selected is not null)
+        {
+            Discord.Campaign(
+                mission: Selected.GUIName,
+                difficulty: CampaignService.GetDifficultyName(Svc.Difficulty),
+                side: "GDI"
+            );
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 

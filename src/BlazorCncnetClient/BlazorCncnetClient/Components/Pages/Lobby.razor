@@ -11,6 +11,7 @@
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
+@inject DiscordPresenceService Discord
 
 <div class="lobby page-anim">
     <header class="lobby-top item-in">
@@ -43,6 +44,28 @@
                     <button class="mb-btn primary lb-create" @onclick="OpenCreateDialog">创建房间</button>
                 </div>
             </header>
+            <div class="lb-filters">
+                <label class="fl-chip @(_friendsOnly ? "on" : "")" title="只显示好友开的房间">
+                    <input type="checkbox" @bind="_friendsOnly" /><i></i>好友专用
+                </label>
+                <label class="fl-chip @(_hideLocked ? "on" : "")" title="隐藏已锁定房间">
+                    <input type="checkbox" @bind="_hideLocked" /><i></i>隐藏锁定
+                </label>
+                <label class="fl-chip @(_hidePassworded ? "on" : "")" title="隐藏密码房">
+                    <input type="checkbox" @bind="_hidePassworded" /><i></i>隐藏密码
+                </label>
+                <label class="fl-chip @(_hideIncompatible ? "on" : "")" title="隐藏版本不一致的房间">
+                    <input type="checkbox" @bind="_hideIncompatible" /><i></i>隐藏不兼容
+                </label>
+                <select class="fl-select" value="@_maxPlayersFilter" @onchange="OnMaxPlayersFilterChange">
+                    <option value="0">全部人数</option>
+                    @for (int p = 2; p <= 8; p++)
+                    {
+                        <option value="@p">@p 人</option>
+                    }
+                </select>
+                <button type="button" class="fl-reset" @onclick="ResetFilters" title="重置全部筛选">重置</button>
+            </div>
             <div class="lb-body">
                 @if (FilteredGames.Count == 0)
                 {
@@ -108,11 +131,11 @@
                                 <span class="cm-time">@m.DateTime.ToString("HH:mm")</span>
                                 <span class="cm-name" style="color:@ToCss(m.Color)"
                                       @oncontextmenu="e => OpenContextMenuBySender(m.SenderName, e)">@m.SenderName</span>
-                                <span class="cm-text">@m.Message</span>
+                                <span class="cm-text"><ChatText Text="@m.Message" /></span>
                             }
                             else
                             {
-                                <span class="cm-sys">@m.Message</span>
+                                <span class="cm-sys"><ChatText Text="@m.Message" /></span>
                             }
                         </div>
                     }
@@ -212,54 +235,108 @@
                 <span>私聊中心</span><span class="pm-en">PRIVATE MSG</span>
                 <button type="button" class="pm-close" @onclick="ClosePm" aria-label="关闭">✕</button>
             </div>
-            @if (LobbySvc.PmSessions.Count == 0)
+            <!-- 第七轮补缺：私聊 / 最近玩家 双 tab（原版 PrivateMessagingWindow 双标签） -->
+            <div class="pm-mode">
+                <button type="button" class="pm-mode-btn @(!_pmRecentTab ? "active" : "")" @onclick="() => SwitchPmTab(false)">私聊</button>
+                <button type="button" class="pm-mode-btn @(_pmRecentTab ? "active" : "")" @onclick="() => SwitchPmTab(true)">最近玩家</button>
+            </div>
+            @if (!_pmRecentTab)
             {
-                <div class="pm-empty">暂无私聊会话</div>
+                @if (LobbySvc.PmSessions.Count == 0)
+                {
+                    <div class="pm-empty">暂无私聊会话</div>
+                }
+                else
+                {
+                    <div class="pm-tabs">
+                        @foreach (var s in LobbySvc.PmSessions)
+                        {
+                            <div class="pm-tab @(string.Equals(s.UserName, _activePmName, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                                 @onclick="() => ActivatePm(s.UserName)">
+                                <span class="pt-name">@s.UserName</span>
+                                @if (s.UnreadCount > 0)
+                                {
+                                    <span class="pt-badge">@s.UnreadCount</span>
+                                }
+                                <button type="button" class="pt-close" @onclick="() => ClosePmSession(s.UserName)"
+                                        @onclick:stopPropagation="true" aria-label="关闭会话">✕</button>
+                            </div>
+                        }
+                    </div>
+                }
+                @if (ActivePmSession is { } active)
+                {
+                    <div class="pm-body">
+                        @if (active.Messages.Count == 0)
+                        {
+                            <div class="pm-empty">尚无消息，说点什么吧</div>
+                        }
+                        else
+                        {
+                            @foreach (var m in active.Messages)
+                            {
+                                <div class="pm-msg @(m.IsMine ? "mine" : "")">
+                                    <span class="pm-time">@m.Time.ToString("HH:mm")</span>
+                                    <span class="pm-name">@(m.IsMine ? "我" : m.SenderName)</span>
+                                    <span class="pm-text"><ChatText Text="@m.Text" /></span>
+                                </div>
+                            }
+                        }
+                        <div @ref="_pmChatEnd"></div>
+                    </div>
+                    <div class="pm-input">
+                        <input class="pm-field" maxlength="200" placeholder="输入消息，Enter 发送…"
+                               value="@_pmDraft" @oninput="OnPmInput" @onkeydown="OnPmKeyDown" />
+                        <button type="button" class="mb-btn primary" @onclick="OnPmSend">发送</button>
+                    </div>
+                }
             }
             else
             {
-                <div class="pm-tabs">
-                    @foreach (var s in LobbySvc.PmSessions)
-                    {
-                        <div class="pm-tab @(string.Equals(s.UserName, _activePmName, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
-                             @onclick="() => ActivatePm(s.UserName)">
-                            <span class="pt-name">@s.UserName</span>
-                            @if (s.UnreadCount > 0)
-                            {
-                                <span class="pt-badge">@s.UnreadCount</span>
-                            }
-                            <button type="button" class="pt-close" @onclick="() => ClosePmSession(s.UserName)"
-                                    @onclick:stopPropagation="true" aria-label="关闭会话">✕</button>
-                        </div>
-                    }
+                <div class="rp-head">
+                    <span class="rp-col">玩家</span>
+                    <span class="rp-col">游戏</span>
+                    <span class="rp-col">时间</span>
                 </div>
-            }
-            @if (ActivePmSession is { } active)
-            {
-                <div class="pm-body">
-                    @if (active.Messages.Count == 0)
+                <div class="rp-body">
+                    @if (RecentPlayersList.Count == 0)
                     {
-                        <div class="pm-empty">尚无消息，说点什么吧</div>
+                        <div class="pm-empty">暂无最近玩家记录（参与对局后自动记录）</div>
                     }
                     else
                     {
-                        @foreach (var m in active.Messages)
+                        @foreach (var rp in RecentPlayersList)
                         {
-                            <div class="pm-msg @(m.IsMine ? "mine" : "")">
-                                <span class="pm-time">@m.Time.ToString("HH:mm")</span>
-                                <span class="pm-name">@(m.IsMine ? "我" : m.SenderName)</span>
-                                <span class="pm-text">@m.Text</span>
+                            var isOnline = LobbySvc.OnlineUsers.Any(u =>
+                                string.Equals(u.Name, rp.PlayerName, StringComparison.OrdinalIgnoreCase));
+                            <div class="rp-item @(isOnline ? "online" : "offline")"
+                                 @onclick="() => OpenRecentPlayerMenu(rp.PlayerName)"
+                                 @oncontextmenu="(e) => OpenRecentPlayerMenu(rp.PlayerName, e)"
+                                 @oncontextmenu:preventDefault="true">
+                                <span class="rp-name">@rp.PlayerName</span>
+                                <span class="rp-game">@rp.GameName</span>
+                                <span class="rp-time">@rp.GameTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
                             </div>
                         }
                     }
-                    <div @ref="_pmChatEnd"></div>
-                </div>
-                <div class="pm-input">
-                    <input class="pm-field" maxlength="200" placeholder="输入消息，Enter 发送…"
-                           value="@_pmDraft" @oninput="OnPmInput" @onkeydown="OnPmKeyDown" />
-                    <button type="button" class="mb-btn primary" @onclick="OnPmSend">发送</button>
                 </div>
             }
+        </div>
+    }
+
+    @if (_rpMenuOpen && _rpMenuPlayer is not null)
+    {
+        <div class="ctx-backdrop" @onclick="CloseRpmMenu" @oncontextmenu="CloseRpmMenu"
+             @oncontextmenu:preventDefault="true"></div>
+        <div class="ctx-menu pop-in" style="left:@(_rpMenuX)px;top:@(_rpMenuY)px"
+             @onmousedown:stopPropagation="true" @oncontextmenu:stopPropagation="true">
+            <div class="ctx-title">@_rpMenuPlayer</div>
+            <button type="button" class="ctx-item" @onclick="OnRpmPrivateMessage">私聊<span class="en">PM</span></button>
+            <div class="ctx-sep"></div>
+            <button type="button" class="ctx-item" @onclick="OnRpmToggleFriend">
+                @(LobbySvc.IsFriend(_rpMenuPlayer) ? "取消加友" : "加为好友")<span class="en">FRIEND</span></button>
+            <button type="button" class="ctx-item" @onclick="OnRpmToggleIgnore">
+                @(LobbySvc.IsIgnored(_rpMenuPlayer, null) ? "取消屏蔽" : "屏蔽此人")<span class="en">IGNORE</span></button>
         </div>
     }
 
@@ -344,11 +421,29 @@
 @code {
     private const int MAX_VISIBLE_MESSAGES = 300;
 
+    /// <summary>M4.9 渲染节流窗口：高频网络事件（刷屏聊天/广播）合并为一次 DOM 更新，保证 60fps。</summary>
+    private const int RENDER_THROTTLE_MS = 66;
+
     private string _draft = string.Empty;
     private string _gameFilter = string.Empty;
+
+    // 2-1 房间筛选（原版 GameFiltersPanel）
+    private bool _friendsOnly;
+    private bool _hideLocked;
+    private bool _hidePassworded;
+    private bool _hideIncompatible;
+    private int _maxPlayersFilter;
+
     private ElementReference _chatEnd;
     private bool _scrollToBottom;
     private int _lastMessageCount;
+
+    // M4.9：OnlineCount 懒计算缓存（Changed 时失效），避免每次渲染遍历全频道用户
+    private int _onlineCount = -1;
+
+    // M4.9：渲染节流（Interlocked 标志，Timer 回调仅翻转标志并触发渲染）
+    private System.Threading.Timer? _renderThrottle;
+    private int _renderScheduled;
 
     // M3.3 右键菜单 / 私聊中心状态（M3.8 多标签）
     private ChannelUser? _menuUser;
@@ -361,6 +456,13 @@
     private ElementReference _pmChatEnd;
     private bool _pmScroll;
     private DotNetObjectReference<Lobby>? _dotNetRef;
+
+    // 第七轮补缺 r7-5：私聊中心「最近玩家」tab（原版 PrivateMessagingWindow 双标签）及独立右键菜单
+    private bool _pmRecentTab;
+    private string? _rpMenuPlayer;
+    private bool _rpMenuOpen;
+    private double _rpMenuX;
+    private double _rpMenuY;
 
     // M3.4 选中房间信息面板（地图预览）
     private LobbyGameItem? _selectedGame;
@@ -380,10 +482,13 @@
     {
         get
         {
+            if (_onlineCount >= 0)
+                return _onlineCount;
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var c in LobbySvc.Channels)
                 c.Users.DoForAllUsers(u => names.Add(u.IRCUser.Name));
-            return names.Count;
+            _onlineCount = names.Count;
+            return _onlineCount;
         }
     }
 
@@ -415,15 +520,30 @@
     {
         get
         {
+            IEnumerable<LobbyGameItem> query = LobbySvc.Games;
+
+            // 2-1 房间筛选面板（原版 GameFiltersPanel）
+            if (_friendsOnly)
+                query = query.Where(g => LobbySvc.IsFriend(g.HostName));
+            if (_hideLocked)
+                query = query.Where(g => !g.Locked);
+            if (_hidePassworded)
+                query = query.Where(g => !g.Passworded);
+            if (_hideIncompatible)
+                query = query.Where(g => g.IsVersionCompatible);
+            if (_maxPlayersFilter > 0)
+                query = query.Where(g => g.MaxPlayers == _maxPlayersFilter);
+
             var filter = _gameFilter.Trim();
-            if (filter.Length == 0)
-                return LobbySvc.Games.ToList();
-            return LobbySvc.Games
-                .Where(g => g.RoomName.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                            || g.Map.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                            || g.HostName.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                            || g.GameMode.Contains(filter, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            if (filter.Length > 0)
+            {
+                query = query.Where(g => g.RoomName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                                        || g.Map.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                                        || g.HostName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                                        || g.GameMode.Contains(filter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query.ToList();
         }
     }
 
@@ -437,6 +557,29 @@
         LobbySvc.PmChanged += OnPmChanged;
         LobbySvc.PmReceived += OnPmReceived;
         ThemeProvider.ThemeChanged += OnThemeChanged;
+
+        // 2-2 从在线房间跳转而来：?pm=<昵称> 直达私聊会话
+        var pmName = GetQueryParam(Nav.ToAbsoluteUri(Nav.Uri), "pm");
+        if (!string.IsNullOrWhiteSpace(pmName))
+        {
+            LobbySvc.OpenPmSession(pmName);
+            _activePmName = pmName;
+        }
+
+        // r9-4：Discord 呈现恢复为「In Client」（从游戏房间/对局返回大厅时覆盖房间状态）
+        Discord.MainMenu();
+    }
+
+    private static string? GetQueryParam(Uri uri, string key)
+    {
+        var query = uri.Query.TrimStart('?');
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = pair.Split('=', 2);
+            if (kv.Length == 2 && string.Equals(kv[0], key, StringComparison.OrdinalIgnoreCase))
+                return Uri.UnescapeDataString(kv[1]);
+        }
+        return null;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -465,7 +608,16 @@
         var count = CurrentChannel?.Messages.Count ?? 0;
         _scrollToBottom = count != _lastMessageCount;
         _lastMessageCount = count;
-        _ = InvokeAsync(StateHasChanged);
+        _onlineCount = -1;
+
+        // M4.9：66ms 窗口内合并多次网络事件为一次渲染（滚动标记即时更新，保证渲染后停在最新消息）
+        if (Interlocked.CompareExchange(ref _renderScheduled, 1, 0) == 1)
+            return;
+        _renderThrottle = new System.Threading.Timer(_ =>
+        {
+            Interlocked.Exchange(ref _renderScheduled, 0);
+            _ = InvokeAsync(StateHasChanged);
+        }, null, RENDER_THROTTLE_MS, System.Threading.Timeout.Infinite);
     }
 
     // M3.8 私聊中心事件：存储变化（含已读清零）→ 刷新；收到新消息 → 打开并激活会话
@@ -512,6 +664,16 @@
     }
 
     private void OnGameFilterInput(ChangeEventArgs e) => _gameFilter = e.Value?.ToString() ?? string.Empty;
+
+    private void OnMaxPlayersFilterChange(ChangeEventArgs e) =>
+        _maxPlayersFilter = int.TryParse(e.Value?.ToString(), out var p) ? p : 0;
+
+    private void ResetFilters()
+    {
+        _friendsOnly = _hideLocked = _hidePassworded = _hideIncompatible = false;
+        _maxPlayersFilter = 0;
+        _gameFilter = string.Empty;
+    }
 
     // ── M3.4 选中房间详情（地图预览） ──
 
@@ -792,6 +954,71 @@
         _pmDraft = string.Empty;
     }
 
+    // ── 第七轮补缺 r7-5：私聊中心「最近玩家」tab（原版 RecentPlayerTable 等价） ──
+
+    private void SwitchPmTab(bool recent) => _pmRecentTab = recent;
+
+    private IReadOnlyList<RecentPlayer> RecentPlayersList => LobbySvc.RecentPlayers;
+
+    /// <summary>最近玩家项点击/右键：打开独立右键菜单（私聊/加友/屏蔽；离线玩家同样支持）。</summary>
+    private async Task OpenRecentPlayerMenu(string playerName, MouseEventArgs? e = null)
+    {
+        if (LobbySvc.IsSelf(playerName))
+            return;
+        _rpMenuPlayer = playerName;
+        _rpMenuOpen = true;
+        if (e is not null)
+        {
+            var vp = await JS.InvokeAsync<ViewportDto>("cncnet.getViewport");
+            _rpMenuX = Math.Min(e.ClientX, Math.Max(0, vp.Width - 190));
+            _rpMenuY = Math.Min(e.ClientY, Math.Max(0, vp.Height - 190));
+        }
+    }
+
+    private void CloseRpmMenu()
+    {
+        _rpMenuOpen = false;
+        _rpMenuPlayer = null;
+    }
+
+    private void OnRpmPrivateMessage()
+    {
+        if (_rpMenuPlayer is null)
+            return;
+        var name = _rpMenuPlayer;
+        LobbySvc.OpenPmSession(name);
+        _activePmName = name;
+        _pmDraft = string.Empty;
+        _pmScroll = true;
+        CloseRpmMenu();
+    }
+
+    private void OnRpmToggleFriend()
+    {
+        if (_rpMenuPlayer is null)
+            return;
+        var name = _rpMenuPlayer;
+        var was = LobbySvc.IsFriend(name);
+        LobbySvc.ToggleFriend(name);
+        _ = JS.InvokeVoidAsync("cncnet.toast", was
+            ? $"已将 {name} 移出好友"
+            : $"已将 {name} 加为好友");
+        CloseRpmMenu();
+    }
+
+    private void OnRpmToggleIgnore()
+    {
+        if (_rpMenuPlayer is null)
+            return;
+        var name = _rpMenuPlayer;
+        var was = LobbySvc.IsIgnored(name, null);
+        LobbySvc.ToggleIgnore(name, null);
+        _ = JS.InvokeVoidAsync("cncnet.toast", was
+            ? $"已取消屏蔽 {name}"
+            : $"已屏蔽 {name} 的消息");
+        CloseRpmMenu();
+    }
+
     /// <summary>ESC：优先关密码/创建窗，其次私聊窗，再关房间详情，最后右键菜单（不导航）。由 JS keydown 触发。</summary>
     [JSInvokable]
     public Task OnLobbyEsc()
@@ -802,6 +1029,8 @@
             CloseCreateDialog();
         else if (_pmOpen)
             ClosePm();
+        else if (_rpMenuOpen)
+            CloseRpmMenu();
         else if (_selectedGame is not null)
             CloseGameDetail();
         else if (_menuOpen)
@@ -830,6 +1059,8 @@
         LobbySvc.PmChanged -= OnPmChanged;
         LobbySvc.PmReceived -= OnPmReceived;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
+        _renderThrottle?.Dispose();
+        _renderThrottle = null;
         if (_dotNetRef is not null)
         {
             _ = JS.InvokeVoidAsync("cncnet.disposeLobbyKeyNav");

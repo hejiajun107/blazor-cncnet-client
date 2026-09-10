@@ -4,6 +4,7 @@
 @inject IThemeProvider ThemeProvider
 @inject NavigationManager Nav
 @inject ConnectionMonitor Mon
+@inject ReplaceableComponentService Replacer
 
 <!-- HUD 顶栏（全局，TopBar 通用组件，spec §5.3；状态灯/文本由 ConnectionMonitor 驱动，M3.10） -->
 <TopBar Brand="COMMAND NET" SubText="指挥核心在线"
@@ -35,11 +36,11 @@
     </div>
 </div>
 
-<!-- 底栏（全局；SYSTEM STATUS 反映连接状态，M3.10） -->
-<footer class="foot">
-    <div>SYSTEM STATUS: <b class="foot-status @Mon.StatusClass">@Mon.StateText</b> <span>· 渲染引擎 ACTIVE</span></div>
-    <div class="r"><span>分辨率自适应</span><span>60 FPS</span><span>WEBGL OK</span></div>
-</footer>
+<!-- 全局游戏邀请条（第六轮补缺，原版 ChoiceNotificationBox 邀请场景；任意页面可弹） -->
+<InvitationToast />
+
+<!-- 底栏（全局；SYSTEM STATUS 反映连接状态，M3.10）——F2 可替换槽位 layout.footer（默认 FooterBar） -->
+<ReplaceableComponent Key="layout.footer" />
 
 <!-- Toast（全局） -->
 <div class="toast" id="toast">提示</div>

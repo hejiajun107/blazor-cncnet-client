@@ -1,0 +1,106 @@
+@namespace BlazorCncnetClient.Components.Shared
+@implements IDisposable
+@using CnCNetClient.Core
+@inject LoadingScreenService Loading
+@inject GameContentServer ContentServer
+
+@if (_visible)
+{
+    <div class="splash @(_closing ? "closing" : "")" role="status" aria-label="载入中">
+        @if (HasVideo)
+        {
+            <video class="splash-media" src="@VideoUrl" autoplay muted loop playsinline></video>
+        }
+        else if (HasImage)
+        {
+            <img class="splash-media" src="@ImageUrl" alt="" />
+        }
+
+        <div class="splash-brand">
+            <div class="splash-logo">CNC NET</div>
+            <div class="splash-sub">COMMAND &amp; CONQUER</div>
+            @if (Config.ShowProgress)
+            {
+                <div class="splash-bar" aria-hidden="true"><div class="splash-bar-fill"></div></div>
+            }
+        </div>
+
+        <div class="splash-foot">
+            @if (!string.IsNullOrEmpty(Text))
+            {
+                <span class="splash-text">@Text</span>
+            }
+            @if (Config.ShowVersion)
+            {
+                <span class="splash-ver">BUILD @ProgramConstants.GAME_VERSION</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private LoadingScreenConfig Config { get; set; } = new();
+
+    private bool _visible = true;
+    private bool _closing;
+    private bool _dismissed;
+    private bool _mediaOk;
+    private Timer? _timer;
+
+    private bool HasVideo => _mediaOk && !string.IsNullOrEmpty(Config.SplashVideo);
+    private bool HasImage => _mediaOk && !string.IsNullOrEmpty(Config.SplashImage);
+
+    private string VideoUrl => ContentServer.MapUrl(Config.SplashVideo);
+    private string ImageUrl => ContentServer.MapUrl(Config.SplashImage);
+
+    private string Text => Config.SplashText;
+
+    protected override void OnInitialized()
+    {
+        Config = Loading.Config;
+
+        if (!Config.ShowSplash)
+        {
+            _visible = false;
+            return;
+        }
+
+        // 确保本地内容服务器可用（伺服游戏目录，供独立文件 URL 加载媒体）。
+        // 服务器不可用时不抛出：降级为纯品牌画面，不影响启动。
+        _mediaOk = false;
+        if (Loading.RootPath is { } root)
+        {
+            ContentServer.Start(root);
+            _mediaOk = ContentServer.IsRunning;
+        }
+
+        // 固定时长；SplashDuration<=0 表示「初始化完成即关闭」——首帧渲染时环境检测已就绪，
+        // 实现为最短展示（约 0.5s）后淡出，避免闪屏一闪而过。
+        double seconds = Config.SplashDuration > 0 ? Config.SplashDuration : 0.5;
+        _timer = new Timer(_ => _ = Dismiss(), null, TimeSpan.FromSeconds(seconds), Timeout.InfiniteTimeSpan);
+    }
+
+    private async Task Dismiss()
+    {
+        if (_dismissed)
+            return;
+        _dismissed = true;
+
+        await InvokeAsync(() =>
+        {
+            _closing = true;
+            StateHasChanged();
+        });
+
+        // 淡出过渡（--t-page 240ms）+ 余量
+        await Task.Delay(260);
+
+        await InvokeAsync(() =>
+        {
+            _visible = false;
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

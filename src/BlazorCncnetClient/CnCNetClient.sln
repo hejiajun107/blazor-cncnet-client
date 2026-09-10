@@ -1,0 +1,54 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Tools", "CnCNetClient.Tools\CnCNetClient.Tools.csproj", "{5A9C2E1A-0001-4A11-9A11-000000000001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Core", "CnCNetClient.Core\CnCNetClient.Core.csproj", "{5A9C2E1A-0002-4A11-9A11-000000000002}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Domain", "CnCNetClient.Domain\CnCNetClient.Domain.csproj", "{5A9C2E1A-0003-4A11-9A11-000000000003}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Online", "CnCNetClient.Online\CnCNetClient.Online.csproj", "{5A9C2E1A-0004-4A11-9A11-000000000004}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Updater", "CnCNetClient.Updater\CnCNetClient.Updater.csproj", "{5A9C2E1A-0005-4A11-9A11-000000000005}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Integration", "CnCNetClient.Integration\CnCNetClient.Integration.csproj", "{5A9C2E1A-0006-4A11-9A11-000000000006}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Tests", "CnCNetClient.Tests\CnCNetClient.Tests.csproj", "{5A9C2E1A-0007-4A11-9A11-000000000007}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5A9C2E1A-0001-4A11-9A11-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9C2E1A-0001-4A11-9A11-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9C2E1A-0001-4A11-9A11-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9C2E1A-0001-4A11-9A11-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9C2E1A-0002-4A11-9A11-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9C2E1A-0002-4A11-9A11-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9C2E1A-0002-4A11-9A11-000000000002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9C2E1A-0002-4A11-9A11-000000000002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9C2E1A-0003-4A11-9A11-000000000003}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9C2E1A-0003-4A11-9A11-000000000003}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9C2E1A-0003-4A11-9A11-000000000003}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9C2E1A-0003-4A11-9A11-000000000003}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9C2E1A-0004-4A11-9A11-000000000004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9C2E1A-0004-4A11-9A11-000000000004}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9C2E1A-0004-4A11-9A11-000000000004}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9C2E1A-0004-4A11-9A11-000000000004}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9C2E1A-0005-4A11-9A11-000000000005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9C2E1A-0005-4A11-9A11-000000000005}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9C2E1A-0005-4A11-9A11-000000000005}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9C2E1A-0005-4A11-9A11-000000000005}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9C2E1A-0006-4A11-9A11-000000000006}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9C2E1A-0006-4A11-9A11-000000000006}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9C2E1A-0006-4A11-9A11-000000000006}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9C2E1A-0006-4A11-9A11-000000000006}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9C2E1A-0007-4A11-9A11-000000000007}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9C2E1A-0007-4A11-9A11-000000000007}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9C2E1A-0007-4A11-9A11-000000000007}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9C2E1A-0007-4A11-9A11-000000000007}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

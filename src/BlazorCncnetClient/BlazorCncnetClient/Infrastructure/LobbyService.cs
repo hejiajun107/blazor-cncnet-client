@@ -20,6 +20,7 @@ namespace BlazorCncnetClient.Infrastructure
     {
         private const int STALE_GAME_SECONDS = 15;
         private const int CLEANUP_INTERVAL_MS = 5000;
+        private const int PM_MESSAGE_LIMIT = 300;
 
         public event Action? Changed;
 
@@ -29,10 +30,17 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>收到新私聊消息（参数为发送者昵称，M3.8）：UI 用于自动打开/激活会话。</summary>
         public event Action<string>? PmReceived;
 
+        /// <summary>收到游戏邀请（第六轮补缺，原版 HandleGameInviteCommand）：UI 弹顶部邀请条。</summary>
+        public event Action<GameInvitation>? GameInvitationReceived;
+
+        /// <summary>邀请未被送达（原版 HandleGameInvitationFailedNotification）：参数为被邀请者昵称。</summary>
+        public event Action<string>? InvitationFailed;
+
         private readonly CnCNetManager _manager;
         private readonly GameCollection _gameCollection;
         private readonly CnCNetUserData _userData;
         private readonly IDispatcher _dispatcher;
+        private readonly GameRoomService _room;
 
         private readonly List<Channel> _channels = new();
         private readonly List<LobbyGameItem> _games = new();
@@ -53,12 +61,13 @@ namespace BlazorCncnetClient.Infrastructure
         public IReadOnlyList<PmSession> PmSessions =>
             _pmSessions.Values.OrderByDescending(s => s.LastActivity).ToList();
 
-        public LobbyService(CnCNetManager manager, GameCollection gameCollection, CnCNetUserData userData, IDispatcher dispatcher)
+        public LobbyService(CnCNetManager manager, GameCollection gameCollection, CnCNetUserData userData, IDispatcher dispatcher, GameRoomService room)
         {
             _manager = manager;
             _gameCollection = gameCollection;
             _userData = userData;
             _dispatcher = dispatcher;
+            _room = room;
             LocalGame = _gameCollection.GameList.Find(g =>
                 string.Equals(g.InternalName, ClientConfiguration.Instance.LocalGame, StringComparison.InvariantCultureIgnoreCase));
 
@@ -111,6 +120,7 @@ namespace BlazorCncnetClient.Infrastructure
             _manager.Disconnected += OnDisconnected;
             _manager.ConnectionLost += OnConnectionLost;
             _manager.PrivateMessageReceived += OnPrivateMessageReceived;
+            _manager.PrivateCTCPReceived += OnPrivateCTCPReceived;
             _cleanupTimer = new Timer(_ => _dispatcher.Post(CleanupStaleGames), null, CLEANUP_INTERVAL_MS, CLEANUP_INTERVAL_MS);
         }
 
@@ -388,18 +398,12 @@ namespace BlazorCncnetClient.Infrastructure
                 AddChannelMessage("用法：/invite <玩家昵称>");
                 return;
             }
-            if (!CanInvite)
+            if (!_room.IsInGameRoom)
             {
-                AddChannelMessage("当前不在游戏广播频道，无法邀请");
+                AddChannelMessage("请先创建或加入游戏房间，再邀请玩家");
                 return;
             }
-            var user = FindChannelUser(name);
-            if (user is null)
-            {
-                AddChannelMessage($"未在当前频道找到玩家 {name}");
-                return;
-            }
-            InvitePlayer(user);
+            _room.InvitePlayer(name);
             AddChannelMessage($"已邀请 {name} 加入游戏");
         }
 
@@ -427,6 +431,18 @@ namespace BlazorCncnetClient.Infrastructure
         public bool IsSelf(string playerName) =>
             string.Equals(playerName, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>是否可邀请加入（第六轮补缺，原版 GlobalContextMenu Invite 判定：仅在游戏房间内可邀请）。</summary>
+        public bool CanInvite => _room.IsInGameRoom;
+
+        /// <summary>邀请频道玩家加入当前游戏房间（第六轮补缺，INVITE 私有 CTCP，复用频道 /invite 指令通道）。</summary>
+        public void InvitePlayer(ChannelUser user)
+        {
+            if (user is null)
+                return;
+            _room.InvitePlayer(user.IRCUser.Name);
+            NotifyChanged();
+        }
+
         /// <summary>加友 / 取消加友，并同步 <see cref="IRCUser.IsFriend"/>。</summary>
         public void ToggleFriend(ChannelUser user)
         {
@@ -434,6 +450,24 @@ namespace BlazorCncnetClient.Infrastructure
             user.IRCUser.IsFriend = _userData.IsFriend(user.IRCUser.Name);
             NotifyChanged();
         }
+
+        /// <summary>昵称是否为好友（2-1 房间筛选「好友专用」判定）。</summary>
+        public bool IsFriend(string playerName) =>
+            !string.IsNullOrEmpty(playerName) && _userData.IsFriend(playerName);
+
+        /// <summary>加友 / 取消加友（在线房间玩家，无 <see cref="ChannelUser"/> 实例，2-2）。</summary>
+        public void ToggleFriend(string playerName) => _userData.ToggleFriend(playerName);
+
+        /// <summary>屏蔽 / 取消屏蔽（在线房间玩家，按 ident，缺失时回退昵称，2-2）。</summary>
+        public void ToggleIgnore(string playerName, string? ident)
+        {
+            _userData.ToggleIgnoreUser(string.IsNullOrEmpty(ident) ? playerName : ident);
+            NotifyChanged();
+        }
+
+        /// <summary>是否已屏蔽（在线房间玩家，ident 缺失回退昵称，2-2）。</summary>
+        public bool IsIgnored(string playerName, string? ident) =>
+            _userData.IsIgnored(string.IsNullOrEmpty(ident) ? playerName : ident);
 
         /// <summary>屏蔽 / 取消屏蔽（按 ident，缺失时回退昵称）。</summary>
         public void ToggleIgnore(ChannelUser user)
@@ -444,18 +478,11 @@ namespace BlazorCncnetClient.Infrastructure
             NotifyChanged();
         }
 
-        /// <summary>是否可邀请：已加入本机游戏的广播频道（即当前在房间广播中）。</summary>
-        public bool CanInvite => BroadcastChannel is not null && LocalGame is not null;
+        /// <summary>在线玩家列表（全局，房间页「邀请玩家」浮层数据源，第六轮补缺）。</summary>
+        public IReadOnlyList<IRCUser> OnlineUsers => _manager.UserList;
 
-        /// <summary>邀请玩家加入当前游戏：向游戏广播频道发送 CTCP INVITE。</summary>
-        public void InvitePlayer(ChannelUser user)
-        {
-            if (BroadcastChannel is null || LocalGame is null || string.IsNullOrEmpty(LocalGame.GameBroadcastChannel))
-                return;
-            var ctcp = $"\u0001{ProgramConstants.GAME_INVITE_CTCP_COMMAND} {user.IRCUser.Name}\u0001";
-            _manager.SendCustomMessage(new QueuedMessage(
-                $"PRIVMSG {LocalGame.GameBroadcastChannel} :{ctcp}", QueuedMessageType.SYSTEM_MESSAGE, 0));
-        }
+        /// <summary>最近玩家列表（第七轮补缺，原版 RecentPlayerTable 数据源；开始游戏时由 GameRoomService 记录）。</summary>
+        public IReadOnlyList<RecentPlayer> RecentPlayers => _userData.RecentList;
 
         /// <summary>发送私聊消息（M3.3 快捷单聊；M3.8 扩展为多标签会话存储，本方消息即时入列）。</summary>
         public void SendPrivateMessage(string playerName, string message)
@@ -469,7 +496,7 @@ namespace BlazorCncnetClient.Infrastructure
                 $"PRIVMSG {playerName} :{text}", QueuedMessageType.SYSTEM_MESSAGE, 0));
 
             var session = GetOrCreateSession(playerName);
-            session.Messages.Add(new PmMessage(ProgramConstants.PLAYERNAME, text, DateTime.Now, IsMine: true));
+            AddPmMessage(session, ProgramConstants.PLAYERNAME, text, true);
             session.LastActivity = DateTime.Now;
             session.UnreadCount = 0;
             PmChanged?.Invoke();
@@ -519,6 +546,14 @@ namespace BlazorCncnetClient.Infrastructure
             return session;
         }
 
+        /// <summary>追加私聊消息（M4.9 内存有界：与 <see cref="Channel"/> 的 MESSAGE_LIMIT 同语义，超出削头）。</summary>
+        private static void AddPmMessage(PmSession session, string senderName, string text, bool isMine)
+        {
+            if (session.Messages.Count == PM_MESSAGE_LIMIT)
+                session.Messages.RemoveAt(0);
+            session.Messages.Add(new PmMessage(senderName, text, DateTime.Now, isMine));
+        }
+
         private void OnPrivateMessageReceived(object? sender, CnCNetPrivateMessageEventArgs e)
         {
             if (string.IsNullOrEmpty(e.Sender) || string.IsNullOrEmpty(e.Message))
@@ -536,7 +571,7 @@ namespace BlazorCncnetClient.Infrastructure
                 return;
 
             var session = GetOrCreateSession(e.Sender);
-            session.Messages.Add(new PmMessage(e.Sender, e.Message, DateTime.Now, IsMine: false));
+            AddPmMessage(session, e.Sender, e.Message, false);
             session.LastActivity = DateTime.Now;
             session.UnreadCount++;
             PmReceived?.Invoke(session.UserName);
@@ -546,6 +581,80 @@ namespace BlazorCncnetClient.Infrastructure
         private void OnChannelMessageAdded(object? sender, IRCMessageEventArgs e) => NotifyChanged();
 
         private void OnChannelUserChanged(object? sender, EventArgs e) => NotifyChanged();
+
+        // ── 游戏邀请（第六轮补缺，迁移原版 CnCNetLobby 私有 CTCP 处理：INVITE 接收 + INVITATION_FAILED） ──
+
+        /// <summary>待处理邀请去重表：key = sender|channelName（原版 invitationIndex：同一邀请只弹一次）。</summary>
+        private readonly HashSet<string> _pendingInvitations = new(StringComparer.OrdinalIgnoreCase);
+
+        private void OnPrivateCTCPReceived(object? sender, PrivateCTCPEventArgs e)
+        {
+            if (e.Message.StartsWith(ProgramConstants.GAME_INVITE_CTCP_COMMAND + " "))
+                HandleGameInviteCommand(e.Sender, e.Message.Substring(ProgramConstants.GAME_INVITE_CTCP_COMMAND.Length + 1));
+            else if (string.Equals(e.Message, ProgramConstants.GAME_INVITATION_FAILED_CTCP_COMMAND, StringComparison.Ordinal))
+                HandleGameInvitationFailedNotification(e.Sender);
+        }
+
+        /// <summary>
+        /// 接收游戏邀请：解析 <c>频道名;房名[;密码]</c>，做「在线/未屏蔽 + 仅好友」检查，
+        /// 去重后通过 <see cref="GameInvitationReceived"/> 交给 UI 弹邀请条（原版 HandleGameInviteCommand）。
+        /// </summary>
+        private void HandleGameInviteCommand(string sender, string argumentsString)
+        {
+            var arguments = argumentsString.Split(';');
+            if (arguments.Length < 2 || arguments.Length > 3)
+                return;
+
+            string channelName = arguments[0];
+            string gameName = arguments[1];
+            string password = arguments.Length == 3 ? arguments[2] : string.Empty;
+
+            if (!CanReceiveInvitationMessagesFrom(sender))
+                return;
+
+            var gameIndex = _games.FindIndex(g => string.Equals(g.ChannelName, channelName, StringComparison.OrdinalIgnoreCase));
+
+            if (gameIndex < 0 ||
+                (UserINISettings.Instance.AllowGameInvitesFromFriendsOnly.Value && !_userData.IsFriend(sender)))
+            {
+                // 通知发起方：邀请无法送达（原版：无法加入游戏 / 仅接受好友邀请时仍回执）
+                _manager.SendCustomMessage(new QueuedMessage(
+                    $"PRIVMSG {sender} :\u0001{ProgramConstants.GAME_INVITATION_FAILED_CTCP_COMMAND}\u0001",
+                    QueuedMessageType.CHAT_MESSAGE, 0));
+                return;
+            }
+
+            string key = sender + "|" + channelName;
+            if (_pendingInvitations.Contains(key))
+                return;
+
+            _pendingInvitations.Add(key);
+            GameInvitationReceived?.Invoke(new GameInvitation(sender, gameName, channelName, password));
+        }
+
+        /// <summary>邀请送达失败回执：在房间时提示发起方（原版 HandleGameInvitationFailedNotification，GameLobby.AddWarning）。</summary>
+        private void HandleGameInvitationFailedNotification(string sender)
+        {
+            if (!_room.IsInGameRoom)
+                return;
+            _room.AddRoomWarning(
+                $"{sender} 无法接收你的邀请，对方可能正在游戏中，或仅接受好友邀请。请确认房间未锁定且在大厅可见后再试。");
+        }
+
+        /// <summary>是否接受来自该玩家的邀请：在线且未被屏蔽（原版 CanReceiveInvitationMessagesFrom）。</summary>
+        private bool CanReceiveInvitationMessagesFrom(string sender)
+        {
+            var iu = _manager.UserList.Find(u => string.Equals(u.Name, sender, StringComparison.OrdinalIgnoreCase));
+            if (iu is null)
+                return false;
+            if (_userData.IsIgnored(iu.Ident))
+                return false;
+            return true;
+        }
+
+        /// <summary>接受/拒绝邀请后清理去重表（UI 调用）。</summary>
+        public void DismissInvitation(string sender, string channelName)
+            => _pendingInvitations.Remove(sender + "|" + channelName);
 
         // ── 房间列表（游戏广播协议解析，迁移自原客户端 GameBroadcastChannel_CTCPReceived） ──
 
@@ -594,6 +703,7 @@ namespace BlazorCncnetClient.Infrastructure
                     tunneled,
                     isLadder,
                     roomChannel,
+                    gameVersion,
                     DateTime.Now);
 
                 if (closed)
@@ -648,6 +758,7 @@ namespace BlazorCncnetClient.Infrastructure
                 _manager.Disconnected -= OnDisconnected;
                 _manager.ConnectionLost -= OnConnectionLost;
                 _manager.PrivateMessageReceived -= OnPrivateMessageReceived;
+                _manager.PrivateCTCPReceived -= OnPrivateCTCPReceived;
                 _wired = false;
             }
         }
@@ -667,11 +778,19 @@ namespace BlazorCncnetClient.Infrastructure
         bool Tunneled,
         bool IsLadder,
         string ChannelName,
+        string GameVersion,
         DateTime LastRefreshTime)
     {
         public int PlayerCount => Players.Length;
         public bool IsFull => PlayerCount >= MaxPlayers;
+
+        /// <summary>版本是否与本机一致（原版 GameFiltersPanel「隐藏不兼容房间」判定依据）。</summary>
+        public bool IsVersionCompatible =>
+            string.Equals(GameVersion, ProgramConstants.GAME_VERSION, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>游戏邀请（第六轮补缺，原版 HandleGameInviteCommand 解析结果，驱动全局邀请条 UI）。</summary>
+    public sealed record GameInvitation(string Sender, string GameName, string ChannelName, string Password);
 
     /// <summary>私聊会话（M3.8 多标签）：一个会话对应一个玩家，含消息历史与未读数。</summary>
     public sealed class PmSession

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using CnCNetClient.Core;
 using CnCNetClient.Integration.Lifecycle;
 using CnCNetClient.Tools;
@@ -16,12 +17,17 @@ public sealed class UpdateService : IDisposable
     private readonly EnvironmentCheck _env;
     private readonly AppExitNotifier _exitNotifier;
     private bool _wired;
+    private bool _componentEventsWired;
+    private readonly Dictionary<string, int> _componentPercentages = new();
 
     /// <summary>状态变化（版本检查/进度/完成/失败），驱动 UI 刷新。</summary>
     public event Action? StateChanged;
 
     /// <summary>更新失败（参数为失败信息，供 UI 展示）。</summary>
     public event Action<string>? UpdateFailed;
+
+    /// <summary>自定义组件进度/状态变化（下载进度、完成、失败），驱动组件面板刷新（r9-5）。</summary>
+    public event Action<CustomComponent>? ComponentChanged;
 
     /// <summary>服务是否可用（环境就绪且已初始化镜像表）。</summary>
     public bool IsAvailable { get; private set; }
@@ -69,6 +75,13 @@ public sealed class UpdateService : IDisposable
     /// <summary>可用更新镜像数。</summary>
     public int MirrorCount => IsAvailable && Updater.UpdateMirrors is not null ? Updater.UpdateMirrors.Count : 0;
 
+    /// <summary>自定义组件列表（UpdaterConfig.ini [CustomComponents]，未初始化/未加载时为空；r9-5）。</summary>
+    public IReadOnlyList<CustomComponent> CustomComponents
+        => IsAvailable && Updater.CustomComponents is not null ? Updater.CustomComponents : Array.Empty<CustomComponent>();
+
+    /// <summary>组件是否正在下载（组件面板「全部下载」禁用态；r9-5）。</summary>
+    public bool IsComponentDownloadInProgress => IsAvailable && Updater.IsComponentDownloadInProgress();
+
     /// <summary>是否正在检查/下载（按钮禁用态）。</summary>
     public bool IsBusy => VersionState is VersionState.UPDATECHECKINPROGRESS or VersionState.UPDATEINPROGRESS;
 
@@ -92,6 +105,7 @@ public sealed class UpdateService : IDisposable
             SafePath.GetFile(ProgramConstants.StartupExecutable).Name);
 
         WireEvents();
+        WireComponentEvents();
 
         // 读取本地 version 文件，得出本地版本 / 更新系统版本。
         Updater.CheckLocalFileVersions();
@@ -179,6 +193,38 @@ public sealed class UpdateService : IDisposable
         Environment.Exit(0);
     }
 
+    /// <summary>订阅全部自定义组件的下载进度/完成事件（组件实例在 Initialize 时固定，仅需订阅一次）。</summary>
+    private void WireComponentEvents()
+    {
+        if (_componentEventsWired || Updater.CustomComponents is null)
+            return;
+        _componentEventsWired = true;
+
+        foreach (var component in Updater.CustomComponents)
+        {
+            component.DownloadProgressChanged += OnComponentDownloadProgress;
+            component.DownloadFinished += OnComponentDownloadFinished;
+        }
+    }
+
+    private void OnComponentDownloadProgress(CustomComponent component, int percentage)
+    {
+        if (component.ININame is not null)
+            _componentPercentages[component.ININame] = percentage;
+        ComponentChanged?.Invoke(component);
+    }
+
+    private void OnComponentDownloadFinished(CustomComponent component, bool success)
+    {
+        if (component.ININame is not null)
+            _componentPercentages.Remove(component.ININame);
+        ComponentChanged?.Invoke(component);
+    }
+
+    /// <summary>组件当前下载百分比（组件面板进度条；r9-5）。</summary>
+    public int GetComponentDownloadPercentage(CustomComponent component)
+        => component.ININame is not null && _componentPercentages.TryGetValue(component.ININame, out int p) ? p : 0;
+
     private void RaiseStateChanged() => StateChanged?.Invoke();
 
     public void Dispose()
@@ -192,5 +238,18 @@ public sealed class UpdateService : IDisposable
         Updater.OnUpdateCompleted -= OnUpdateCompleted;
         Updater.OnUpdateFailed -= OnUpdateFailed;
         Updater.Restart -= OnRestart;
+
+        if (_componentEventsWired)
+        {
+            _componentEventsWired = false;
+            if (Updater.CustomComponents is not null)
+            {
+                foreach (var component in Updater.CustomComponents)
+                {
+                    component.DownloadProgressChanged -= OnComponentDownloadProgress;
+                    component.DownloadFinished -= OnComponentDownloadFinished;
+                }
+            }
+        }
     }
 }

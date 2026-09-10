@@ -1,0 +1,21 @@
+@inject ReplaceableComponentService Replacer
+
+<!-- F2 可替换槽位：按 Key 经 ReplaceableComponentService 解析渲染类型（[Components] 覆盖优先），
+     未知槽位 Key 抛异常（配置错误应尽早暴露），未解析时渲染空。 -->
+@if (_resolved is not null)
+{
+    <DynamicComponent Type="_resolved" />
+}
+
+@code {
+    /// <summary>槽位键（如 layout.footer），对应 ClientDefinitions.ini [Components] 节键。</summary>
+    [Parameter, EditorRequired]
+    public string Key { get; set; } = string.Empty;
+
+    private Type? _resolved;
+
+    protected override void OnParametersSet()
+    {
+        _resolved = Replacer.Resolve(Key);
+    }
+}

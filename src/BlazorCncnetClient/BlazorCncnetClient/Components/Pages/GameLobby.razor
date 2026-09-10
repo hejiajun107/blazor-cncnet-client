@@ -13,6 +13,8 @@
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
 @inject GameLaunchService GameLauncher
+@inject LobbyService LobbySvc
+@inject DiscordPresenceService Discord
 
 @if (!Room.IsInGameRoom)
 {
@@ -37,9 +39,36 @@ else
             </div>
             <div class="gt-right">
                 <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
+                <button type="button" class="mb-btn" @onclick="OpenInviteDialog">邀请玩家<span class="en">INVITE</span></button>
                 <button class="mb-btn danger" @onclick="OnLeave">离开房间</button>
             </div>
         </header>
+
+        @if (Room.IsJoined && Room.IsHost)
+        {
+            <!-- 隧道工具条（原版 btnChangeTunnel：房主手动选择隧道服务器） -->
+            <div class="tunnel-bar item-in">
+                <span class="tb-label">隧道 <em>TUNNEL</em></span>
+                <span class="tb-value">
+                    @if (Room.CurrentTunnel is not null)
+                    {
+                        <b>@Room.CurrentTunnel.Name</b>
+                        <em>@Room.CurrentTunnel.CountryCode · @Room.CurrentTunnel.Clients/@Room.CurrentTunnel.MaxClients · @(Room.CurrentTunnel.PingInMs > -1 ? Room.CurrentTunnel.PingInMs + "ms" : "—")</em>
+                    }
+                    else
+                    {
+                        <b class="dim">自动选择中…</b>
+                    }
+                </span>
+                <button type="button" class="mb-btn" @onclick="OpenTunnelDialog">
+                    更换隧道<span class="en">CHANGE</span>
+                </button>
+            </div>
+        }
+        @if (Room.IsJoined && Room.TunnelErrorMode)
+        {
+            <div class="groom-warn item-in">⚠ 房主选择了无效的隧道服务器，本局游戏无法进行</div>
+        }
 
         @if (!Room.IsJoined)
         {
@@ -59,16 +88,19 @@ else
                         </span>
                     </header>
                     <div class="gl-body">
-                        @for (int i = 0; i < Room.MaxPlayers; i++)
+                        @for (int i = 0; i < GameRoomService.MaxTotalSlots; i++)
                         {
                             var slotPlayer = i < Room.Players.Count ? Room.Players.ElementAt(i) : null;
-                            <div class="slot @(slotPlayer is null ? "empty" : slotPlayer.IsSelf ? "self" : "")">
+                            var aiPlayer = slotPlayer is null && i - Room.Players.Count < Room.AIPlayers.Count
+                                ? Room.AIPlayers[i - Room.Players.Count] : null;
+                            var empty = slotPlayer is null && aiPlayer is null && i < Room.MaxPlayers;
+                            var unavailable = slotPlayer is null && aiPlayer is null && !empty;
+                            <div class="slot @(slotPlayer is not null ? (slotPlayer.IsSelf ? "self" : "") : aiPlayer is not null ? "ai" : unavailable ? "empty unavailable" : "empty")"
+                                 @oncontextmenu="slotPlayer is not null ? (e => OpenPlayerMenu(slotPlayer, e)) : null"
+                                 @oncontextmenu:preventDefault="true"
+                                 title="@(slotPlayer is not null ? "右键打开玩家菜单" : null)">
                                 <span class="slot-idx">@(i + 1)</span>
-                                @if (slotPlayer is null)
-                                {
-                                    <span class="slot-empty-text">等待玩家加入…</span>
-                                }
-                                else
+                                @if (slotPlayer is not null)
                                 {
                                     <span class="slot-color" style="background:@ToCss(GetColor(slotPlayer.Color))"></span>
                                     <div class="slot-info">
@@ -78,12 +110,90 @@ else
                                             {
                                                 <em class="slot-host">HOST</em>
                                             }
+                                            @if (IsSpectatorSide(slotPlayer.Side))
+                                            {
+                                                <em class="slot-spec">SPECTATOR</em>
+                                            }
                                         </span>
                                         <span class="slot-meta">
-                                            @GetSideName(slotPlayer.Side) · 出生@(slotPlayer.Start)@(slotPlayer.Team > 0 ? " · 队" + slotPlayer.Team : "")
+                                            @GetSideName(slotPlayer.Side)@(IsSpectatorSide(slotPlayer.Side) ? "" : " · 出生" + slotPlayer.Start)@(slotPlayer.Team > 0 ? " · 队" + slotPlayer.Team : "")
                                         </span>
                                     </div>
                                     <span class="slot-ready @(slotPlayer.Ready ? "on" : "")">@(slotPlayer.Ready ? "READY" : "…")</span>
+                                }
+                                else if (aiPlayer is not null)
+                                {
+                                    <span class="slot-color ai-color" style="background:@ToCss(GetColor(aiPlayer.ColorId))"></span>
+                                    @if (Room.IsHost)
+                                    {
+                                        <div class="slot-info ai-editor">
+                                            <span class="slot-name">
+                                                @aiPlayer.Name
+                                                <em class="slot-ai">AI</em>
+                                            </span>
+                                            <div class="ai-cfg-row">
+                                                <select class="gl-select ai-select" title="AI 难度"
+                                                        value="@aiPlayer.AILevel" @onchange="(e) => OnAILevelChange(aiPlayer, e)">
+                                                    @for (int l = 0; l < AiLevels.Length; l++)
+                                                    {
+                                                        <option value="@l">@AiLevels[l]</option>
+                                                    }
+                                                </select>
+                                                <select class="gl-select ai-select" title="AI 阵营"
+                                                        value="@aiPlayer.SideId" @onchange="(e) => OnAISideChange(aiPlayer, e)">
+                                                    @for (int s = 0; s < Sides.Length; s++)
+                                                    {
+                                                        <option value="@s">@Sides[s]</option>
+                                                    }
+                                                </select>
+                                                <select class="gl-select ai-select" title="AI 出生点"
+                                                        value="@aiPlayer.StartingLocation"
+                                                        disabled="@Room.StartLocationSelectionDisabled"
+                                                        @onchange="(e) => OnAIStartChange(aiPlayer, e)">
+                                                    @for (int st = 0; st <= GameRoomService.MaxTotalSlots; st++)
+                                                    {
+                                                        <option value="@st">@(st == 0 ? "随机" : st.ToString())</option>
+                                                    }
+                                                </select>
+                                                <select class="gl-select ai-select" title="AI 队伍"
+                                                        value="@aiPlayer.TeamId" @onchange="(e) => OnAITeamChange(aiPlayer, e)">
+                                                    @for (int t = 0; t <= 4; t++)
+                                                    {
+                                                        <option value="@t">@(t == 0 ? "无" : t.ToString())</option>
+                                                    }
+                                                </select>
+                                                <button type="button" class="ai-remove" title="移除 AI" @onclick="() => OnAIRemove(aiPlayer)">✕</button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="slot-info">
+                                            <span class="slot-name">
+                                                @aiPlayer.Name
+                                                <em class="slot-ai">AI</em>
+                                            </span>
+                                            <span class="slot-meta">
+                                                @GetSideName(aiPlayer.SideId) · 出生@(aiPlayer.StartingLocation)@(aiPlayer.TeamId > 0 ? " · 队" + aiPlayer.TeamId : "")
+                                            </span>
+                                        </div>
+                                    }
+                                }
+                                else if (unavailable)
+                                {
+                                    <span class="slot-empty-text unavailable">超出人数上限</span>
+                                }
+                                else
+                                {
+                                    @if (Room.IsHost)
+                                    {
+                                        <span class="slot-empty-text">等待玩家加入…</span>
+                                        <button type="button" class="ai-add" @onclick="OnAIAdd">＋ AI</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="slot-empty-text">等待玩家加入…</span>
+                                    }
                                 }
                             </div>
                         }
@@ -113,6 +223,7 @@ else
                                                     class="spawn-dot @spCls"
                                                     style="@spStyle"
                                                     title="@(sp.OccupantName is null ? $"出生点 {sp.Index}" : $"出生点 {sp.Index} · {sp.OccupantName}")"
+                                                    disabled="@Room.StartLocationSelectionDisabled"
                                                     @onclick="() => OnSpawnClick(sp.Index)">
                                                 <span class="spawn-num">@sp.Index</span>
                                                 @if (sp.OccupantName is not null)
@@ -134,11 +245,24 @@ else
                                             @for (int i = 0; i < group.Items.Count; i++)
                                             {
                                                 var opt = group.Items[i];
-                                                <option value="@opt.Index">@opt.Display</option>
+                                                <option value="@opt.Index">@(opt.Value.IsFavorite ? "★ " : "")@opt.Display</option>
                                             }
                                         </optgroup>
                                     }
                                 </select>
+                                <!-- 地图工具条（原版 tbMapSearch / btnShowFavoriteMaps / btnMapSortAlphabetically / btnPickRandomMap） -->
+                                <div class="map-tools">
+                                    <input class="gl-input map-search" placeholder="搜索地图…" value="@_mapSearch" @oninput="OnMapSearchInput" />
+                                    <button type="button" class="mt-btn @(_favOnly ? "on" : "")" title="仅显示收藏地图" @onclick="OnToggleFavOnly">
+                                        ★<span class="en">FAV</span>
+                                    </button>
+                                    <button type="button" class="mt-btn @(_sortMode != 0 ? "on" : "")" title="按名称排序" @onclick="OnCycleSort">
+                                        <span class="en">@SortModeLabel</span>
+                                    </button>
+                                    <button type="button" class="mt-btn" title="随机选择地图" @onclick="OnPickRandomMap">
+                                        <span class="en">RND</span>
+                                    </button>
+                                </div>
                             }
                             else
                             {
@@ -166,6 +290,24 @@ else
                             </div>
                         </div>
 
+                        @if (!Room.IsHost && Room.MissingMapSHA1 is not null)
+                        {
+                            <div class="map-dl md-@DownloadStateCss">
+                                <div class="md-title">
+                                    主机选择了本机未安装的地图
+                                    <em>@Room.MissingMapName</em>
+                                </div>
+                                <div class="md-sub">@DownloadStateText</div>
+                                @if (Room.DownloadState == MapDownloadState.Prompt ||
+                                    Room.DownloadState == MapDownloadState.Failed)
+                                {
+                                    <button class="mb-btn primary md-btn" @onclick="OnDownloadMissingMap">
+                                        下载地图<span class="en">DOWNLOAD</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+
                         @if (Room.IsHost)
                         {
                             <div class="cfg-rules">
@@ -190,6 +332,12 @@ else
                                     </select>
                                 </div>
                                 <div class="cfg-row">
+                                    <label>房间密码</label>
+                                    <input class="gl-input" type="password" maxlength="32"
+                                           placeholder="@(Room.IsCustomPassword ? "已设置密码（输入新密码修改，清空并回车移除）" : "留空 = 公开房")"
+                                           value="@_passwordDraft" @oninput="OnPasswordInput" @onchange="CommitRoomPassword" />
+                                </div>
+                                <div class="cfg-row">
                                     <button class="mb-btn @(Room.Locked ? "danger" : "")" @onclick="OnToggleLock">
                                         @(Room.Locked ? "解除锁定" : "锁定房间")
                                     </button>
@@ -198,7 +346,12 @@ else
                         }
 
                         <div class="cfg-self">
-                            <div class="cfg-self-title">我的配置 <em>SELF</em></div>
+                            <div class="cfg-self-title">我的配置 <em>SELF</em>
+                                @if (IsSelfSpectator)
+                                {
+                                    <span class="self-spec">● 观战中（不参与对局）</span>
+                                }
+                            </div>
                             <div class="cfg-row">
                                 <label>阵营</label>
                                 <select class="gl-select" value="@Self.Side" @onchange="OnSideChange">
@@ -206,9 +359,11 @@ else
                                     {
                                         <option value="@s">@Sides[s]</option>
                                     }
+                                    <option value="@Sides.Length">观战</option>
                                 </select>
                                 <label>出生点</label>
-                                <select class="gl-select" value="@Self.Start" @onchange="OnStartChange">
+                                <select class="gl-select" value="@Self.Start" @onchange="OnStartChange"
+                                        disabled="@(IsSelfSpectator || Room.StartLocationSelectionDisabled)">
                                     @for (int st = 1; st <= Room.MaxPlayers; st++)
                                     {
                                         <option value="@st">@st</option>
@@ -245,6 +400,111 @@ else
                                 }
                             </div>
                         </div>
+
+                        <div class="cfg-options">
+                            <div class="cfg-self-title">游戏选项 <em>GAME OPTIONS</em>
+                                <span class="self-spec">@(Room.IsHost ? "房主可改，将同步给全员" : "由房主设置，同步显示")</span>
+                                @if (Room.IsHost)
+                                {
+                                    <button type="button" class="mb-btn go-preset-btn" @onclick="OpenPresetDialog">
+                                        预设<span class="en">PRESET</span>
+                                    </button>
+                                }
+                            </div>
+                            <div class="go-grid">
+                                @foreach (var opt in CheckBoxOptions)
+                                {
+                                    <label class="gl-check go-check">
+                                        <input type="checkbox" checked="@opt.Checked" disabled="@(!Room.IsHost)"
+                                               @onchange="(e) => OnCheckBoxOptionChange(opt, e)" />
+                                        <span>@opt.DisplayName</span>
+                                    </label>
+                                }
+                            </div>
+                            @foreach (var dd in DropDownOptions)
+                            {
+                                <div class="go-dd">
+                                    <label>@dd.DisplayName</label>
+                                    <select class="gl-select" value="@dd.SelectedIndex" disabled="@(!Room.IsHost)"
+                                            @onchange="(e) => OnDropDownOptionChange(dd, e)">
+                                        @for (int i = 0; i < dd.Items.Count; i++)
+                                        {
+                                            <option value="@i">@dd.Items[i]</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- 第八轮 r8-3：玩家附加选项（原版 PlayerExtraOptionsPanel；房主修改经 PEO 广播同步） -->
+                        <div class="cfg-extra-options">
+                            <div class="cfg-self-title">玩家附加选项 <em>EXTRA OPTIONS</em>
+                                <span class="self-spec">@(Room.IsHost ? "房主可改，将同步给全员" : "由房主设置，同步显示")</span>
+                            </div>
+                            <div class="eo-grid">
+                                <label class="gl-check eo-check">
+                                    <input type="checkbox" checked="@Room.ExtraOptions.IsForceRandomSides"
+                                           disabled="@(!Room.IsHost)" @onchange="OnForceRandomSidesChange" />
+                                    <span>强制随机阵营</span>
+                                </label>
+                                <label class="gl-check eo-check">
+                                    <input type="checkbox" checked="@Room.ExtraOptions.IsForceRandomColors"
+                                           disabled="@(!Room.IsHost)" @onchange="OnForceRandomColorsChange" />
+                                    <span>强制随机颜色</span>
+                                </label>
+                                <label class="gl-check eo-check">
+                                    <input type="checkbox" checked="@Room.ExtraOptions.IsForceRandomStarts"
+                                           disabled="@(!Room.IsHost)" @onchange="OnForceRandomStartsChange" />
+                                    <span>强制随机出生点</span>
+                                </label>
+                                <label class="gl-check eo-check">
+                                    <input type="checkbox" checked="@Room.ExtraOptions.IsForceNoTeams"
+                                           disabled="@(!Room.IsHost || Room.ExtraOptions.IsUseTeamStartMappings)"
+                                           @onchange="OnForceNoTeamsChange" />
+                                    <span>强制无队伍</span>
+                                </label>
+                                <label class="gl-check eo-check">
+                                    <input type="checkbox" checked="@Room.ExtraOptions.IsUseTeamStartMappings"
+                                           disabled="@(!Room.IsHost || !Room.TeamStartMappingsAllowed)"
+                                           @onchange="OnUseTeamStartMappingsChange" />
+                                    <span>自动结盟</span>
+                                </label>
+                            </div>
+                            @if (Room.ExtraOptions.IsUseTeamStartMappings)
+                            {
+                                <div class="eo-ally">
+                                    <div class="eo-ally-head">
+                                        <label>预设</label>
+                                        <select class="gl-select eo-preset" value="0"
+                                                disabled="@(!Room.IsHost || Room.TeamStartMappingPresets.Count == 0)"
+                                                @onchange="OnAutoAllyPresetChange">
+                                            <option value="0">自定义</option>
+                                            @for (int p = 0; p < Room.TeamStartMappingPresets.Count; p++)
+                                            {
+                                                <option value="@(p + 1)">@Room.TeamStartMappingPresets[p].Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="eo-mappings">
+                                        @for (int st = 1; st <= Room.MaxPlayers; st++)
+                                        {
+                                            var teamValue = GetExtraMappingTeam(st);
+                                            <div class="eo-map-cell">
+                                                <span class="eo-map-idx">@st</span>
+                                                <select class="gl-select eo-map-sel" value="@teamValue"
+                                                        disabled="@(!Room.IsHost || !Room.AllowedTeamStartMappingLocations.Contains(st))"
+                                                        @onchange="(e) => OnExtraMappingChange(st, e)">
+                                                    @foreach (var opt in ExtraMappingTeamOptions)
+                                                    {
+                                                        <option value="@opt.Value">@opt.Label</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </section>
 
@@ -266,11 +526,11 @@ else
                                     {
                                         <span class="cm-time">@m.DateTime.ToString("HH:mm")</span>
                                         <span class="cm-name" style="color:@ToCss(m.Color)">@m.SenderName</span>
-                                        <span class="cm-text">@m.Message</span>
+                                        <span class="cm-text"><ChatText Text="@m.Message" /></span>
                                     }
                                     else
                                     {
-                                        <span class="cm-sys">@m.Message</span>
+                                        <span class="cm-sys"><ChatText Text="@m.Message" /></span>
                                     }
                                 </div>
                             }
@@ -286,13 +546,120 @@ else
             </div>
         }
     </div>
+
+    @if (_menuOpen && _menuPlayer is not null)
+    {
+        <div class="ctx-backdrop" @onclick="CloseContextMenu" @oncontextmenu="CloseContextMenu"
+             @oncontextmenu:preventDefault="true"></div>
+        <div class="ctx-menu pop-in" style="left:@(_menuX)px;top:@(_menuY)px"
+             @onmousedown:stopPropagation="true" @oncontextmenu:stopPropagation="true">
+            <div class="ctx-title">@_menuPlayer.Name</div>
+            <button type="button" class="ctx-item" @onclick="OnRoomPrivateMessage">私聊<span class="en">PM</span></button>
+            <button type="button" class="ctx-item" @onclick="OnRoomToggleFriend">
+                @(LobbySvc.IsFriend(_menuPlayer.Name) ? "取消加友" : "加为好友")<span class="en">FRIEND</span></button>
+            <button type="button" class="ctx-item" @onclick="OnRoomToggleIgnore">
+                @(LobbySvc.IsIgnored(_menuPlayer.Name, Room.GetPlayerIdent(_menuPlayer.Name)) ? "取消屏蔽" : "屏蔽此人")<span class="en">IGNORE</span></button>
+            @if (Room.IsHost && !_menuPlayer.IsSelf)
+            {
+                <div class="ctx-sep"></div>
+                <button type="button" class="ctx-item warn" @onclick="OnRoomKick">
+                    踢出房间<span class="en">KICK</span></button>
+                <button type="button" class="ctx-item warn" @onclick="OnRoomBan">
+                    封禁<span class="en">BAN</span></button>
+            }
+        </div>
+    }
+
+    <!-- 隧道选择窗口（原版 TunnelSelectionWindow：名称/负载/延迟列表，点击即选） -->
+    @if (_tunnelOpen)
+    {
+        <div class="ctx-backdrop" @onclick="CloseTunnelDialog"></div>
+        <div class="cr-panel tunnel-panel pop-in">
+            <div class="cr-head">
+                <span>选择隧道服务器</span>
+                <span class="cr-en">SELECT TUNNEL</span>
+                <button type="button" class="gop-close" @onclick="CloseTunnelDialog" title="关闭">✕</button>
+            </div>
+            <div class="tunnel-list">
+                @for (int i = 0; i < Room.Tunnels.Count; i++)
+                {
+                    var t = Room.Tunnels[i];
+                    var sel = Room.CurrentTunnel is not null
+                        && string.Equals(t.Address, Room.CurrentTunnel.Address, StringComparison.OrdinalIgnoreCase)
+                        && t.Port == Room.CurrentTunnel.Port;
+                    <button type="button" class="tunnel-item @(sel ? "sel" : "")" @onclick="() => OnTunnelPick(t)">
+                        <span class="t-flag">@t.CountryCode</span>
+                        <span class="t-name">@(t.Official ? "◈ " : t.Recommended ? "◇ " : "")@t.Name</span>
+                        <span class="t-meta">@t.Clients/@t.MaxClients</span>
+                        <span class="t-ping">@(t.PingInMs > -1 ? t.PingInMs + "ms" : "—")</span>
+                    </button>
+                }
+                @if (Room.Tunnels.Count == 0)
+                {
+                    <div class="tunnel-empty">隧道列表加载中，请稍候…</div>
+                }
+            </div>
+            <div class="cr-actions">
+                <button type="button" class="mb-btn primary" @onclick="CloseTunnelDialog">
+                    确定<span class="en">OK</span>
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- 邀请玩家对话框（第六轮补缺：房主/成员邀请大厅在线玩家加入本局，原版 GlobalContextMenu「Invite」） -->
+    @if (_inviteOpen)
+    {
+        <div class="ctx-backdrop" @onclick="CloseInviteDialog"></div>
+        <div class="cr-panel invite-panel pop-in">
+            <div class="cr-head">
+                <span>邀请玩家加入游戏</span>
+                <span class="cr-en">INVITE PLAYER</span>
+                <button type="button" class="gop-close" @onclick="CloseInviteDialog" title="关闭">✕</button>
+            </div>
+            <div class="invite-list">
+                @foreach (var u in InviteCandidates)
+                {
+                    <button type="button" class="invite-item" @onclick="() => OnInviteUser(u)">
+                        <span class="i-name">@u.Name</span>
+                        <span class="i-go">邀请 ›</span>
+                    </button>
+                }
+                @if (InviteCandidates.Count() == 0)
+                {
+                    <div class="invite-empty">没有可邀请的在线玩家（已排除房间内成员与你自己）。</div>
+                }
+            </div>
+            <div class="cr-actions">
+                <button type="button" class="mb-btn primary" @onclick="CloseInviteDialog">
+                    关闭<span class="en">CLOSE</span>
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- 游戏选项预设对话框（原版 LoadOrSaveGameOptionPresetWindow；仅房主可存/取） -->
+    <GameOptionPresetDialog Options="Room.GameOptions"
+                            Visible="@_presetOpen"
+                            OnClose="ClosePresetDialog"
+                            OnPresetApplied="OnPresetApplied" />
 }
 
 @code {
     private const int MAX_VISIBLE_MESSAGES = 300;
 
+    // 2-2 玩家槽位右键菜单（原版 GlobalContextMenu）
+    private bool _menuOpen;
+    private RoomPlayerState? _menuPlayer;
+    private int _menuX;
+    private int _menuY;
+
+    // 第六轮补缺：邀请玩家对话框
+    private bool _inviteOpen;
+
     private string _draft = string.Empty;
     private string _roomNameDraft = string.Empty;
+    private string _passwordDraft = string.Empty;
     private ElementReference _chatEnd;
     private bool _scrollToBottom;
     private int _lastMessageCount;
@@ -353,6 +720,129 @@ else
             ? SkillLevels[Room.SkillLevel]
             : SkillLevels.FirstOrDefault() ?? "—";
 
+    // ── 地图下载（P1：加入者缺图提示条） ──
+
+    private string DownloadStateText =>
+        Room.DownloadState switch
+        {
+            MapDownloadState.Prompt => "点击「下载地图」从 CnCNet 地图库获取此地图。",
+            MapDownloadState.Downloading => "正在从 CnCNet 地图库下载，请稍候…",
+            MapDownloadState.Failed => "下载失败。可重试，或请房主更换地图。",
+            MapDownloadState.Complete => "地图已下载并自动选中。",
+            MapDownloadState.Disabled => "地图共享已禁用，无法自动获取；请让房主更换地图。",
+            _ => string.Empty
+        };
+
+    private string DownloadStateCss =>
+        Room.DownloadState switch
+        {
+            MapDownloadState.Downloading => "busy",
+            MapDownloadState.Failed => "fail",
+            MapDownloadState.Disabled => "off",
+            MapDownloadState.Complete => "ok",
+            _ => "idle"
+        };
+
+    private void OnDownloadMissingMap()
+    {
+        try
+        {
+            Room.DownloadMissingMap();
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    // ── 2-2 玩家槽位右键菜单（原版 GlobalContextMenu） ──
+
+    private void OpenPlayerMenu(RoomPlayerState player, MouseEventArgs e)
+    {
+        if (player.IsSelf)
+            return;
+        _menuPlayer = player;
+        _menuX = (int)e.ClientX;
+        _menuY = (int)e.ClientY;
+        _menuOpen = true;
+    }
+
+    private void CloseContextMenu() => _menuOpen = false;
+
+    // ── 第六轮补缺：邀请玩家加入本局（原版 GlobalContextMenu「Invite」，INVITE 私有 CTCP） ──
+
+    /// <summary>可邀请候选：全局在线玩家，排除自己与房间内成员（原版 GetIrcUser 在线判定）。</summary>
+    private IEnumerable<IRCUser> InviteCandidates
+    {
+        get
+        {
+            var inRoom = new HashSet<string>(Room.Players.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
+            inRoom.Add(ProgramConstants.PLAYERNAME);
+            return LobbySvc.OnlineUsers
+                .Where(u => !inRoom.Contains(u.Name))
+                .OrderBy(u => u.Name, StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private void OpenInviteDialog() => _inviteOpen = true;
+
+    private void CloseInviteDialog() => _inviteOpen = false;
+
+    private void OnInviteUser(IRCUser user)
+    {
+        CloseInviteDialog();
+        Room.InvitePlayer(user.Name);
+        _ = JS.InvokeVoidAsync("cncnet.toast", $"已向 {user.Name} 发送游戏邀请");
+    }
+
+    private void OnRoomPrivateMessage()
+    {
+        var name = _menuPlayer?.Name;
+        CloseContextMenu();
+        if (name is null)
+            return;
+        // 私聊中心位于在线大厅：携带 ?pm=<昵称> 跳转直达
+        Nav.NavigateTo($"/online/lobby?pm={Uri.EscapeDataString(name)}");
+    }
+
+    private void OnRoomToggleFriend()
+    {
+        var name = _menuPlayer?.Name;
+        CloseContextMenu();
+        if (name is null)
+            return;
+        LobbySvc.ToggleFriend(name);
+        _ = JS.InvokeVoidAsync("cncnet.toast",
+            LobbySvc.IsFriend(name) ? $"已将 {name} 加为好友" : $"已取消 {name} 的好友关系");
+    }
+
+    private void OnRoomToggleIgnore()
+    {
+        var name = _menuPlayer?.Name;
+        CloseContextMenu();
+        if (name is null)
+            return;
+        LobbySvc.ToggleIgnore(name, Room.GetPlayerIdent(name));
+        _ = JS.InvokeVoidAsync("cncnet.toast",
+            LobbySvc.IsIgnored(name, Room.GetPlayerIdent(name)) ? $"已屏蔽 {name}" : $"已取消屏蔽 {name}");
+    }
+
+    private void OnRoomKick()
+    {
+        var name = _menuPlayer?.Name;
+        CloseContextMenu();
+        if (name is not null)
+            Room.KickPlayer(name);
+    }
+
+    private void OnRoomBan()
+    {
+        var name = _menuPlayer?.Name;
+        CloseContextMenu();
+        if (name is not null)
+            Room.BanPlayer(name);
+    }
+
     protected override void OnInitialized()
     {
         _colors = LoadColorsSafe();
@@ -362,6 +852,8 @@ else
             _sides = new[] { "GDI", "Nod", "Allies", "Soviet" };
 
         Room.Changed += OnChanged;
+        Room.HostInactiveWarningRequested += OnHostInactiveWarning;
+        Room.PlayerExtraOptionsChanged += OnExtraOptionsChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         MapLoader.MapLoadingComplete += OnMapLoadingComplete;
         RefreshMaps();
@@ -399,6 +891,7 @@ else
         {
             _dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("cncnet.initLobbyKeyNav", _dotNetRef);
+            await JS.InvokeVoidAsync("cncnet.initHostActivityWatcher", _dotNetRef);
         }
         else if (_scrollToBottom && _chatEnd.Id is not null)
         {
@@ -417,7 +910,8 @@ else
                 Room.JoinGame(new LobbyGameItem(
                     join.RoomName, join.HostName, string.Empty, string.Empty, string.Empty,
                     Array.Empty<string>(), Math.Max(2, join.MaxPlayers),
-                    join.Passworded, join.Locked, false, false, join.ChannelName, DateTime.Now),
+                    join.Passworded, join.Locked, false, false, join.ChannelName,
+                    ProgramConstants.GAME_VERSION, DateTime.Now),
                     join.Password);
                 return;
             }
@@ -440,9 +934,26 @@ else
 
     private void RefreshMaps()
     {
-        _mapOptions = MapLoader.GameModeMaps
-            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()))
-            .ToList();
+        IEnumerable<MapOption> query = MapLoader.GameModeMaps
+            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()));
+
+        // 工具条过滤/排序（原版 TbMapSearch_InputReceived / btnShowFavoriteMaps / btnMapSortAlphabetically）
+        if (_favOnly)
+            query = query.Where(o => o.Value.IsFavorite);
+        if (!string.IsNullOrWhiteSpace(_mapSearch))
+        {
+            var kw = _mapSearch.Trim();
+            query = query.Where(o =>
+                o.Value.Map.Name.Contains(kw, StringComparison.OrdinalIgnoreCase) ||
+                o.Value.Map.UntranslatedName.Contains(kw, StringComparison.OrdinalIgnoreCase));
+        }
+        if (_sortMode == 1)
+            query = query.OrderBy(o => o.Display, StringComparer.OrdinalIgnoreCase);
+        else if (_sortMode == 2)
+            query = query.OrderByDescending(o => o.Display, StringComparer.OrdinalIgnoreCase);
+
+        // 过滤/排序后重建索引：select 的 option value 与 SelectedMapIndex 均以列表内位置为准
+        _mapOptions = query.Select((o, i) => o with { Index = i }).ToList();
         _mapGroups = _mapOptions.GroupBy(o => o.Mode)
             .Select(g => new MapGroup(g.Key, g.ToList()))
             .ToList();
@@ -460,7 +971,34 @@ else
         var count = Room.GameChannel?.Messages.Count ?? 0;
         _scrollToBottom = count != _lastMessageCount;
         _lastMessageCount = count;
+        // r9-4：Discord 呈现同步（原版 CnCNetGameLobby 在玩家/设置变化时调用 UpdatePresence；
+        // DiscordHandler.CurrentPresence setter 带相等检查，未变化时不会重复推送）
+        UpdateDiscordPresence();
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>推送当前房间状态到 Discord（未加入房间时退化为默认呈现）。</summary>
+    private void UpdateDiscordPresence()
+    {
+        if (!Room.IsJoined || Room.SelectedMap is null)
+        {
+            Discord.MainMenu();
+            return;
+        }
+
+        Discord.Game(
+            map: Room.SelectedMap.Map.UntranslatedName,
+            mode: Room.SelectedMap.GameMode.UIName,
+            type: "Online",
+            state: "In Lobby",
+            players: Room.Players.Count,
+            maxPlayers: Room.MaxPlayers,
+            side: GetSideName(Self.Side),
+            roomName: Room.RoomName,
+            isHost: Room.IsHost,
+            isPassworded: Room.IsCustomPassword,
+            isLocked: Room.Locked
+        );
     }
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
@@ -489,6 +1027,71 @@ else
         Room.ChangeMap(_mapOptions[index].Value);
     }
 
+    // ── 地图工具条（原版 tbMapSearch / btnShowFavoriteMaps / btnMapSortAlphabetically / btnPickRandomMap） ──
+
+    private string _mapSearch = string.Empty;
+    private bool _favOnly;
+    private int _sortMode; // 0=默认 1=A–Z 2=Z–A
+
+    private static readonly string[] SortModeLabels = { "默认", "A–Z", "Z–A" };
+    private string SortModeLabel => SortModeLabels[Math.Clamp(_sortMode, 0, 2)];
+
+    private void OnMapSearchInput(ChangeEventArgs e)
+    {
+        _mapSearch = e.Value?.ToString() ?? string.Empty;
+        RefreshMaps();
+    }
+
+    private void OnToggleFavOnly()
+    {
+        _favOnly = !_favOnly;
+        RefreshMaps();
+    }
+
+    private void OnCycleSort()
+    {
+        _sortMode = (_sortMode + 1) % 3;
+        RefreshMaps();
+    }
+
+    private void OnPickRandomMap()
+    {
+        if (_mapOptions.Count == 0)
+            return;
+        try
+        {
+            Room.ChangeMap(_mapOptions[Random.Shared.Next(_mapOptions.Count)].Value);
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    // ── 游戏选项预设（原版 LoadOrSaveGameOptionPresetWindow；房主载入后广播 GO） ──
+
+    private bool _presetOpen;
+
+    private void OpenPresetDialog() => _presetOpen = true;
+
+    private void ClosePresetDialog() => _presetOpen = false;
+
+    private void OnPresetApplied(string name) => Room.BroadcastGameOptionsRefresh();
+
+    // ── 隧道选择（原版 btnChangeTunnel → TunnelSelectionWindow → TunnelSelected） ──
+
+    private bool _tunnelOpen;
+
+    private void OpenTunnelDialog() => _tunnelOpen = true;
+
+    private void CloseTunnelDialog() => _tunnelOpen = false;
+
+    private void OnTunnelPick(CnCNetTunnel tunnel)
+    {
+        Room.SelectTunnel(tunnel);
+        CloseTunnelDialog();
+    }
+
     // ── 规则（房主） ──
 
     private void OnRoomNameInput(ChangeEventArgs e) => _roomNameDraft = e.Value?.ToString() ?? string.Empty;
@@ -509,6 +1112,14 @@ else
     }
 
     private void OnToggleLock() => Room.ToggleLock();
+
+    private void OnPasswordInput(ChangeEventArgs e) => _passwordDraft = e.Value?.ToString() ?? string.Empty;
+
+    private void CommitRoomPassword()
+    {
+        Room.SetRoomPassword(_passwordDraft);
+        _passwordDraft = string.Empty;
+    }
 
     // ── 我的配置 ──
 
@@ -533,9 +1144,11 @@ else
     private void SetColor(int colorIndex) =>
         ApplyOwnOptions(Self.Side, colorIndex, Self.Start, Self.Team);
 
-    /// <summary>点击地图预览上的出生点：被他人占用则拒绝，否则分配给自己。</summary>
+    /// <summary>点击地图预览上的出生点：被他人占用则拒绝，否则分配给自己（出生点禁用时忽略点击）。</summary>
     private void OnSpawnClick(int index)
     {
+        if (Room.StartLocationSelectionDisabled)
+            return;
         var sp = SpawnPoints.FirstOrDefault(s => s.Index == index);
         if (sp is null)
             return;
@@ -545,6 +1158,54 @@ else
             return;
         }
         ApplyOwnOptions(Self.Side, Self.Color, index, Self.Team);
+    }
+
+    // ── 观战与 AI 槽位（P1） ──
+
+    private static readonly string[] AiLevels = { "Easy", "Medium", "Hard" };
+
+    /// <summary>自己是否选择了观战（Spectator）阵营。</summary>
+    private bool IsSelfSpectator => IsSpectatorSide(Self.Side);
+
+    /// <summary>指定阵营索引是否为观战（索引 == 真实阵营数量，同 Room.SpectatorSideIndex）。</summary>
+    private bool IsSpectatorSide(int side) => GameRoomService.IsSpectatorSide(side, Room.SideCount);
+
+    private void OnAIAdd()
+    {
+        try
+        {
+            Room.AddAI();
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    private void OnAIRemove(PlayerInfo ai) => Room.RemoveAI(ai);
+
+    private void OnAILevelChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Room.SetAILevel(ai, v);
+    }
+
+    private void OnAISideChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Room.SetAIOption(ai, v, ai.ColorId, ai.StartingLocation, ai.TeamId);
+    }
+
+    private void OnAIStartChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Room.SetAIOption(ai, ai.SideId, ai.ColorId, v, ai.TeamId);
+    }
+
+    private void OnAITeamChange(PlayerInfo ai, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Room.SetAIOption(ai, ai.SideId, ai.ColorId, ai.StartingLocation, v);
     }
 
     private void ApplyOwnOptions(int side, int color, int start, int team)
@@ -584,6 +1245,96 @@ else
         }
     }
 
+    // ── 2-4 游戏选项（复选/下拉；房主修改经 GO 同步，加入者只读展示） ──
+
+    private List<GameSessionCheckBoxOption> CheckBoxOptions =>
+        Room.GameOptions.OfType<GameSessionCheckBoxOption>().ToList();
+
+    private List<GameSessionDropDownOption> DropDownOptions =>
+        Room.GameOptions.OfType<GameSessionDropDownOption>().ToList();
+
+    private void OnCheckBoxOptionChange(GameSessionCheckBoxOption opt, ChangeEventArgs e)
+    {
+        if (!Room.IsHost)
+            return;
+        if (bool.TryParse(e.Value?.ToString(), out bool v))
+            Room.SetCheckBoxOption(opt, v);
+    }
+
+    private void OnDropDownOptionChange(GameSessionDropDownOption dd, ChangeEventArgs e)
+    {
+        if (!Room.IsHost)
+            return;
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Room.SetDropDownOption(dd, v);
+    }
+
+    // ── 玩家附加选项（r8-3：原版 PlayerExtraOptionsPanel，房主修改经 PEO 广播） ──
+
+    /// <summary>附加选项同步（本地修改 / 收到 PEO 广播）后刷新面板。</summary>
+    private void OnExtraOptionsChanged() => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>自动结盟出生点下拉选项（x=阻挡 / -=无 / A..D=队伍，同原版 TeamStartMapping.TEAMS）。</summary>
+    private static List<(string Value, string Label)> ExtraMappingTeamOptions => new()
+    {
+        (TeamStartMapping.NO_PLAYER, "阻挡"),
+        (TeamStartMapping.NO_TEAM, "无队伍"),
+        ("A", "A"),
+        ("B", "B"),
+        ("C", "C"),
+        ("D", "D"),
+    };
+
+    /// <summary>读取指定出生点的自动结盟队伍（未配置回退“无队伍”）。</summary>
+    private string GetExtraMappingTeam(int start)
+    {
+        var mapping = Room.ExtraOptions.TeamStartMappings.FirstOrDefault(m => m.Start == start);
+        return mapping?.Team ?? TeamStartMapping.NO_TEAM;
+    }
+
+    private void OnForceRandomSidesChange(ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value?.ToString(), out bool v))
+            Room.SetForceRandomSides(v);
+    }
+
+    private void OnForceRandomColorsChange(ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value?.ToString(), out bool v))
+            Room.SetForceRandomColors(v);
+    }
+
+    private void OnForceRandomStartsChange(ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value?.ToString(), out bool v))
+            Room.SetForceRandomStarts(v);
+    }
+
+    private void OnForceNoTeamsChange(ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value?.ToString(), out bool v))
+            Room.SetForceNoTeams(v);
+    }
+
+    private void OnUseTeamStartMappingsChange(ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value?.ToString(), out bool v))
+            Room.SetUseTeamStartMappings(v);
+    }
+
+    /// <summary>应用选中的预设：下拉第 0 项为 Custom（自定义），其后依次为地图预设；应用后回到 Custom。</summary>
+    private void OnAutoAllyPresetChange(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int v) || v <= 0)
+            return;
+        Room.ApplyTeamStartMappingPreset(v - 1);
+    }
+
+    private void OnExtraMappingChange(int start, ChangeEventArgs e)
+    {
+        Room.SetTeamStartMapping(start, e.Value?.ToString() ?? TeamStartMapping.NO_TEAM);
+    }
+
     // ── 房间聊天 ──
 
     private void OnDraftInput(ChangeEventArgs e) => _draft = e.Value?.ToString() ?? string.Empty;
@@ -619,14 +1370,39 @@ else
 
     private static string ToCss(Rgba32 color) => $"rgb({color.R},{color.G},{color.B})";
 
+    /// <summary>房主不活跃警告（原版 GameHostInactiveChecker 弹框"Are you still here?"，确认后重置计时）。
+    /// 事件类型为 <see cref="Action"/>，故用 async void 订阅。</summary>
+    private async void OnHostInactiveWarning()
+    {
+        if (!Room.IsHost || !Room.IsInGameRoom)
+            return;
+        var ok = await MessageBox.ShowAsync(
+            "你还在吗？",
+            "由于长时间无操作，你的游戏房间可能被关闭。",
+            MessageBoxButtons.Ok, MessageBoxKind.Warn);
+        if (ok)
+            Room.ResetHostActivity();
+    }
+
+    /// <summary>页面级 mousemove/keydown 活动上报（app.js initHostActivityWatcher 节流回调）。</summary>
+    [JSInvokable]
+    public Task OnHostActivity()
+    {
+        Room.ResetHostActivity();
+        return Task.CompletedTask;
+    }
+
     public void Dispose()
     {
         Room.Changed -= OnChanged;
+        Room.HostInactiveWarningRequested -= OnHostInactiveWarning;
+        Room.PlayerExtraOptionsChanged -= OnExtraOptionsChanged;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
         if (_dotNetRef is not null)
         {
             _ = JS.InvokeVoidAsync("cncnet.disposeLobbyKeyNav");
+            _ = JS.InvokeVoidAsync("cncnet.disposeHostActivityWatcher");
             _dotNetRef.Dispose();
             _dotNetRef = null;
         }

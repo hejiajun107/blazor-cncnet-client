@@ -18,7 +18,7 @@ namespace CnCNetClient.Core
 
         public static readonly string StartupPath = SafePath.CombineDirectoryPath(new FileInfo(StartupExecutable).Directory.FullName);
 
-        public static readonly string GamePath = SafePath.CombineDirectoryPath(GetGamePath(StartupPath));
+        public static string GamePath = SafePath.CombineDirectoryPath(GetGamePath(StartupPath));
 
         public static string ClientUserFilesPath => SafePath.CombineDirectoryPath(GamePath, "Client");
 
@@ -116,14 +116,16 @@ namespace CnCNetClient.Core
         public static string LogFileName { get; set; }
 
         /// <summary>
-        /// This method finds the "Resources" directory by traversing the directory tree upwards from the startup path.
+        /// This method finds the "Resources" directory by traversing the directory tree upwards from the startup path,
+        /// and returns the parent directory (the game root) if found.
         /// </summary>
         /// <remarks>
-        /// This method is needed by both CnCNetClient.Core and DXMainClient. However, since it is usually called at the very beginning,
-        /// where DXMainClient could not refer to CnCNetClient.Core, this method is copied to both projects.
-        /// Remember to keep <see cref="CnCNetClient.Core.ProgramConstants.SearchResourcesDir"/> and <see cref="DTAClient.Program.SearchResourcesDir"/> consistent if you have modified its source codes.
+        /// 资源定位的唯一权威实现：UI 层 <c>EnvironmentCheck</c> 与 Integration 的
+        /// <c>IAssetPathProvider</c> 均复用本方法，避免多份相似实现漂移。
         /// </remarks>
-        private static string SearchResourcesDir(string startupPath)
+        /// <param name="startupPath">启动目录（可执行文件所在目录）。</param>
+        /// <returns>游戏根目录；未找到 Resources 目录时返回 null。</returns>
+        public static string FindGamePath(string startupPath)
         {
             DirectoryInfo currentDir = new(startupPath);
             for (int i = 0; i < 3; i++)
@@ -133,12 +135,12 @@ namespace CnCNetClient.Core
 
                 // Determine if currentDir is the "Resources" folder
                 if (string.Equals(currentDir.Name, "Resources", StringComparison.OrdinalIgnoreCase))
-                    return currentDir.FullName;
+                    return currentDir.Parent?.FullName;
 
                 // Additional check. This makes developers to debug the client inside Visual Studio a little bit easier.
                 DirectoryInfo resourcesDir = currentDir.GetDirectories("Resources", SearchOption.TopDirectoryOnly).FirstOrDefault();
                 if (resourcesDir is not null)
-                    return resourcesDir.FullName;
+                    return resourcesDir.Parent?.FullName;
 
                 currentDir = currentDir.Parent;
             }
@@ -148,13 +150,10 @@ namespace CnCNetClient.Core
 
         private static string GetGamePath(string startupPath)
         {
-            string resourceDir = SearchResourcesDir(startupPath);
-            // 未找到 Resources 目录时回退到启动目录，避免类型初始化器抛异常（TypeInitializationException 会被 CLR 永久缓存）。
+            // FindGamePath 返回游戏根目录（Resources 的父目录）；未找到时回退启动目录，
+            // 避免类型初始化器抛异常（TypeInitializationException 会被 CLR 永久缓存）。
             // 资源缺失由 EnvironmentCheck 软提示，不再使整个 ProgramConstants 类型失效。
-            if (resourceDir is null)
-                return startupPath;
-
-            return new DirectoryInfo(resourceDir).Parent.FullName;
+            return FindGamePath(startupPath) ?? startupPath;
         }
     }
 }

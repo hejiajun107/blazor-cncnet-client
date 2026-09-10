@@ -85,49 +85,11 @@ namespace BlazorCncnetClient.Infrastructure
         // ── 游戏选项（G7：复选/下拉，[GameOptions] 持久化 + spawn.ini/地图代码应用） ──
 
         /// <summary>
-        /// 遭遇战游戏选项（复选 + 下拉）。数据源为原版 GameLobbyBase.ini（SkirmishLobby 继承之）：
-        /// 12 个复选框（左列 ShortGame..MultiEngineer，右列 IngameAllying..NoSpawnPreview）
-        /// + 2 个可用下拉（cmbCredits / cmbStartingUnits；cmbTechLevel 原版 Enabled=no、cmbGameSpeedCap 无 Items，故不移植）。
+        /// 遭遇战游戏选项（复选 + 下拉）。定义见 <see cref="GameSessionOption.CreateDefaultGameOptions"/>
+        /// （与原版 GameLobbyBase.ini 一致，与在线房间共用同一集合）。
         /// 状态随 SkirmishSettings.ini [GameOptions] 节持久化，并在生成 spawn.ini 时写入 / 应用地图代码。
         /// </summary>
-        public IReadOnlyList<GameSessionOption> GameOptions { get; } = CreateDefaultGameOptions();
-
-        private static List<GameSessionOption> CreateDefaultGameOptions()
-        {
-            var options = new List<GameSessionOption>
-            {
-                // 左列复选框：直接写 spawn.ini [Settings]
-                new GameSessionCheckBoxOption("chkShortGame", "Short Game", spawnIniOption: "ShortGame", defaultChecked: true),
-                new GameSessionCheckBoxOption("chkRedeplMCV", "MCV Repacks", spawnIniOption: "MCVRedeploy", defaultChecked: true),
-                new GameSessionCheckBoxOption("chkSuperWeapons", "Superweapons", spawnIniOption: "Superweapons", defaultChecked: false),
-                new GameSessionCheckBoxOption("chkCrates", "Crates Appear", spawnIniOption: "Crates", defaultChecked: false),
-                new GameSessionCheckBoxOption("chkBuildOffAlly", "Build Off Allies", spawnIniOption: "BuildOffAlly", defaultChecked: true),
-                new GameSessionCheckBoxOption("chkMultiEngineer", "Multi Engineer", spawnIniOption: "MultiEngineer", defaultChecked: false),
-
-                // 右列复选框：多数仅应用地图代码（CustomIniPath）；StolenTech/NavalCombat/DestroyableBridges 为 Reversed
-                new GameSessionCheckBoxOption("chkIngameAllying", "Ingame Allying",
-                    spawnIniOption: "AlliesAllowed", customIniPath: "INI/Game Options/AlliesAllowed.ini", defaultChecked: true),
-                new GameSessionCheckBoxOption("chkStolenTech", "Stolen Tech",
-                    customIniPath: "INI/Game Options/StolenTech.ini", reversed: true, defaultChecked: true),
-                new GameSessionCheckBoxOption("chkNavalCombat", "Naval Combat",
-                    customIniPath: "INI/Game Options/NavalCombat.ini", reversed: true, defaultChecked: true),
-                new GameSessionCheckBoxOption("chkDestroyableBridges", "Destroyable Bridges",
-                    customIniPath: "INI/Game Options/DestroyableBridges.ini", reversed: true, defaultChecked: true),
-                new GameSessionCheckBoxOption("chkBrutalAI", "Brutal AI",
-                    customIniPath: "INI/Game Options/BrutalAI.ini", defaultChecked: false),
-                new GameSessionCheckBoxOption("chkNoSpawnPreview", "No Spawn Previews",
-                    customIniPath: "INI/Game Options/NoSpawnPreview.ini", defaultChecked: true),
-
-                // 下拉框：值写入 spawn.ini [Settings]
-                new GameSessionDropDownOption("cmbCredits", "Starting Credits",
-                    new[] { "50000", "45000", "40000", "35000", "30000", "25000", "20000", "15000", "10000" },
-                    defaultIndex: 7, spawnIniOption: "Credits", writeMode: GameOptionWriteMode.String),
-                new GameSessionDropDownOption("cmbStartingUnits", "Starting Units",
-                    new[] { "10", "9", "8", "7", "6", "5", "4", "3", "2", "1", "0" },
-                    defaultIndex: 10, spawnIniOption: "UnitCount", writeMode: GameOptionWriteMode.String),
-            };
-            return options;
-        }
+        public IReadOnlyList<GameSessionOption> GameOptions { get; } = GameSessionOption.CreateDefaultGameOptions();
 
         /// <summary>设置复选框游戏选项状态（仅接受 GameOptions 中的选项，避免外部对象）。</summary>
         public void SetCheckBoxOption(GameSessionCheckBoxOption option, bool isChecked)
@@ -749,6 +711,16 @@ namespace BlazorCncnetClient.Infrastructure
                     string.IsNullOrEmpty(modeName)
                     || string.Equals(g.GameMode.Name, modeName, StringComparison.OrdinalIgnoreCase));
         }
+
+        /// <summary>清除当前地图选择（删除自定义地图且其为当前选中图时调用，同原版删除后重选语义）。</summary>
+        public void ClearSelectedMap()
+        {
+            SelectedMap = null;
+            NotifyChanged();
+        }
+
+        /// <summary>游戏选项预设载入后通知 UI 刷新（同原版 LoadGameOptionPreset 后的变更通知）。</summary>
+        public void NotifyGameOptionsChanged() => NotifyChanged();
 
         /// <summary>按 AI 序号取默认名称（AI 难度命名，与原版一致）。</summary>
         private static string GetAIName(int index) =>

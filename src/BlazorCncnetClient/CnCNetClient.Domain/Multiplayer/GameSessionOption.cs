@@ -62,6 +62,49 @@ public abstract class GameSessionOption
 
     /// <summary>从持久化值恢复状态（读取 [GameOptions] 节；无效值保留当前状态）。</summary>
     public abstract void SetPersistedValue(string value);
+
+    /// <summary>
+    /// 默认游戏选项集合（遭遇战 / 在线房间共用，与原版 GameLobbyBase.ini 一致）：
+    /// 12 个复选框（左列 ShortGame..MultiEngineer，右列 IngameAllying..NoSpawnPreview）
+    /// + 2 个可用下拉（cmbCredits / cmbStartingUnits；cmbTechLevel 原版 Enabled=no、cmbGameSpeedCap 无 Items，故不移植）。
+    /// 复选框顺序即 GO 协议位掩码顺序（<c>GetGameOptionsCode</c>），房主与加入者两端口径必须一致。
+    /// </summary>
+    public static List<GameSessionOption> CreateDefaultGameOptions()
+    {
+        var options = new List<GameSessionOption>
+        {
+            // 左列复选框：直接写 spawn.ini [Settings]
+            new GameSessionCheckBoxOption("chkShortGame", "Short Game", spawnIniOption: "ShortGame", defaultChecked: true),
+            new GameSessionCheckBoxOption("chkRedeplMCV", "MCV Repacks", spawnIniOption: "MCVRedeploy", defaultChecked: true),
+            new GameSessionCheckBoxOption("chkSuperWeapons", "Superweapons", spawnIniOption: "Superweapons", defaultChecked: false),
+            new GameSessionCheckBoxOption("chkCrates", "Crates Appear", spawnIniOption: "Crates", defaultChecked: false),
+            new GameSessionCheckBoxOption("chkBuildOffAlly", "Build Off Allies", spawnIniOption: "BuildOffAlly", defaultChecked: true),
+            new GameSessionCheckBoxOption("chkMultiEngineer", "Multi Engineer", spawnIniOption: "MultiEngineer", defaultChecked: false),
+
+            // 右列复选框：多数仅应用地图代码（CustomIniPath）；StolenTech/NavalCombat/DestroyableBridges 为 Reversed
+            new GameSessionCheckBoxOption("chkIngameAllying", "Ingame Allying",
+                spawnIniOption: "AlliesAllowed", customIniPath: "INI/Game Options/AlliesAllowed.ini", defaultChecked: true),
+            new GameSessionCheckBoxOption("chkStolenTech", "Stolen Tech",
+                customIniPath: "INI/Game Options/StolenTech.ini", reversed: true, defaultChecked: true),
+            new GameSessionCheckBoxOption("chkNavalCombat", "Naval Combat",
+                customIniPath: "INI/Game Options/NavalCombat.ini", reversed: true, defaultChecked: true),
+            new GameSessionCheckBoxOption("chkDestroyableBridges", "Destroyable Bridges",
+                customIniPath: "INI/Game Options/DestroyableBridges.ini", reversed: true, defaultChecked: true),
+            new GameSessionCheckBoxOption("chkBrutalAI", "Brutal AI",
+                customIniPath: "INI/Game Options/BrutalAI.ini", defaultChecked: false),
+            new GameSessionCheckBoxOption("chkNoSpawnPreview", "No Spawn Previews",
+                customIniPath: "INI/Game Options/NoSpawnPreview.ini", defaultChecked: true),
+
+            // 下拉框：值写入 spawn.ini [Settings]
+            new GameSessionDropDownOption("cmbCredits", "Starting Credits",
+                new[] { "50000", "45000", "40000", "35000", "30000", "25000", "20000", "15000", "10000" },
+                defaultIndex: 7, spawnIniOption: "Credits", writeMode: GameOptionWriteMode.String),
+            new GameSessionDropDownOption("cmbStartingUnits", "Starting Units",
+                new[] { "10", "9", "8", "7", "6", "5", "4", "3", "2", "1", "0" },
+                defaultIndex: 10, spawnIniOption: "UnitCount", writeMode: GameOptionWriteMode.String),
+        };
+        return options;
+    }
 }
 
 /// <summary>

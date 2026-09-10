@@ -1,0 +1,76 @@
+@using System.Text.RegularExpressions
+@inject ChatLinkService ChatLinks
+
+@* 消息文本渲染：自动识别 http(s)/ftp 链接并渲染为可点击元素（原版 ChatListBox 链接检测 + URLHandler）。
+   点击经 ChatLinkService 做可信域名判定与非可信确认。 *@
+@if (Segments is null)
+{
+    @Text
+}
+else
+{
+    @foreach (var (txt, isLink) in Segments)
+    {
+        @if (isLink)
+        {
+            <a class="chat-link" href="@txt" target="_blank" rel="noopener"
+               @onclick="() => OpenAsync(txt)" @onclick:preventDefault>@txt</a>
+        }
+        else
+        {
+            @txt
+        }
+    }
+}
+
+@code {
+    /// <summary>与 Core <c>StringExtensions.GetLinks</c> 同源正则（原版 ClientCore 链接提取）。</summary>
+    private static readonly Regex UrlRegex = new(@"((http[s]?)|(ftp))\S+", RegexOptions.Compiled);
+
+    private string? _cachedText;
+    private List<(string Text, bool IsLink)>? _segments;
+
+    [Parameter]
+    public string? Text { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.Equals(_cachedText, Text, StringComparison.Ordinal))
+        {
+            _cachedText = Text;
+            _segments = null;
+        }
+    }
+
+    /// <summary>拆分消息为「普通文本 / 链接」段；无链接时返回 null（直接输出原文）。</summary>
+    private List<(string Text, bool IsLink)>? Segments
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_cachedText))
+                return null;
+
+            if (_segments is null)
+            {
+                var list = new List<(string, bool)>();
+                int pos = 0;
+                foreach (Match m in UrlRegex.Matches(_cachedText))
+                {
+                    if (m.Index > pos)
+                        list.Add((_cachedText.Substring(pos, m.Index - pos), false));
+                    list.Add((m.Value.Trim(), true));
+                    pos = m.Index + m.Length;
+                }
+
+                if (pos < _cachedText.Length)
+                    list.Add((_cachedText.Substring(pos), false));
+
+                _segments = list.Count == 0 ? null : list;
+            }
+
+            return _segments;
+        }
+    }
+
+    private Task OpenAsync(string url) => ChatLinks.OpenLinkAsync(url);
+}

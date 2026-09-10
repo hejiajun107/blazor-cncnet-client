@@ -307,7 +307,7 @@ namespace CnCNetClient.Online
 
                 // A message has been succesfully received
                 string msg = encoding.GetString(message, 0, bytesRead);
-                Logger.Log("Message received: " + msg);
+                Logger.Log("Message received: " + SanitizeForLog(msg));
 
                 HandleMessage(msg);
                 timer.Change(30000, 30000);
@@ -543,11 +543,55 @@ namespace CnCNetClient.Online
         #region Handling commands
 
         /// <summary>
+        /// G4 数据安全：IRC 原始消息写日志前脱敏，隐藏可能携带明文凭据的命令参数。
+        /// 覆盖：PASS（连接密码）、JOIN 携带密码、MODE 携带 k（房间密码变更）。
+        /// 仅影响日志输出，不改变消息处理。
+        /// </summary>
+        internal static string SanitizeForLog(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return message;
+
+            int space = message.IndexOf(' ');
+            if (space <= 0)
+                return message;
+
+            string command = message.Substring(0, space);
+            string rest = message.Substring(space + 1);
+
+            if (string.Equals(command, "PASS", StringComparison.OrdinalIgnoreCase))
+                return "PASS [REDACTED]";
+
+            if (string.Equals(command, "JOIN", StringComparison.OrdinalIgnoreCase))
+            {
+                // JOIN <channel> [password]
+                int secondSpace = rest.IndexOf(' ');
+                if (secondSpace > 0)
+                    return command + " " + rest.Substring(0, secondSpace) + " [REDACTED]";
+                return message;
+            }
+
+            if (string.Equals(command, "MODE", StringComparison.OrdinalIgnoreCase))
+            {
+                // MODE <channel> <modes> [password]
+                string[] parts = rest.Split(' ');
+                if (parts.Length >= 3 && parts[1].IndexOf('k', StringComparison.Ordinal) >= 0)
+                {
+                    parts[parts.Length - 1] = "[REDACTED]";
+                    return command + " " + string.Join(" ", parts);
+                }
+                return message;
+            }
+
+            return message;
+        }
+
+        /// <summary>
         /// Checks if a message from the IRC server is a partial or full
         /// message, and handles it accordingly.
         /// </summary>
         /// <param name="message">The message.</param>
-        private void HandleMessage(string message)
+        internal void HandleMessage(string message)
         {
             string msg = overMessage + message;
             overMessage = "";

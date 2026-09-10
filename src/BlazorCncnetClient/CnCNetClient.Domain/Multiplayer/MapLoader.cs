@@ -666,7 +666,11 @@ namespace CnCNetClient.Domain.Multiplayer
         {
             Debug.Assert(!mapPath.EndsWith($".{ClientConfiguration.Instance.MapFileExtension}", StringComparison.InvariantCultureIgnoreCase), $"Unexpected map path {mapPath}. It should not end with the map extension.");
 
-            if (mapPath != mapPath.ToWin32FileName())
+            // mapPath 是相对路径（如 "Maps/Custom/abc"），路径分隔符是合法的，
+            // 仅对最后一段文件名做 WIN32 保留字符校验。
+            string mapFileName = mapPath.Split('/', '\\')[^1];
+
+            if (mapFileName != mapFileName.ToWin32FileName())
             {
                 Logger.Log("LoadCustomMap: Map " + FormattableString.Invariant($"{mapPath}.{ClientConfiguration.Instance.MapFileExtension}") + " contains WIN32API reserved characters!");
 

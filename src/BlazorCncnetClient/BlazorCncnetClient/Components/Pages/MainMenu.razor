@@ -2,14 +2,19 @@
 @implements IDisposable
 @using CnCNetClient.Core
 @using CnCNetClient.Online
+@using CnCNetClient.Updater
+@using CnCNetClient.Domain.Multiplayer.CnCNet
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
+@inject AppExitNotifier ExitNotifier
 @inject ExtrasService Extras
 @inject LoginService Login
 @inject IServiceProvider Services
 @inject UpdateService UpdateSvc
+@inject UiDefinitionService UiDefs
+@inject DiscordPresenceService Discord
 
 <main class="stage">
     <section class="left">
@@ -36,18 +41,25 @@
         </div>
 
         <div class="readout item-in" style="animation-delay:80ms">
-            <div class="ro"><div class="k">在线玩家</div><div class="v" id="r1">1284</div></div>
+            <div class="ro"><div class="k">在线玩家</div><div class="v" id="r1">—</div></div>
             <div class="ro"><div class="k">活跃房间</div><div class="v" id="r2">327</div></div>
             <div class="ro"><div class="k">网络延迟</div><div class="v">23<small>MS</small></div></div>
             <div class="ro"><div class="k">威胁等级</div><div class="v" style="color:var(--gold);text-shadow:0 0 14px rgba(255,176,59,.5)">▲ 低</div></div>
+        </div>
+
+        <!-- r9-1：更新状态链接（原版 lblUpdateStatus：点击检查/查看更新；OUTDATED 跳设置更新页） -->
+        <div class="updstrip item-in" style="animation-delay:140ms">
+            <span class="us-dot @_updateDot"></span>
+            <button type="button" class="us-link" disabled="@_updateBusy" @onclick="OnUpdateStatusClick">@UpdateStatusText</button>
+            <span class="us-ver">v@(UpdateSvc.GameVersion)</span>
         </div>
     </section>
 
     <aside class="panel">
         <div class="ph"><span>指挥菜单</span><span style="font-family:var(--font-orbitron)">MAIN TERMINAL</span></div>
-        @for (var i = 0; i < MenuItems.Length; i++)
+        @for (var i = 0; i < VisibleMenuItems.Length; i++)
         {
-            var m = MenuItems[i];
+            var m = VisibleMenuItems[i];
             <button class="mbtn @(m.IsPrimary ? "primary" : "") item-in"
                     style="animation-delay:@((120 + i * 50).ToString())ms"
                     @onclick="() => OnMenuClick(m)">
@@ -58,9 +70,37 @@
         }
         <div class="pf"><span class="cn">© 2026 CNCNet CLIENT</span><span>ESC · 返回</span></div>
     </aside>
+
+    <!-- 首次运行隐私声明（原版 PrivacyNotification：未接受前每次进主菜单弹出） -->
+    @if (_privacyOpen)
+    {
+        <div class="ctx-backdrop" @onclick="OnPrivacyDismiss"></div>
+        <div class="cr-panel privacy-panel pop-in">
+            <div class="cr-head">
+                <span>隐私声明</span>
+                <span class="cr-en">PRIVACY NOTICE</span>
+                <button type="button" class="gop-close" @onclick="OnPrivacyDismiss" title="关闭">✕</button>
+            </div>
+            <div class="privacy-body">
+                <p>本应用会使用 CnCNet 网页与隧道服务器服务，并可能通过它们收集运行所必需的技术信息与其他必要信息。</p>
+                <div class="privacy-links">
+                    <button type="button" class="link" @onclick='() => OpenPrivacyUrl("https://cncnet.org/terms-and-conditions")'>条款与条件 · Terms</button>
+                    <button type="button" class="link" @onclick='() => OpenPrivacyUrl("https://cncnet.org/privacy-policy")'>隐私政策 · Privacy</button>
+                </div>
+                <p class="sub">使用本应用即表示你同意 CnCNet 条款与条件以及隐私政策。相关选项可在「设置 → 隐私」中配置。</p>
+            </div>
+            <div class="cr-actions">
+                <button type="button" class="mb-btn primary" @onclick="OnPrivacyAccept">
+                    知道了<span class="en">GOT IT</span>
+                </button>
+            </div>
+        </div>
+    }
 </main>
 
 @code {
+    /// <summary>首次运行隐私提示可见性（原版 PrivacyNotification：PrivacyPolicyAccepted 未勾选时显示）。</summary>
+    private bool _privacyOpen;
     private sealed record MenuItem(string Key, string Cn, string En, string Icon, bool IsPrimary = false);
 
     private static readonly MenuItem[] MenuItems =
@@ -73,13 +113,137 @@
         new("lore", "资料库", "Codex / Lore", "❖"),
         new("stats", "统计", "Statistics", "▤"),
         new("settings", "设置", "Settings", "⚙"),
+        new("mapeditor", "地图编辑器", "Map Editor", "▦"),
         new("credits", "鸣谢", "Credits", "✦"),
+        new("extras", "附加功能", "Extras", "＋"),
+        new("exit", "退出", "Exit", "✕"),
     ];
+
+    /// <summary>按 ClientDefinitions.ini [UI] HiddenMenus 过滤后的可见入口（F3）。</summary>
+    private MenuItem[]? _visible;
+    private MenuItem[] VisibleMenuItems =>
+        _visible ??= MenuItems.Where(m => !UiDefs.HiddenMenus.Contains(m.Key)).ToArray();
 
     protected override void OnInitialized()
     {
         // 品牌文案随主题切换刷新（红警 → RED ALERT）
         ThemeProvider.ThemeChanged += OnThemeChanged;
+        // 原版 PrivacyNotification：未接受隐私政策前，每次进入主菜单弹底部提示
+        _privacyOpen = !UserINISettings.Instance.PrivacyPolicyAccepted.Value;
+        // r9-1：CnCNet 在线人数（原版 MainMenu 在初始化时启动 CnCNetPlayerCountTask）
+        CnCNetPlayerCountTask.CnCNetGameCountUpdated += OnPlayerCountUpdated;
+        _playerCountCts = new CancellationTokenSource();
+        CnCNetPlayerCountTask.InitializeService(_playerCountCts);
+        // r9-1：更新状态链接（原版 lblUpdateStatus，启动检查结果由 TryStartupUpdateCheck 触发）
+        UpdateSvc.StateChanged += OnUpdateStateChanged;
+        RefreshUpdateStatus();
+        // r9-4：Discord 呈现恢复为「客户端内」（原版 MainMenu 构造后为默认 In Client）
+        Discord.MainMenu();
+    }
+
+    // ── r9-1：CnCNet 在线人数（原版 CnCNetPlayerCountTask + lblCnCNetPlayerCount） ──
+
+    private CancellationTokenSource? _playerCountCts;
+    private int _onlinePlayers = -1;
+
+    /// <summary>在线人数刷新（后台线程触发，InvokeAsync 编回 UI 上下文后更新 #r1）。</summary>
+    private void OnPlayerCountUpdated(object? sender, PlayerCountEventArgs e)
+    {
+        int n = e.TotalPlayerCount > 0 ? e.TotalPlayerCount : e.PlayerCount;
+        _ = InvokeAsync(() =>
+        {
+            _onlinePlayers = n;
+            _ = JS.InvokeVoidAsync("cncnet.setPlayerCount", n);
+        });
+    }
+
+    // ── r9-1：更新状态链接（原版 lblUpdateStatus 各状态文案与点击行为） ──
+
+    private string UpdateStatusText { get; set; } = "点击检查更新";
+    private bool _updateBusy;
+    private bool _updateOutdated;
+    private string _updateDot = "";
+
+    private void OnUpdateStateChanged() => InvokeAsync(() => { RefreshUpdateStatus(); StateHasChanged(); });
+
+    /// <summary>按 Updater 版本状态刷新链接文案/指示灯（对应原版 HandleFileIdentifierUpdate 的分支）。</summary>
+    private void RefreshUpdateStatus()
+    {
+        _updateOutdated = false;
+        if (!UpdateSvc.IsAvailable)
+        {
+            UpdateStatusText = "更新服务不可用";
+            _updateBusy = false;
+            _updateDot = "";
+            return;
+        }
+
+        switch (UpdateSvc.VersionState)
+        {
+            case VersionState.UPDATECHECKINPROGRESS:
+                UpdateStatusText = "正在检查更新…";
+                _updateBusy = true;
+                _updateDot = "busy";
+                break;
+            case VersionState.UPDATEINPROGRESS:
+                UpdateStatusText = $"正在更新… {UpdateSvc.TotalPercentage}%";
+                _updateBusy = true;
+                _updateDot = "busy";
+                break;
+            case VersionState.OUTDATED:
+                _updateOutdated = true;
+                UpdateStatusText = UpdateSvc.ManualUpdateRequired
+                    ? $"发现新版本 v{UpdateSvc.ServerGameVersion}（需手动下载安装）"
+                    : $"发现新版本 v{UpdateSvc.ServerGameVersion}，点击查看";
+                _updateBusy = false;
+                _updateDot = "warn";
+                break;
+            case VersionState.MISMATCHED:
+                UpdateStatusText = "版本不匹配，点击检查";
+                _updateBusy = false;
+                _updateDot = "warn";
+                break;
+            case VersionState.UNKNOWN:
+                UpdateStatusText = "检查更新失败，点击重试";
+                _updateBusy = false;
+                _updateDot = "err";
+                break;
+            default: // UPTODATE
+                UpdateStatusText = $"已是最新版本 v{UpdateSvc.GameVersion}，点击检查";
+                _updateBusy = false;
+                _updateDot = "ok";
+                break;
+        }
+    }
+
+    /// <summary>点击更新状态链接：有新版本 → 跳设置「更新」页；否则重新检查（同原版 LblUpdateStatus_LeftClick）。</summary>
+    private void OnUpdateStatusClick()
+    {
+        if (_updateBusy)
+            return;
+        if (_updateOutdated)
+        {
+            Nav.NavigateTo("/settings?tab=update");
+            return;
+        }
+        UpdateSvc.CheckForUpdates();
+    }
+
+    // ── 隐私声明（原版 PrivacyNotification：Got it → 写入并保存设置后关闭） ──
+
+    private void OnPrivacyAccept()
+    {
+        UserINISettings.Instance.PrivacyPolicyAccepted.Value = true;
+        UserINISettings.Instance.SaveSettings();
+        _privacyOpen = false;
+    }
+
+    private void OnPrivacyDismiss() => _privacyOpen = false;
+
+    private void OpenPrivacyUrl(string url)
+    {
+        if (Extras.OpenUrl(url) is { } err)
+            _ = JS.InvokeVoidAsync("cncnet.toast", err, "err");
     }
 
     private DotNetObjectReference<MainMenu>? _dotNetRef;
@@ -150,6 +314,10 @@
     public void Dispose()
     {
         ThemeProvider.ThemeChanged -= OnThemeChanged;
+        CnCNetPlayerCountTask.CnCNetGameCountUpdated -= OnPlayerCountUpdated;
+        _playerCountCts?.Cancel();
+        _playerCountCts?.Dispose();
+        UpdateSvc.StateChanged -= OnUpdateStateChanged;
         if (_dotNetRef is not null)
         {
             _ = JS.InvokeVoidAsync("cncnet.disposeMenuKeyNav");
@@ -195,9 +363,36 @@
                 // M4.4 局域网大厅（/lan/lobby）：UDP 广播发现 + 聊天 + 玩家列表
                 Nav.NavigateTo("/lan/lobby");
                 break;
+            case "load":
+                // 加载单机存档（/load，原版 GameLoadingWindow）：Saved Games/*.SAV 列表 → 加载/删除
+                Nav.NavigateTo("/load");
+                break;
             case "credits":
-                // M4.7 附加功能窗（原版 ExtrasWindow）：地图编辑器/更新日志/鸣谢/关于
+                // 鸣谢（原版 btnCredits CreditsWindow 语义）：直接打开鸣谢页面
+                if (Extras.OpenUrl(ClientConfiguration.Instance.CreditsURL) is { } creditsErr)
+                    await JS.InvokeVoidAsync("cncnet.toast", $"无法打开鸣谢：{creditsErr}", "err");
+                break;
+            case "mapeditor":
+                // 直接启动地图编辑器（原版 btnMapEditor：FinalSun 外部进程）
+                if (Extras.LaunchMapEditor() is { } mapErr)
+                    await JS.InvokeVoidAsync("cncnet.toast", $"地图编辑器启动失败：{mapErr}", "err");
+                break;
+            case "extras":
+                // 附加功能窗（原版 btnExtras ExtrasWindow：地图编辑器/更新日志/鸣谢/关于）
                 await Extras.ShowAsync();
+                break;
+            case "stats":
+                // M4.8 统计窗口（/stats，原版 StatisticsWindow）：对局列表 + 总统计
+                Nav.NavigateTo("/stats");
+                break;
+            case "exit":
+                // 退出应用（原版 MainMenu 的 Exit）：确认后先持久化（IAppExitNotifier），再结束进程
+                if (await MessageBox.ShowAsync("退出客户端",
+                        "确定要退出 CNCNet CLIENT 吗？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm))
+                {
+                    ExitNotifier.NotifyExiting();
+                    Environment.Exit(0);
+                }
                 break;
             default:
                 await JS.InvokeVoidAsync("cncnet.toast", $"进入{item.Cn}…");

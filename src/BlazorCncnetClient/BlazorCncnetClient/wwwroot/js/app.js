@@ -22,8 +22,26 @@
 
     /* ── 主题（IThemeProvider 桥接） ───────────────────────────── */
     const THEME_KEY = 'cncnet.theme';
+    let themeUrls = {}; // F1：外部主题（MOD 主题目录）key → theme.css 的 http URL
+    function setThemeUrls(urls) { themeUrls = urls || {}; }
     function applyTheme(key) {
-        document.documentElement.dataset.theme = key;
+        const url = themeUrls[key];
+        let link = document.getElementById('ext-theme');
+        if (url) {
+            // 外部主题：注入 <link> 覆盖设计 tokens，并清除内置 data-theme 以整体换肤
+            document.documentElement.removeAttribute('data-theme');
+            if (!link) {
+                link = document.createElement('link');
+                link.id = 'ext-theme';
+                link.rel = 'stylesheet';
+                document.head.appendChild(link);
+            }
+            link.href = url;
+        } else {
+            if (link) link.remove();
+            if (key && key !== 'menu') document.documentElement.dataset.theme = key;
+            else document.documentElement.removeAttribute('data-theme');
+        }
         try { localStorage.setItem(THEME_KEY, key); } catch (e) { /* 忽略持久化失败 */ }
         // 主题过渡：整体淡入一次（仅 opacity，尊重 reduced-motion）
         const b = document.body;
@@ -108,6 +126,7 @@
         if (REDUCED) return;
 
         function draw(t) {
+            if (!cv.isConnected) return; // M4.9：canvas 已移出 DOM（离开主菜单）即停止 rAF，避免空转
             refreshPalette();
             const W = cw, H = ch, cxp = W / 2, cyp = H / 2, R = Math.min(W, H) * .34;
             cx.clearRect(0, 0, W, H);
@@ -153,18 +172,23 @@
         requestAnimationFrame(draw);
     }
 
-    /* ── 读数模拟（MainMenu #r1/#r2/#lat） ─────────────────────── */
+    /* ── 读数模拟（MainMenu #r2/#lat；#r1 在线人数为 r9-1 真实数据，由 setPlayerCount 写入） ── */
     function initReadout() {
-        const r1 = document.getElementById('r1');
         const r2 = document.getElementById('r2');
         const lat = document.getElementById('lat');
-        if (!r1 || !r2 || !lat) return;
+        if (!r2 || !lat) return;
         if (REDUCED) return;
         setInterval(() => {
-            r1.textContent = (1200 + Math.floor(Math.random() * 300)).toLocaleString();
             r2.textContent = (300 + Math.floor(Math.random() * 60));
             lat.textContent = (16 + Math.floor(Math.random() * 20));
         }, 2400);
+    }
+
+    /* r9-1：CnCNet 在线人数（真实数据，.NET 订阅 CnCNetPlayerCountTask 后写入） */
+    function setPlayerCount(n) {
+        const el = document.getElementById('r1');
+        if (!el) return;
+        el.textContent = n > 0 ? n.toLocaleString() : 'N/A';
     }
 
     /* ── Toast ─────────────────────────────────────────────────── */
@@ -222,5 +246,53 @@
         }
     }
 
-    window.cncnet = { initStars, initGlobe, initReadout, toast, applyTheme, getTheme, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav };
+    /* ── 房主不活跃检测活动上报（原版 MouseMove → Reset；页面级 mousemove/keydown 节流回调） ── */
+    let hostActivityHandler;
+    let hostActivityTimer;
+    function initHostActivityWatcher(dotNetRef) {
+        disposeHostActivityWatcher();
+        hostActivityHandler = () => {
+            if (hostActivityTimer) return;
+            hostActivityTimer = setTimeout(() => {
+                hostActivityTimer = null;
+                dotNetRef.invokeMethodAsync('OnHostActivity');
+            }, 250);
+        };
+        window.addEventListener('mousemove', hostActivityHandler);
+        window.addEventListener('keydown', hostActivityHandler);
+    }
+    function disposeHostActivityWatcher() {
+        if (hostActivityHandler) {
+            window.removeEventListener('mousemove', hostActivityHandler);
+            window.removeEventListener('keydown', hostActivityHandler);
+            hostActivityHandler = null;
+        }
+        if (hostActivityTimer) {
+            clearTimeout(hostActivityTimer);
+            hostActivityTimer = null;
+        }
+    }
+
+    /* ── 复制文本到剪贴板（地图名复制；WebView2 优先 Clipboard API，降级 execCommand） ── */
+    function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+        } else {
+            fallbackCopy(text);
+        }
+    }
+    function fallbackCopy(text) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        } catch (e) { /* 忽略复制失败 */ }
+    }
+
+    window.cncnet = { initStars, initGlobe, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText };
 })();

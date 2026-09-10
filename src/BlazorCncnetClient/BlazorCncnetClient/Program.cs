@@ -47,10 +47,23 @@ namespace BlazorCncnetClient
                     .MinimumLevel.Debug();
             });
 
+            // M5 日志清理：connection.log 无限追加，超限归档重开；logs 下超 14 天日志兜底清除
+            // （须在 Logger.Initialize 之前执行，避免文件句柄冲突）
+            LogCleanup.Run(Path.Combine(AppContext.BaseDirectory, "logs"));
+
             // CnCNetClient 内部 Logger 落盘（连接/网络诊断，与 Serilog 互补；原版 DXMainClient 亦输出 client.log）
             Logger.Initialize(Path.Combine(AppContext.BaseDirectory, "logs"), "connection.log");
             Logger.WriteLogFile = true;
 
+            // M5.2 WebView2 运行时检测：Photino 渲染引擎依赖 WebView2 Runtime，
+            // 先于窗口创建探测，缺失时原生弹窗引导下载后退出，避免创建窗口时才抛晦涩异常。
+            if (!WebView2RuntimeGuard.EnsureAvailable())
+                return;
+
+            InfiniFrameBlazorApp app;
+            AppExitNotifier exitNotifier;
+            try
+            {
             // M4.2 语言切换（spec §6.8，镜像原版 PreStartup）：先记录启动 UI 文化，
             // 供 UserINISettings.Initialize 计算 [Options] Translation 默认值时做系统匹配。
             Translation.InitialUICulture = CultureInfo.CurrentUICulture;
@@ -76,9 +89,13 @@ namespace BlazorCncnetClient
             appBuilder.Services.AddSingleton<IDispatcher>(sp => sp.GetRequiredService<InfiniFrameDispatcher>());
 
             // IAppExitNotifier：应用退出前持久化（替代 windowManager.GameClosing）
-            var exitNotifier = new AppExitNotifier();
+            exitNotifier = new AppExitNotifier();
             appBuilder.Services.AddSingleton(exitNotifier);
             appBuilder.Services.AddSingleton<IAppExitNotifier>(exitNotifier);
+
+            // 资源/路径提供（1.11 spec §4.2C/§6.5）：统一游戏目录定位，UI 层不再复制查找逻辑
+            appBuilder.Services.AddSingleton<CnCNetClient.Integration.Resources.IAssetPathProvider,
+                CnCNetClient.Integration.Resources.ProgramConstantsAssetPathProvider>();
 
             // 启动环境检测（M2.2）：定位游戏资源 + 初始化 ClientConfiguration
             appBuilder.Services.AddSingleton<EnvironmentCheck>();
@@ -86,9 +103,18 @@ namespace BlazorCncnetClient
             // 主题系统（M2.5）：design tokens（CSS 变量）+ IThemeProvider + 运行时切换 + localStorage 持久化
             // 注：scoped 注册，与组件共享同一 WebView 上下文的 IJSRuntime。
             appBuilder.Services.AddScoped<IThemeProvider, ThemeProvider>();
+            // F3：ClientDefinitions.ini [UI] 节 UI 扩展配置（MOD 可定制）
+            appBuilder.Services.AddScoped<UiDefinitionService>();
+            // F2：可替换组件注册表（ClientDefinitions.ini [Components] 覆盖 → 槽位组件类型）
+            appBuilder.Services.AddScoped<ReplaceableComponentService>();
 
             // 全局弹窗（M2.7）：MessageBoxService 驱动 <MessageBox /> 宿主组件，供任意页面 ShowAsync 等待确认
             appBuilder.Services.AddScoped<MessageBoxService>();
+
+            // 启动闪屏（M5 2.3 LoadingScreen）：ClientDefinitions.ini [LoadingScreen] 配置 +
+            // 进程内本地内容服务器（独立文件 URL 加载游戏目录媒体，视频支持 Range，不打包 base64）
+            appBuilder.Services.AddScoped<LoadingScreenService>();
+            appBuilder.Services.AddSingleton<GameContentServer>();
 
             // 全局异常兜底（M2.8）：Serilog 落盘定位崩溃 + 迁移 DisplayErrorAction 语义（MessageBox 呈现错误、exit 时退出）
             appBuilder.Services.AddScoped<GlobalExceptionHandler>();
@@ -98,6 +124,17 @@ namespace BlazorCncnetClient
 
             // 附加功能窗（M4.7）：ExtrasService 驱动 <ExtrasWindow /> 宿主组件（地图编辑器/更新日志/鸣谢/关于）
             appBuilder.Services.AddScoped<ExtrasService>();
+
+            // 聊天链接安全打开（第五轮补缺，原版 URLHandler）：可信域名直开、非可信确认
+            appBuilder.Services.AddScoped<ChatLinkService>();
+
+            // 游戏进程日志收集（第五轮补缺，原版 GameInProgressWindow）：崩溃/同步错误日志归档 + 截图转 PNG；
+            // App.razor 注入实例化以订阅 GameProcessLogic 静态事件
+            appBuilder.Services.AddScoped<GameLogCollector>();
+
+            // Discord Rich Presence（r9-4，原版 DiscordHandler）：包装 DiscordHandler 按页面更新呈现，
+            // 设置页「Discord 集成」开关经 SettingsChanged 运行时启停。
+            appBuilder.Services.AddScoped<DiscordPresenceService>();
 
             // 设置中心（M4.1 spec §5.3/§6.10）：包装 UserINISettings（settings INI），
             // 提供变更即存 Save() 与 SettingsChanged；退出兜底订阅 IAppExitNotifier。
@@ -179,6 +216,13 @@ namespace BlazorCncnetClient
             appBuilder.Services.AddScoped<CampaignService>();
             appBuilder.Services.AddScoped<CampaignLaunchService>();
 
+            // 加载单机存档（原版 GameLoadingWindow）：枚举 Saved Games/*.SAV → 生成加载 spawn.ini → 启动/删除。
+            appBuilder.Services.AddScoped<LoadGameService>();
+
+            // 统计窗口（M4.8 spec §5.3，原版 StatisticsWindow）：包装 StatisticsManager 读取 dscore.dat，
+            // 提供对局列表过滤（类别/模式/观战）、玩家明细、总统计汇总、清空统计，供 /stats 页面读取。
+            appBuilder.Services.AddScoped<StatisticsService>();
+
             // register the root component and selector
             appBuilder.RootComponents.Add<App>("app");
 
@@ -209,7 +253,22 @@ namespace BlazorCncnetClient
                     ;
             });
 
-            InfiniFrameBlazorApp app = appBuilder.Build();
+            app = appBuilder.Build();
+            }
+            catch (Exception ex)
+            {
+                // 启动加固（M5 排查）：窗口创建前的任何初始化失败都不再静默——
+                // 落盘 Serilog + 原生 MessageBoxW 提示（WebView 未就绪只能用原生），再非零退出。
+                Log.Fatal(ex, "客户端启动初始化失败（窗口创建前），已终止启动");
+                NativeMessageBox.Show(
+                    "启动失败",
+                    "客户端初始化失败，无法启动。\r\n\r\n" +
+                    ex.Message +
+                    "\r\n\r\n详细错误已写入日志：logs\\client-*.log",
+                    error: true);
+                Environment.Exit(1);
+                return;
+            }
 
             try
             {

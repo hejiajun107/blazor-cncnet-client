@@ -21,7 +21,8 @@
             <div class="lg-body">
                 <label class="lg-field" for="lg-name">
                     <span class="lg-k">玩家名 <em>PLAYER NAME</em></span>
-                    <input id="lg-name" class="lg-input" maxlength="30" spellcheck="false" autocomplete="off"
+                    <input id="lg-name" class="lg-input @(Service.Error is not null ? "err" : "")"
+                           maxlength="30" spellcheck="false" autocomplete="off"
                            value="@Service.PlayerName" disabled="@Service.IsConnecting"
                            placeholder="昵称（字母/数字/-_，首字符非数字）"
                            @oninput="OnNameInput" @onkeydown="OnNameKeyDown" />

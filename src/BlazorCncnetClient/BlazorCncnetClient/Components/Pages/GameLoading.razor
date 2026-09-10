@@ -7,6 +7,7 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject MessageBoxService MessageBox
+@inject DiscordPresenceService Discord
 
 @if (!Room.IsInGameRoom)
 {
@@ -65,6 +66,21 @@ else
 
     protected override void OnInitialized()
     {
+        // r9-4：Discord 呈现「游戏加载中」（原版 GameLoadingLobbyBase 在窗口打开时推送）
+        if (Room.IsInGameRoom && Room.SelectedMap is not null)
+        {
+            Discord.GameLoading(
+                map: Room.SelectedMap.Map.UntranslatedName,
+                mode: Room.SelectedMap.GameMode.UIName,
+                type: "Online",
+                state: "Playing",
+                players: Room.Players.Count,
+                maxPlayers: Room.MaxPlayers,
+                roomName: Room.RoomName,
+                isHost: Room.IsHost
+            );
+        }
+
         // 对局进行中计时显示；每秒刷新一次（动效仅文本，尊重 reduced-motion 由 .gload 动画处理）
         _timer = new Timer(_ => InvokeAsync(() =>
         {

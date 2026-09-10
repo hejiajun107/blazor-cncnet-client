@@ -1,0 +1,80 @@
+@implements IDisposable
+@using System.Linq
+@using CnCNetClient.Core
+@inject LobbyService LobbySvc
+@inject GameRoomService Room
+@inject GameRoomNavigation NavData
+@inject NavigationManager Nav
+@inject MessageBoxService MessageBox
+
+@* 全局游戏邀请条（第六轮补缺，原版 ChoiceNotificationBox 的邀请场景：顶部滑入，接受/拒绝）。
+   由 MainLayout 挂载，任意页面收到 INVITE 私有 CTCP 都弹条；接受后离开当前房间并导航加入。 *@
+@if (_invitation is not null)
+{
+    <div class="inv-toast pop-in" role="alertdialog" aria-label="游戏邀请">
+        <div class="inv-head">
+            <span>游戏邀请</span>
+            <span class="en">GAME INVITATION</span>
+        </div>
+        <div class="inv-body">
+            <span class="inv-sender">@_invitation.Sender</span>
+            <span class="inv-text">邀请你加入「@_invitation.GameName」，是否接受？</span>
+        </div>
+        <div class="inv-actions">
+            <button type="button" class="mb-btn primary" @onclick="Accept">接受<span class="en">YES</span></button>
+            <button type="button" class="mb-btn" @onclick="Decline">拒绝<span class="en">NO</span></button>
+        </div>
+    </div>
+}
+
+@code {
+    private GameInvitation? _invitation;
+
+    protected override void OnInitialized() => LobbySvc.GameInvitationReceived += OnInvitationReceived;
+
+    private void OnInvitationReceived(GameInvitation inv)
+    {
+        _invitation = inv;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Close()
+    {
+        if (_invitation is null)
+            return;
+        LobbySvc.DismissInvitation(_invitation.Sender, _invitation.ChannelName);
+        _invitation = null;
+    }
+
+    private void Decline() => Close();
+
+    private async Task Accept()
+    {
+        var inv = _invitation;
+        Close();
+        if (inv is null)
+            return;
+
+        var game = LobbySvc.Games.FirstOrDefault(g =>
+            string.Equals(g.ChannelName, inv.ChannelName, StringComparison.OrdinalIgnoreCase));
+        if (game is null)
+        {
+            await MessageBox.ShowAsync(
+                "无法加入".L10N(UIStrings.KeyPrefix + "Chat.JoinFailedTitle"),
+                $"「{inv.GameName}」已关闭或在大厅不可见，无法接受邀请。",
+                MessageBoxButtons.Ok, MessageBoxKind.Error);
+            return;
+        }
+
+        // 原版接受邀请前先离开当前房间（LeaveGameLobby）
+        if (Room.IsInGameRoom)
+            Room.LeaveGame();
+
+        NavData.PendingJoin = new GameJoinRequest(
+            game.RoomName, game.HostName, game.ChannelName, game.MaxPlayers,
+            game.Passworded, game.Locked, inv.Password.Length > 0 ? inv.Password : null);
+        Nav.NavigateTo("/online/game");
+    }
+
+    public void Dispose() => LobbySvc.GameInvitationReceived -= OnInvitationReceived;
+}

@@ -1,0 +1,185 @@
+@namespace BlazorCncnetClient.Components.Shared
+@using CnCNetClient.Domain.Multiplayer
+@inject IJSRuntime JS
+@inject MessageBoxService MessageBox
+
+@* 游戏选项预设对话框（原版 LoadOrSaveGameOptionPresetWindow：载入 / 保存 / 删除）。
+   遭遇战与在线房间共用；保存时把当前选项集合写入 GameOptionsPresets.ini，
+   载入时按选项名回填（同原版 AddGameOptionPreset / LoadGameOptionPreset）。 *@
+@if (Visible)
+{
+    <div class="ctx-backdrop" @onclick="OnClose" @oncontextmenu="OnClose" @oncontextmenu:preventDefault="true"></div>
+    <div class="cr-panel gop-panel pop-in">
+        <div class="cr-head">
+            <span>@(_isLoad ? "载入预设" : "保存预设")</span>
+            <span class="cr-en">GAME OPTION PRESET</span>
+            <button type="button" class="gop-close" @onclick="OnClose" title="关闭">✕</button>
+        </div>
+        <div class="gop-mode">
+            <button type="button" class="mb-btn @(_isLoad ? "primary" : "")" @onclick="() => SetMode(true)">
+                载入<span class="en">LOAD</span>
+            </button>
+            <button type="button" class="mb-btn @(!_isLoad ? "primary" : "")" @onclick="() => SetMode(false)">
+                保存<span class="en">SAVE</span>
+            </button>
+        </div>
+        <div class="cr-field">
+            <span>预设名称</span>
+            <select class="gl-select" value="@_selectedPreset" @onchange="OnPresetChange">
+                <option value="">@(_isLoad ? "[选择预设]" : "[新建预设]")</option>
+                @foreach (var name in _presetNames)
+                {
+                    <option value="@name">@name</option>
+                }
+            </select>
+        </div>
+        @if (!_isLoad)
+        {
+            <div class="cr-field">
+                <span>新预设名</span>
+                <input class="gl-input" maxlength="40" value="@_newName" @oninput="OnNewNameInput"
+                       placeholder="命名当前选项并保存（可选覆盖已选预设）" />
+            </div>
+        }
+        <div class="cr-actions">
+            <button type="button" class="mb-btn primary" disabled="@(!CanAct)" @onclick="OnAct">
+                @(_isLoad ? "载入" : "保存")<span class="en">@(_isLoad ? "LOAD" : "SAVE")</span>
+            </button>
+            <button type="button" class="mb-btn danger" disabled="@(!CanDelete)" @onclick="OnDelete">
+                删除<span class="en">DELETE</span>
+            </button>
+            <button type="button" class="mb-btn" @onclick="OnClose">
+                取消<span class="en">CANCEL</span>
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>当前选项集合（保存时读取 / 载入时回填）。</summary>
+    [Parameter] public IReadOnlyList<GameSessionOption> Options { get; set; } = Array.Empty<GameSessionOption>();
+
+    [Parameter] public bool Visible { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    /// <summary>预设载入成功回调（父级据此重广播 / 通知刷新）。</summary>
+    [Parameter] public EventCallback<string> OnPresetApplied { get; set; }
+
+    private bool _isLoad = true;
+    private string _selectedPreset = string.Empty;
+    private string _newName = string.Empty;
+    private List<string> _presetNames = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Visible)
+        {
+            _isLoad = true;
+            _selectedPreset = string.Empty;
+            _newName = string.Empty;
+            RefreshPresetNames();
+        }
+    }
+
+    private void RefreshPresetNames() =>
+        _presetNames = GameOptionPresets.Instance.GetPresetNames()
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private void SetMode(bool isLoad)
+    {
+        _isLoad = isLoad;
+        _selectedPreset = string.Empty;
+        if (isLoad)
+            _newName = string.Empty;
+    }
+
+    private void OnPresetChange(ChangeEventArgs e) => _selectedPreset = e.Value?.ToString() ?? string.Empty;
+
+    private void OnNewNameInput(ChangeEventArgs e) => _newName = e.Value?.ToString() ?? string.Empty;
+
+    /// <summary>载入：须已选预设；保存：已选预设或新名非空（同原版 RefreshButtons）。</summary>
+    private bool CanAct =>
+        _isLoad ? _selectedPreset.Length > 0 : (_selectedPreset.Length > 0 || !string.IsNullOrWhiteSpace(_newName));
+
+    /// <summary>删除仅对已选具体预设可用（同原版：创建/占位项禁用）。</summary>
+    private bool CanDelete => _selectedPreset.Length > 0;
+
+    private async Task OnAct()
+    {
+        if (_isLoad)
+        {
+            if (!ApplyPreset(_selectedPreset))
+            {
+                await JS.InvokeVoidAsync("cncnet.toast", $"未找到预设：{_selectedPreset}");
+                return;
+            }
+            await JS.InvokeVoidAsync("cncnet.toast", $"已载入预设：{_selectedPreset}");
+            await OnPresetApplied.InvokeAsync(_selectedPreset);
+        }
+        else
+        {
+            var presetName = _selectedPreset.Length > 0 ? _selectedPreset : _newName.Trim();
+            string? error = SavePreset(presetName);
+            if (error is not null)
+            {
+                await JS.InvokeVoidAsync("cncnet.toast", error);
+                return;
+            }
+            await JS.InvokeVoidAsync("cncnet.toast", $"已保存预设：{presetName}");
+        }
+        await OnClose.InvokeAsync();
+    }
+
+    /// <summary>将当前选项集合保存为预设（同原版 AddGameOptionPreset：按复选框名/下拉框名 + 当前状态）。</summary>
+    private string? SavePreset(string name)
+    {
+        string? error = GameOptionPreset.IsNameValid(name);
+        if (!string.IsNullOrEmpty(error))
+            return error;
+
+        var preset = new GameOptionPreset(name);
+        foreach (var cb in Options.OfType<GameSessionCheckBoxOption>())
+            preset.AddCheckBoxValue(cb.Name, cb.Checked);
+        foreach (var dd in Options.OfType<GameSessionDropDownOption>())
+            preset.AddDropDownValue(dd.Name, dd.SelectedIndex);
+        GameOptionPresets.Instance.AddPreset(preset);
+        return null;
+    }
+
+    /// <summary>将预设值按选项名回填到当前选项集合（同原版 LoadGameOptionPreset）。</summary>
+    private bool ApplyPreset(string name)
+    {
+        var preset = GameOptionPresets.Instance.GetPreset(name);
+        if (preset is null)
+            return false;
+
+        foreach (var kvp in preset.GetCheckBoxValues())
+        {
+            var cb = Options.OfType<GameSessionCheckBoxOption>().FirstOrDefault(o => o.Name == kvp.Key);
+            if (cb is not null)
+                cb.Checked = kvp.Value;
+        }
+        foreach (var kvp in preset.GetDropDownValues())
+        {
+            var dd = Options.OfType<GameSessionDropDownOption>().FirstOrDefault(o => o.Name == kvp.Key);
+            if (dd is not null && kvp.Value >= 0 && kvp.Value < dd.Items.Count)
+                dd.SelectedIndex = kvp.Value;
+        }
+        return true;
+    }
+
+    private async Task OnDelete()
+    {
+        var name = _selectedPreset;
+        var confirm = await MessageBox.ShowAsync("删除预设",
+            $"确定删除预设“{name}”吗？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        if (!confirm)
+            return;
+        GameOptionPresets.Instance.DeletePreset(name);
+        RefreshPresetNames();
+        _selectedPreset = string.Empty;
+        await JS.InvokeVoidAsync("cncnet.toast", $"已删除预设：{name}");
+    }
+}

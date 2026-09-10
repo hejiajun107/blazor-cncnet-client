@@ -57,6 +57,21 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>选择器展示的任务（默认仅官方任务，同原版 LoadMissionsWithFilter(null, disableCustomMissions: true)）。</summary>
         public IReadOnlyList<Mission> Missions => _visibleMissions;
 
+        /// <summary>标签筛选是否启用（原版 ClientConfiguration.CampaignTagSelectorEnabled）。</summary>
+        public bool TagSelectorEnabled => ClientConfiguration.Instance.CampaignTagSelectorEnabled;
+
+        /// <summary>当前标签筛选（null = 显示全部；原版 CampaignTagSelector 每次单选一个标签）。</summary>
+        public string? ActiveTag { get; private set; }
+
+        /// <summary>可选标签（r9-2：任务 Tags 去重，原版 CampaignTagSelector 的 ButtonTag_* 数据源；含自定义任务自带 CUSTOM）。</summary>
+        public IReadOnlyList<string> AvailableTags =>
+            _allMissions
+                .SelectMany(m => m.Tags)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
         /// <summary>当前选中的任务（null = 未选择）。</summary>
         public Mission? SelectedMission { get; private set; }
 
@@ -177,16 +192,42 @@ namespace BlazorCncnetClient.Infrastructure
             }
         }
 
-        /// <summary>重建选择器展示列表（默认仅官方任务），选中项失效时清空选择。</summary>
+        /// <summary>重建选择器展示列表：无标签时仅官方任务；有标签时官方 + 自定义中带该标签的任务
+        /// （对应原版 LoadMissionsWithFilter：null → disableCustomMissions:true；标签 → disableCustomMissions/OfficialMissions 均 false）。
+        /// 选中项失效时清空选择。</summary>
         private void RefreshVisibleMissions()
         {
             _visibleMissions.Clear();
-            _visibleMissions.AddRange(_allMissions.Where(m => !m.IsCustomMission));
+
+            IEnumerable<Mission> missions = _allMissions;
+            if (ActiveTag is null)
+            {
+                missions = missions.Where(m => !m.IsCustomMission);
+            }
+            else
+            {
+                missions = missions.Where(m => m.Tags.Contains(ActiveTag, StringComparer.OrdinalIgnoreCase));
+            }
+
+            _visibleMissions.AddRange(missions);
 
             if (SelectedMission is not null && !_visibleMissions.Contains(SelectedMission))
                 SelectedMission = null;
 
             NotifyChanged();
+        }
+
+        /// <summary>设置标签筛选（null/空白 = 显示全部；同原版 CampaignTagSelector 标签按钮点击语义）。</summary>
+        public void SetTagFilter(string? tag)
+        {
+            if (string.IsNullOrWhiteSpace(tag))
+                tag = null;
+
+            if (string.Equals(ActiveTag, tag, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            ActiveTag = tag;
+            RefreshVisibleMissions();
         }
 
         // ── 选择与难度 ──

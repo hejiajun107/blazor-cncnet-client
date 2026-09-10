@@ -55,12 +55,17 @@ public sealed class GameLaunchService : IDisposable
 
         try
         {
-            // 1. 生成 spawn.ini + spawnmap.ini（游戏以 -SPAWN 启动时读取；多人局写入 [Tunnel] 隧道信息）
+            // 1. 生成 spawn.ini + spawnmap.ini（游戏以 -SPAWN 启动时读取；多人局写入 [Tunnel] 隧道信息；
+            //    房主添加的 AI 玩家经 aiPlayers 写入 [HouseHandicaps]/[HouseCountries]，无端口/隧道；
+            //    gameOptions 写入 [Settings] 并应用自定义地图代码，随 GO 广播与房主一致）
             SpawnIniGenerator.WriteSpawnIni(
                 players, gameModeMap, _room.RandomSeed, _room.SideCount,
                 _room.UniqueGameId, _room.IsHost,
-                _room.TunnelAddress, _room.TunnelPort);
-            SpawnIniGenerator.WriteMap(players, gameModeMap);
+                _room.TunnelAddress, _room.TunnelPort,
+                _room.AIPlayers,
+                teamStartMappings: _room.GetActiveTeamStartMappings(),
+                gameOptions: _room.GameOptions);
+            SpawnIniGenerator.WriteMap(players, gameModeMap, _room.GameOptions);
 
             // 2. 标记对局进行中并跳转加载等待页
             _launchInProgress = true;

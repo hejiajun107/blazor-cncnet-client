@@ -53,6 +53,9 @@
                 case "update":
                     @RenderUpdate()
                     break;
+                case "components":
+                    @RenderComponents()
+                    break;
                 case "privacy":
                     @RenderPrivacy()
                     break;
@@ -71,6 +74,7 @@
         new("game", "游戏", "GAME", "⚙"),
         new("network", "网络", "NETWORK", "⌗"),
         new("update", "更新", "UPDATE", "↻"),
+        new("components", "组件", "COMPONENTS", "▣"),
         new("privacy", "隐私", "PRIVACY", "⬢"),
     ];
 
@@ -83,12 +87,25 @@
         SettingsSvc.SettingsChanged += OnSettingsChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
+        // r9-1：支持 /settings?tab=update 直达指定分区（主菜单更新状态链接跳转）
+        var query = Nav.ToAbsoluteUri(Nav.Uri).Query;
+        int tabIdx = query.IndexOf("tab=", StringComparison.OrdinalIgnoreCase);
+        if (tabIdx >= 0)
+        {
+            var tab = query.Substring(tabIdx + 4).Split('&')[0];
+            if (Sections.Any(s => s.Key == tab))
+                Active = tab;
+        }
         // M4.3：进入设置即尝试初始化更新服务（环境就绪时读取本地版本/镜像表）。
         UpdateSvc.EnsureInitialized();
         UpdateSvc.StateChanged += OnUpdateStateChanged;
+        // r9-5：组件面板订阅组件下载进度/完成事件。
+        UpdateSvc.ComponentChanged += OnComponentChanged;
     }
 
     private void OnUpdateStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnComponentChanged(CustomComponent component) => InvokeAsync(StateHasChanged);
 
     private void OnSettingsChanged() => InvokeAsync(StateHasChanged);
     private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
@@ -497,6 +514,75 @@
             ProcessLauncher.StartShellProcess(UpdateSvc.ManualDownloadURL);
     }
 
+    /// <summary>组件面板（r9-5，原版 ComponentsPanel：UpdaterConfig.ini [CustomComponents] 的组件
+    /// 状态列表 + 单独下载；「检查组件更新」复用主更新检查以填充远程标识）。</summary>
+    private RenderFragment RenderComponents() => __builder =>
+    {
+        <div class="set-sec-title">@CurrentSectionTitle()</div>
+        <div class="set-hint-block">自定义组件列表来自 UpdaterConfig.ini [CustomComponents]。点击「检查组件更新」从服务器读取组件版本信息；可更新的组件可单独下载。</div>
+        <div class="upd-actions">
+            <button class="mb-btn primary" @onclick="OnUpdateCheck"
+                    disabled="@(UpdateSvc.IsBusy || UpdateSvc.IsComponentDownloadInProgress)">检查组件更新</button>
+        </div>
+
+        @if (!UpdateSvc.IsAvailable)
+        {
+            <div class="set-hint-block">组件检查不可用：环境未就绪或未配置更新镜像。</div>
+        }
+        else if (UpdateSvc.CustomComponents.Count == 0)
+        {
+            <div class="set-hint-block">未配置自定义组件。</div>
+        }
+        else
+        {
+            <div class="cc-list">
+                @foreach (var cc in UpdateSvc.CustomComponents)
+                {
+                    (string stateText, string stateCls) = ComponentState(cc);
+                    <div class="cc-row">
+                        <div class="cc-main">
+                            <span class="cc-name">@cc.GUIName</span>
+                            <span class="cc-state @stateCls">@stateText</span>
+                        </div>
+                        @if (cc.IsBeingDownloaded)
+                        {
+                            var pct = UpdateSvc.GetComponentDownloadPercentage(cc);
+                            <div class="cc-prog"><i style="width:@(pct)%"></i><em>@(pct)%</em></div>
+                        }
+                        else if (cc.Initialized && ComponentDownloadable(cc))
+                        {
+                            <button class="mb-btn" @onclick="() => OnComponentDownload(cc)">下载</button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    };
+
+    /// <summary>组件是否可下载（未安装或远程标识与本地不一致）。</summary>
+    private static bool ComponentDownloadable(CustomComponent cc)
+        => string.IsNullOrEmpty(cc.LocalIdentifier) || cc.RemoteIdentifier != cc.LocalIdentifier;
+
+    /// <summary>组件状态文案与样式（原版 ComponentsPanel 的列表状态文本语义）。</summary>
+    private static (string Text, string Css) ComponentState(CustomComponent cc)
+    {
+        if (!cc.Initialized)
+            return ("未检查", "dim");
+        if (string.IsNullOrEmpty(cc.LocalIdentifier))
+            return ("未安装", "err");
+        return cc.RemoteIdentifier != cc.LocalIdentifier
+            ? ("可更新", "warn")
+            : ("已最新", "ok");
+    }
+
+    private void OnComponentDownload(CustomComponent cc)
+    {
+        if (cc.IsBeingDownloaded)
+            return;
+        cc.DownloadComponent();
+        StateHasChanged();
+    }
+
     private RenderFragment RenderPrivacy() => __builder =>
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
@@ -538,5 +624,6 @@
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         TranslationSvc.LanguageChanged -= OnLanguageChanged;
         UpdateSvc.StateChanged -= OnUpdateStateChanged;
+        UpdateSvc.ComponentChanged -= OnComponentChanged;
     }
 }

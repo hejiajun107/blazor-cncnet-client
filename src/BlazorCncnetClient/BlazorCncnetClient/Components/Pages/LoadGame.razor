@@ -1,0 +1,123 @@
+@page "/load"
+@implements IDisposable
+@using CnCNetClient.Core
+@using CnCNetClient.Domain
+@inject LoadGameService Svc
+@inject NavigationManager Nav
+@inject IThemeProvider ThemeProvider
+
+<div class="groom page-anim">
+    <header class="groom-top item-in">
+        <div class="gt-left">
+            <span class="gt-badge host">载入<span class="en">LOAD GAME</span></span>
+            <div class="gt-tbox">
+                <span class="gt-title">加载存档</span>
+                <span class="gt-en">SINGLEPLAYER · 共 @_saves.Count 个存档</span>
+            </div>
+        </div>
+        <div class="gt-right">
+            <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
+            <button class="mb-btn" @onclick="BackToMenu">返回主菜单</button>
+        </div>
+    </header>
+
+    <div class="groom-grid camp-grid">
+        <!-- 左列：存档列表（参考原版 lbSaveGameList：名称 + 日期时间两列） -->
+        <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
+            <header class="gl-ph">
+                <span>存档列表 <em>SAVED GAMES</em></span>
+            </header>
+            <div class="gl-body">
+                @if (_saves.Count == 0)
+                {
+                    <div class="camp-empty">未找到任何存档（游戏目录下无 Saved Games 目录或 *.SAV 文件）</div>
+                }
+                else
+                {
+                    <div class="load-list">
+                        @foreach (var sg in _saves)
+                        {
+                            <button type="button" class="load-item @(sg == _selected ? "on" : "")"
+                                    @onclick="() => Select(sg)">
+                                <span class="load-name">@sg.GUIName</span>
+                                <span class="load-meta">@sg.FileName · @sg.LastModified.ToString("yyyy-MM-dd HH:mm")</span>
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        </section>
+
+        <!-- 右列：选中详情 + 加载/删除/取消 -->
+        <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
+            <header class="gl-ph">
+                <span>操作 <em>ACTIONS</em></span>
+            </header>
+            <div class="gl-body">
+                @if (_selected is { } sel)
+                {
+                    <div class="load-detail">
+                        <div class="cd-title">@sel.GUIName</div>
+                        <div class="load-meta">@sel.FileName</div>
+                        <div class="load-meta">@sel.LastModified.ToString("yyyy-MM-dd HH:mm")</div>
+                        @if (sel.CustomMissionID != 0)
+                        {
+                            <div class="load-tag">自定义任务存档</div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="camp-empty">请在上方选择一个存档</div>
+                }
+                <div class="cfg-actions">
+                    <button class="mb-btn danger" @onclick="BackToMenu">取消<span class="en">CANCEL</span></button>
+                    <button class="mb-btn primary start-btn" disabled="@(_selected is null)" @onclick="OnLoad">
+                        加载<span class="en">LOAD</span>
+                    </button>
+                    <button class="mb-btn" disabled="@(_selected is null)" @onclick="OnDelete">
+                        删除<span class="en">DELETE</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<SavedGame> _saves = Array.Empty<SavedGame>();
+    private SavedGame? _selected;
+
+    protected override void OnInitialized()
+    {
+        _saves = Svc.ListSaves();
+        ThemeProvider.ThemeChanged += OnThemeChanged;
+    }
+
+    private void Select(SavedGame saveGame) => _selected = saveGame;
+
+    private async Task OnLoad()
+    {
+        if (_selected is null)
+            return;
+        var saveGame = _selected;
+        _selected = null;
+        await Svc.LaunchAsync(saveGame);
+    }
+
+    private async Task OnDelete()
+    {
+        if (_selected is null)
+            return;
+        var saveGame = _selected;
+        await Svc.DeleteAsync(saveGame);
+        _saves = Svc.ListSaves();
+        _selected = null;
+    }
+
+    private void BackToMenu() => Nav.NavigateTo("/menu");
+
+    private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ThemeProvider.ThemeChanged -= OnThemeChanged;
+}

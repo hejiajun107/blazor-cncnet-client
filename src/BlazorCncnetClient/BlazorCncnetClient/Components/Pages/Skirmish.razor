@@ -1,6 +1,7 @@
 @page "/skirmish"
 @implements IDisposable
 @using CnCNetClient.Core
+@using CnCNetClient.Core.Statistics
 @using CnCNetClient.Domain.Multiplayer
 @using SixLabors.ImageSharp.PixelFormats
 @inject SkirmishService Svc
@@ -10,6 +11,7 @@
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
 @inject SkirmishLaunchService GameLauncher
+@inject DiscordPresenceService Discord
 
 @if (!Svc.IsActive)
 {
@@ -45,7 +47,8 @@ else
                     <span>地图选择 <em>MAP LIST</em></span>
                 </header>
                 <div class="gl-body">
-                    <select class="gl-select" value="@SelectedMapIndex" @onchange="OnMapChange">
+                    <select class="gl-select" value="@SelectedMapIndex" @onchange="OnMapChange"
+                            @oncontextmenu="OnMapContextMenu" @oncontextmenu:preventDefault="true">
                         <option value="-1">— 选择地图 —</option>
                         @foreach (var group in MapGroups)
                         {
@@ -53,11 +56,25 @@ else
                                 @for (int i = 0; i < group.Items.Count; i++)
                                 {
                                     var opt = group.Items[i];
-                                    <option value="@opt.Index">@opt.Display</option>
+                                    <option value="@opt.Index">@(opt.Value.IsFavorite ? "★ " : "")@opt.Display</option>
                                 }
                             </optgroup>
                         }
                     </select>
+
+                    <!-- 地图工具条（原版 tbMapSearch / btnShowFavoriteMaps / btnMapSortAlphabetically / btnPickRandomMap） -->
+                    <div class="map-tools">
+                        <input class="gl-input map-search" placeholder="搜索地图…" value="@_mapSearch" @oninput="OnMapSearchInput" />
+                        <button type="button" class="mt-btn @(_favOnly ? "on" : "")" title="仅显示收藏地图" @onclick="OnToggleFavOnly">
+                            ★<span class="en">FAV</span>
+                        </button>
+                        <button type="button" class="mt-btn @(_sortMode != 0 ? "on" : "")" title="按名称排序" @onclick="OnCycleSort">
+                            <span class="en">@SortModeLabel</span>
+                        </button>
+                        <button type="button" class="mt-btn" title="随机选择地图" @onclick="OnPickRandomMap">
+                            <span class="en">RND</span>
+                        </button>
+                    </div>
 
                     @if (Svc.SelectedMap is not null)
                     {
@@ -67,6 +84,13 @@ else
                             <div class="mi-row"><span>尺寸</span><b>@Svc.SelectedMap.Map.GetSizeString()</b></div>
                             <div class="mi-row"><span>模式</span><b>@Svc.SelectedMap.GameMode.UIName</b></div>
                             <div class="mi-row"><span>人数</span><b>@(Svc.SelectedMap.MinPlayers)–@(Svc.SelectedMap.MaxPlayers)</b></div>
+                            <div class="mi-row"><span>排名</span><b class="mi-rank">@RankStars</b></div>
+                            <div class="mi-row">
+                                <span>收藏</span>
+                                <button type="button" class="mi-star @(Svc.SelectedMap.IsFavorite ? "on" : "")" @onclick="OnToggleFavorite">
+                                    ★ <b>@(Svc.SelectedMap.IsFavorite ? "已收藏" : "收藏此图")</b>
+                                </button>
+                            </div>
                             @if (!string.IsNullOrEmpty(Svc.SelectedMap.Map.Briefing))
                             {
                                 <div class="mi-divider"></div>
@@ -218,10 +242,13 @@ else
                 </div>
             </section>
 
-            <!-- 右上·右：游戏选项（参考原版 GameOptionsPanel） -->
+            <!-- 右上·右：游戏选项（参考原版 GameOptionsPanel + 预设 LoadOrSaveGameOptionPresetWindow） -->
             <section class="gl-panel gl-options item-in" style="animation-delay:150ms">
                 <header class="gl-ph">
                     <span>游戏选项 <em>GAME OPTIONS</em></span>
+                    <button type="button" class="mb-btn go-preset-btn" @onclick="OpenPresetDialog">
+                        预设<span class="en">PRESET</span>
+                    </button>
                 </header>
                 <div class="gl-body">
                     <div class="go-grid">
@@ -287,6 +314,42 @@ else
                 </div>
             </section>
         </div>
+
+        <!-- 地图右键菜单（原版 mapContextMenu：收藏/复制/删除/定位文件） -->
+        @if (_mapCtxVisible && _mapCtxTarget is not null)
+        {
+            var m = _mapCtxTarget;
+            <div class="ctx-backdrop" @onclick="CloseMapContextMenu"
+                 @oncontextmenu="CloseMapContextMenu" @oncontextmenu:preventDefault="true"></div>
+            <div class="ctx-menu" style="left:@(_mapCtxX)px;top:@(_mapCtxY)px">
+                <div class="ctx-title">@m.Map.Name</div>
+                <button class="ctx-item" @onclick="() => ToggleMapFavorite(m)">
+                    <span>@(m.IsFavorite ? "取消收藏" : "收藏")</span><span class="en">@(m.IsFavorite ? "UNFAVORITE" : "FAVORITE")</span>
+                </button>
+                <button class="ctx-item" @onclick="() => CopyMapName(m)">
+                    <span>复制地图名</span><span class="en">COPY NAME</span>
+                </button>
+                <button class="ctx-item" @onclick="() => CopyMapName(m, true)">
+                    <span>复制原名</span><span class="en">COPY ORIGINAL</span>
+                </button>
+                @if (!m.Map.Official)
+                {
+                    <div class="ctx-sep"></div>
+                    <button class="ctx-item" @onclick="() => OpenMapFolder(m)">
+                        <span>显示在文件夹</span><span class="en">SHOW IN FOLDER</span>
+                    </button>
+                    <button class="ctx-item warn" @onclick="() => DeleteMap(m)">
+                        <span>删除地图</span><span class="en">DELETE</span>
+                    </button>
+                }
+            </div>
+        }
+
+        <!-- 游戏选项预设对话框（原版 LoadOrSaveGameOptionPresetWindow） -->
+        <GameOptionPresetDialog Options="Svc.GameOptions"
+                                Visible="@_presetOpen"
+                                OnClose="ClosePresetDialog"
+                                OnPresetApplied="OnPresetApplied" />
     </div>
 }
 
@@ -385,9 +448,26 @@ else
 
     private void RefreshMaps()
     {
-        _mapOptions = MapLoader.GameModeMaps
-            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()))
-            .ToList();
+        IEnumerable<MapOption> query = MapLoader.GameModeMaps
+            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()));
+
+        // 工具条过滤/排序（原版 TbMapSearch_InputReceived / btnShowFavoriteMaps / btnMapSortAlphabetically）
+        if (_favOnly)
+            query = query.Where(o => o.Value.IsFavorite);
+        if (!string.IsNullOrWhiteSpace(_mapSearch))
+        {
+            var kw = _mapSearch.Trim();
+            query = query.Where(o =>
+                o.Value.Map.Name.Contains(kw, StringComparison.OrdinalIgnoreCase) ||
+                o.Value.Map.UntranslatedName.Contains(kw, StringComparison.OrdinalIgnoreCase));
+        }
+        if (_sortMode == 1)
+            query = query.OrderBy(o => o.Display, StringComparer.OrdinalIgnoreCase);
+        else if (_sortMode == 2)
+            query = query.OrderByDescending(o => o.Display, StringComparer.OrdinalIgnoreCase);
+
+        // 过滤/排序后重建索引：select 的 option value 与 SelectedMapIndex 均以列表内位置为准
+        _mapOptions = query.Select((o, i) => o with { Index = i }).ToList();
         _mapGroups = _mapOptions.GroupBy(o => o.Mode)
             .Select(g => new MapGroup(g.Key, g.ToList()))
             .ToList();
@@ -400,7 +480,23 @@ else
             StateHasChanged();
         });
 
-    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnChanged()
+    {
+        // r9-4：Discord 呈现同步（原版 SkirmishLobby 在选择地图/阵营时推送）
+        if (Svc.SelectedMap is not null)
+        {
+            // Spectator 时无阵营小图标（原版 SideIndex 为观察者时传空阵营名）
+            string side = HumanSideId < Sides.Length ? Sides[HumanSideId] : string.Empty;
+            Discord.Skirmish(
+                map: Svc.SelectedMap.Map.UntranslatedName,
+                mode: Svc.SelectedMap.GameMode.UIName,
+                state: "Skirmish",
+                side: side
+            );
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
@@ -429,6 +525,181 @@ else
             _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
         }
     }
+
+    /// <summary>当前地图排名星数（原版 GetDefaultMapRankIndex 语义：单机胜场统计，0–3 星）。</summary>
+    private string RankStars
+    {
+        get
+        {
+            if (Svc.SelectedMap is null)
+                return "—";
+            int stars = GetMapRank(Svc.SelectedMap);
+            return new string('★', stars) + new string('☆', 3 - stars);
+        }
+    }
+
+    private StatisticsManager? _rankStats;
+    private bool _rankStatsLoaded;
+
+    private int GetMapRank(GameModeMap gmm)
+    {
+        try
+        {
+            // 懒初始化：统计数据库随游戏目录就绪后读取一次（与统计页共用单例）
+            _rankStats ??= StatisticsManager.Instance;
+            if (!_rankStatsLoaded)
+            {
+                _rankStats.ReadStatistics(ProgramConstants.GamePath);
+                _rankStatsLoaded = true;
+            }
+
+            int rank = _rankStats.GetSkirmishRankForDefaultMap(gmm.Map.UntranslatedName, gmm.MaxPlayers);
+            return Math.Clamp(rank + 1, 0, 3); // -1(未胜)→0 星 … 2(最佳)→3 星
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>收藏/取消收藏当前地图（同原版 ToggleFavoriteMap 语义：settings INI FavoriteMaps 持久化）。</summary>
+    private void OnToggleFavorite()
+    {
+        var gmm = Svc.SelectedMap;
+        if (gmm is null)
+            return;
+        ToggleMapFavorite(gmm);
+    }
+
+    // ── 地图右键菜单（原版 mapContextMenu：收藏/复制地图名/复制原名/删除/定位文件） ──
+
+    private GameModeMap? _mapCtxTarget;
+    private bool _mapCtxVisible;
+    private double _mapCtxX, _mapCtxY;
+
+    /// <summary>右键地图下拉框：对当前选中的地图打开菜单（右键列表项时 Chromium 会先选中该项）。</summary>
+    private void OnMapContextMenu(MouseEventArgs e)
+    {
+        var gmm = Svc.SelectedMap;
+        if (gmm is null)
+            return;
+        _mapCtxTarget = gmm;
+        _mapCtxX = e.ClientX;
+        _mapCtxY = e.ClientY;
+        _mapCtxVisible = true;
+    }
+
+    private void CloseMapContextMenu()
+    {
+        _mapCtxVisible = false;
+        _mapCtxTarget = null;
+    }
+
+    /// <summary>收藏/取消收藏指定地图（settings INI FavoriteMaps 持久化，同原版 ToggleFavoriteMap）。</summary>
+    private void ToggleMapFavorite(GameModeMap gmm)
+    {
+        gmm.IsFavorite = UserINISettings.Instance.ToggleFavoriteMap(
+            gmm.Map.SHA1, gmm.GameMode.Name, gmm.IsFavorite);
+        _ = JS.InvokeVoidAsync("cncnet.toast", gmm.IsFavorite ? $"已收藏：{gmm.Map.Name}" : $"已取消收藏：{gmm.Map.Name}");
+        CloseMapContextMenu();
+    }
+
+    /// <summary>复制地图名（原版 CopyMapName：译文名；CopyOriginalMapName：UntranslatedName）。</summary>
+    private void CopyMapName(GameModeMap gmm, bool original = false)
+    {
+        _ = JS.InvokeVoidAsync("cncnet.copyText", original ? gmm.Map.UntranslatedName : gmm.Map.Name);
+        _ = JS.InvokeVoidAsync("cncnet.toast", "地图名已复制到剪贴板");
+        CloseMapContextMenu();
+    }
+
+    /// <summary>删除自定义地图（同原版 DeleteMap：确认后删除文件并从地图列表移除）。</summary>
+    private async Task DeleteMap(GameModeMap gmm)
+    {
+        CloseMapContextMenu();
+        var confirm = await MessageBox.ShowAsync("删除地图",
+            $"确定删除自定义地图“{gmm.Map.UntranslatedName}”吗？该地图文件将被永久移除。",
+            MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        if (!confirm)
+            return;
+        try
+        {
+            if (Svc.SelectedMap == gmm)
+                Svc.ClearSelectedMap();
+            MapLoader.DeleteCustomMap(gmm);
+            RefreshMaps();
+            _ = JS.InvokeVoidAsync("cncnet.toast", $"已删除：{gmm.Map.UntranslatedName}");
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    /// <summary>在文件管理器中定位地图文件（原版 OpenContainingFolder）。</summary>
+    private void OpenMapFolder(GameModeMap gmm)
+    {
+        try
+        {
+            gmm.Map.OpenContainingFolder();
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+        CloseMapContextMenu();
+    }
+
+    // ── 地图工具条（原版 tbMapSearch / btnShowFavoriteMaps / btnMapSortAlphabetically / btnPickRandomMap） ──
+
+    private string _mapSearch = string.Empty;
+    private bool _favOnly;
+    private int _sortMode; // 0=默认 1=A–Z 2=Z–A
+
+    private static readonly string[] SortModeLabels = { "默认", "A–Z", "Z–A" };
+    private string SortModeLabel => SortModeLabels[Math.Clamp(_sortMode, 0, 2)];
+
+    private void OnMapSearchInput(ChangeEventArgs e)
+    {
+        _mapSearch = e.Value?.ToString() ?? string.Empty;
+        RefreshMaps();
+    }
+
+    private void OnToggleFavOnly()
+    {
+        _favOnly = !_favOnly;
+        RefreshMaps();
+    }
+
+    private void OnCycleSort()
+    {
+        _sortMode = (_sortMode + 1) % 3;
+        RefreshMaps();
+    }
+
+    private void OnPickRandomMap()
+    {
+        if (_mapOptions.Count == 0)
+            return;
+        try
+        {
+            Svc.ChangeMap(_mapOptions[Random.Shared.Next(_mapOptions.Count)].Value);
+        }
+        catch (Exception ex)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+        }
+    }
+
+    // ── 游戏选项预设（原版 LoadOrSaveGameOptionPresetWindow） ──
+
+    private bool _presetOpen;
+
+    private void OpenPresetDialog() => _presetOpen = true;
+
+    private void ClosePresetDialog() => _presetOpen = false;
+
+    /// <summary>预设载入后：通知 UI 刷新（遭遇战无广播需求）。</summary>
+    private void OnPresetApplied(string name) => Svc.NotifyGameOptionsChanged();
 
     // ── 人类玩家 ──
 
