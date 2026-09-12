@@ -172,6 +172,112 @@
         requestAnimationFrame(draw);
     }
 
+    /* ── 雷达扫描光效（MainMenu #radar-scan，PixiJS 本地渲染） ──────
+       2026-09-12：由 CSS conic-gradient 改为 PixiJS canvas——conic 从中心辐射
+       天然呈扇形/三角形，且 CSS 背景旋转难以做成"从中心发出"的扫描线；
+       PixiJS 用 Graphics 扇形 + Container 绕 pivot(中心) 旋转，从中心伸出的
+       细光束绕中心扫过，即经典雷达扫描。库：本地 lib/pixi.min.js（无 CDN）。 */
+    function initRadarScan(canvasId) {
+        const cv = document.getElementById(canvasId);
+        if (!cv) return;
+        if (typeof PIXI === 'undefined') return; // 库缺失时静默跳过，不影响页面
+
+        const ROT_SECONDS = 9;   // 9s 一圈（缓速扫描）
+        const BEAM_OVER = 1.05;  // 光束长到容器对角线外（防穿帮，被八边形裁切优雅截断）
+        let app = null, sweep = null, beamG, R = 0;
+        let ro = null, destroyed = false;
+
+        function hexNum() { return parseInt((PAL.cyan || '#21e6ff').replace('#', ''), 16); }
+
+        // 从中心 (0,0) 伸出的扇形光束（半角 halfDeg 度、长 R），沿**角度方向**渐变：
+        // 扫过方向的前缘亮、尾部渐隐（雷达余晖感）。用 M 段楔形近似平滑渐变。
+        // alphaFn(u)：u∈[0,1] 从尾部到前缘，返回该处透明度。
+        function buildSector(halfDeg, alphaFn) {
+            const g = new PIXI.Graphics();
+            const a0 = -halfDeg * Math.PI / 180; // 尾部边（后扫侧）
+            const a1 = halfDeg * Math.PI / 180;  // 前缘边（前扫侧）
+            const M = 16;
+            const c = hexNum();
+            for (let i = 0; i < M; i++) {
+                const u0 = i / M, u1 = (i + 1) / M;
+                const al = alphaFn((u0 + u1) / 2);
+                if (al <= 0.002) continue;
+                const aa = a0 + (a1 - a0) * u0;
+                const ab = a0 + (a1 - a0) * u1;
+                g.moveTo(0, 0).lineTo(Math.cos(aa) * R, Math.sin(aa) * R)
+                    .lineTo(Math.cos(ab) * R, Math.sin(ab) * R).closePath();
+                g.fill({ color: c, alpha: al });
+            }
+            return g;
+        }
+
+        function recolor() {
+            // 单层光束：尾部微亮 → 前缘最亮（角度方向线性渐亮），无内/外层断层
+            beamG = buildSector(7, u => .03 + .21 * u);
+            sweep.removeChildren();
+            sweep.addChild(beamG);
+        }
+
+        function onResize() {
+            if (!app || destroyed) return;
+            const r = cv.getBoundingClientRect();
+            if (r.width < 2 || r.height < 2) return;
+            app.renderer.resize(r.width, r.height);
+            R = Math.hypot(r.width, r.height) * .5 * BEAM_OVER;
+            sweep.position.set(r.width / 2, r.height / 2);
+            recolor();
+        }
+
+        async function setup() {
+            const r = cv.getBoundingClientRect();
+            if (r.width < 2 || r.height < 2) return;
+            R = Math.hypot(r.width, r.height) * .5 * BEAM_OVER;
+            refreshPalette(); // 首帧即用当前主题色
+
+            try {
+                app = new PIXI.Application();
+                await app.init({
+                    canvas: cv,
+                    width: r.width,
+                    height: r.height,
+                    backgroundAlpha: 0,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+            } catch (e) {
+                app = null;
+                return;
+            }
+
+            sweep = new PIXI.Container();
+            sweep.position.set(r.width / 2, r.height / 2);
+            app.stage.addChild(sweep);
+            recolor();
+
+            ro = new ResizeObserver(onResize);
+            ro.observe(cv);
+
+            if (REDUCED) return; // 静态光束，不旋转（尊重 prefers-reduced-motion）
+
+            app.ticker.add((t) => {
+                if (!cv.isConnected) { destroy(); return; } // 离开主菜单即停（同 initGlobe）
+                if (refreshPalette()) recolor(); // 主题切换即时换色
+                sweep.rotation = (sweep.rotation + t.deltaMS / 1000 * (Math.PI * 2 / ROT_SECONDS)) % (Math.PI * 2);
+            });
+        }
+
+        function destroy() {
+            if (destroyed) return;
+            destroyed = true;
+            ro?.disconnect();
+            app?.destroy(true, { children: true });
+            app = null;
+        }
+
+        setup();
+    }
+
     /* ── 读数模拟（MainMenu #r2/#lat；#r1 在线人数为 r9-1 真实数据，由 setPlayerCount 写入） ── */
     function initReadout() {
         const r2 = document.getElementById('r2');
@@ -294,5 +400,5 @@
         } catch (e) { /* 忽略复制失败 */ }
     }
 
-    window.cncnet = { initStars, initGlobe, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText };
+    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText };
 })();

@@ -33,7 +33,8 @@
 
         <div class="viewport item-in">
             <canvas id="globe"></canvas>
-            <div class="radar"></div>
+            <!-- 雷达扫描光效（PixiJS 渲染，本地 lib/pixi.min.js；2026-09-12 由 CSS conic 改为 canvas，避免扇形/三角形伪形） -->
+            <canvas id="radar-scan" class="radar-scan"></canvas>
             <span class="corner c-tl"></span><span class="corner c-tr"></span>
             <span class="corner c-bl"></span><span class="corner c-br"></span>
             <div class="label">GLOBAL NETWORK // SECTOR-07</div>
@@ -252,8 +253,9 @@
     {
         if (firstRender)
         {
-            // 全息地球 + 读数模拟（尊重 prefers-reduced-motion，内部处理）
+            // 全息地球 + 雷达扫描（PixiJS）+ 读数模拟（尊重 prefers-reduced-motion，内部处理）
             await JS.InvokeVoidAsync("cncnet.initGlobe", "globe");
+            await JS.InvokeVoidAsync("cncnet.initRadarScan", "radar-scan");
             await JS.InvokeVoidAsync("cncnet.initReadout");
             // ESC 返回首页（实现「可退」）
             _dotNetRef = DotNetObjectReference.Create(this);

@@ -169,10 +169,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
   border:1px solid var(--line);background:rgba(4,16,24,.4);overflow:hidden;
   clip-path:polygon(0 22px,22px 0,100% 0,100% calc(100% - 22px),calc(100% - 22px) 100%,0 100%)}
 .viewport canvas{position:absolute;inset:0;width:100%;height:100%}
-.radar{position:absolute;inset:0;pointer-events:none;
-  background:conic-gradient(from 0deg,transparent 0deg,rgba(33,230,255,0) 300deg,rgba(33,230,255,.22) 355deg,rgba(33,230,255,.04) 360deg);
-  animation:radar 5s linear infinite;mix-blend-mode:screen}
-@keyframes radar{to{transform:rotate(360deg)}}
+/* 2026-09-12：雷达扫描光效改由 PixiJS canvas 渲染（#radar-scan，本地 lib/pixi.min.js）。
+   CSS 仅负责定位/层级/指针；光束绘制与旋转在 app.js initRadarScan。 */
+.radar-scan{pointer-events:none;z-index:1}
 .viewport .corner{position:absolute;width:26px;height:26px;border:2px solid var(--cyan);opacity:.8}
 .c-tl{top:8px;left:8px;border-right:none;border-bottom:none}
 .c-tr{top:8px;right:8px;border-left:none;border-bottom:none}
