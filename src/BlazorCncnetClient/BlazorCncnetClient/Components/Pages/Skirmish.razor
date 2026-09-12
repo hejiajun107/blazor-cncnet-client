@@ -12,6 +12,7 @@
 @inject MessageBoxService MessageBox
 @inject SkirmishLaunchService GameLauncher
 @inject DiscordPresenceService Discord
+@inject GameContentServer ContentServer
 
 @if (!Svc.IsActive)
 {
@@ -36,7 +37,6 @@ else
             </div>
             <div class="gt-right">
                 <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
-                <button class="mb-btn" @onclick="BackToMenu">返回主菜单</button>
             </div>
         </header>
 
@@ -101,11 +101,16 @@ else
                 </div>
             </section>
 
-            <!-- 右上·左：玩家配置（参考原版 PlayerOptionsPanel 紧凑槽位表格：每行=玩家，列=阵营/颜色/队伍） -->
+            <!-- 右上·左：玩家配置（参考原版 PlayerOptionsPanel：固定 8 行槽位表格，列=阵营/颜色/队伍） -->
             <section class="gl-panel gl-players item-in" style="animation-delay:100ms">
                 <header class="gl-ph">
                     <span>玩家配置 <em>@TotalPlayers/@Svc.MaxPlayers</em></span>
-                    <span class="gl-lock">@(Svc.IsCoop ? "合作" : "对战")</span>
+                    <span class="gl-ph-right">
+                        <span class="gl-lock">@(Svc.IsCoop ? "合作" : "对战")</span>
+                        <button type="button" class="mb-btn gl-reset" @onclick="OnResetAI">
+                            重置<span class="en">RESET</span>
+                        </button>
+                    </span>
                 </header>
 
                 <div class="gl-body">
@@ -124,17 +129,20 @@ else
                             <span class="nm">@ProgramConstants.PLAYERNAME</span>
                             <em class="slot-host">YOU</em>
                         </div>
-                        <select class="gl-select" value="@HumanSideId" @onchange="OnHumanSideChange">
-                            @for (int s = 0; s < Sides.Length; s++)
-                            {
-                                <option value="@s">@Sides[s]</option>
-                            }
-                            <option value="@Sides.Length">Spectator</option>
-                        </select>
-                        <select class="gl-select" value="@HumanColorId" @onchange="OnHumanColorChange">
+                        <div class="gl-side">
+                            <img class="side-ic" src="@SideIconUrl(HumanSideId)" alt="" onerror="this.style.display='none'" />
+                            <select class="gl-select" value="@HumanSideId" @onchange="OnHumanSideChange">
+                                @for (int s = 0; s < Sides.Length; s++)
+                                {
+                                    <option value="@s">@Sides[s]</option>
+                                }
+                                <option value="@Sides.Length">Spectator</option>
+                            </select>
+                        </div>
+                        <select class="gl-select color-select" value="@HumanColorId" @onchange="OnHumanColorChange">
                             @for (int c = 0; c < _colors.Count; c++)
                             {
-                                <option value="@_colors[c].Index">@_colors[c].Name</option>
+                                <option value="@_colors[c].Index" style="background:@ToCss(_colors[c].Color);color:@GetContrastColor(_colors[c].Color)">@_colors[c].Name</option>
                             }
                         </select>
                         <select class="gl-select" value="@HumanTeamId" disabled="@(!Svc.TeamsEnabled || Svc.UseTeamStartMappings)" @onchange="OnHumanTeamChange">
@@ -146,34 +154,52 @@ else
                         </select>
                     </div>
 
-                    <!-- AI 玩家行 -->
-                    @for (int i = 0; i < Svc.AIPlayers.Count; i++)
+                    <!-- AI 槽位（固定 7 行：占用行显示配置，空槽下拉直接选难度添加，同原版 ddPlayerName） -->
+                    @for (int i = 0; i < SkirmishService.MaxAIPlayersConst; i++)
                     {
-                        var ai = Svc.AIPlayers[i];
-                        <div class="gl-tr">
+                        var ai = i < Svc.AIPlayers.Count ? Svc.AIPlayers[i] : null;
+                        <div class="gl-tr @(ai is null ? "empty-slot" : "")">
                             <div class="gl-tc-name">
-                                <span class="slot-color" style="background:@ToCss(GetColor(ai.ColorId))"></span>
-                                <span class="nm">AI @(i + 1)</span>
-                                <select class="gl-select ai-level" value="@ai.AILevel" @onchange="(e) => OnAILevelChange(ai, e)">
-                                    <option value="0">简单</option>
-                                    <option value="1">中等</option>
-                                    <option value="2">困难</option>
-                                </select>
-                                <button class="ai-remove" title="移除" @onclick="() => OnRemoveAI(ai)">✕</button>
-                            </div>
-                            <select class="gl-select" value="@ai.SideId" @onchange="(e) => OnAISideChange(ai, e)">
-                                @for (int s = 0; s < Sides.Length; s++)
+                                @if (ai is not null)
                                 {
-                                    <option value="@s">@Sides[s]</option>
+                                    <span class="slot-color" style="background:@ToCss(GetColor(ai.ColorId))"></span>
+                                    <span class="nm">@ai.Name</span>
+                                    <select class="gl-select ai-level" value="@ai.AILevel" @onchange="(e) => OnAILevelChange(ai, e)">
+                                        <option value="0">简单</option>
+                                        <option value="1">中等</option>
+                                        <option value="2">困难</option>
+                                    </select>
+                                    <button class="ai-remove" title="移除" @onclick="() => OnRemoveAI(ai)">✕</button>
                                 }
-                            </select>
-                            <select class="gl-select" value="@ai.ColorId" @onchange="(e) => OnAIColorChange(ai, e)">
+                                else
+                                {
+                                    <select class="gl-select ai-add-sel" value="0" @onchange="(e) => OnEmptySlotAdd(i, e)">
+                                        <option value="0">— 空位 —</option>
+                                        <option value="1">简单 AI</option>
+                                        <option value="2">中等 AI</option>
+                                        <option value="3">困难 AI</option>
+                                    </select>
+                                }
+                            </div>
+                            <div class="gl-side">
+                                @if (ai is not null)
+                                {
+                                    <img class="side-ic" src="@SideIconUrl(ai.SideId)" alt="" onerror="this.style.display='none'" />
+                                }
+                                <select class="gl-select" disabled="@(ai is null)" value="@(ai?.SideId ?? 0)" @onchange="(e) => { if (ai is not null) OnAISideChange(ai, e); }">
+                                    @for (int s = 0; s < Sides.Length; s++)
+                                    {
+                                        <option value="@s">@Sides[s]</option>
+                                    }
+                                </select>
+                            </div>
+                            <select class="gl-select color-select" disabled="@(ai is null)" value="@(ai?.ColorId ?? 0)" @onchange="(e) => { if (ai is not null) OnAIColorChange(ai, e); }">
                                 @for (int c = 0; c < _colors.Count; c++)
                                 {
-                                    <option value="@_colors[c].Index">@_colors[c].Name</option>
+                                    <option value="@_colors[c].Index" style="background:@ToCss(_colors[c].Color);color:@GetContrastColor(_colors[c].Color)">@_colors[c].Name</option>
                                 }
                             </select>
-                            <select class="gl-select" value="@ai.TeamId" disabled="@(!Svc.TeamsEnabled || Svc.UseTeamStartMappings)" @onchange="(e) => OnAITeamChange(ai, e)">
+                            <select class="gl-select" disabled="@(ai is null || !Svc.TeamsEnabled || Svc.UseTeamStartMappings)" value="@(ai?.TeamId ?? 0)" @onchange="(e) => { if (ai is not null) OnAITeamChange(ai, e); }">
                                 <option value="0">-</option>
                                 @for (int t = 0; t < TeamNames.Count; t++)
                                 {
@@ -181,13 +207,6 @@ else
                                 }
                             </select>
                         </div>
-                    }
-
-                    @if (Svc.AIPlayers.Count < SkirmishService.MaxAIPlayersConst)
-                    {
-                        <button class="mb-btn add-ai-btn" @onclick="OnAddAI">
-                            + 添加 AI 玩家<span class="en">ADD AI</span>
-                        </button>
                     }
 
                     <!-- 自动结盟出生点映射（启用时显示，随表体滚动） -->
@@ -233,13 +252,6 @@ else
                         </select>
                     </div>
                 </div>
-
-                <div class="cfg-actions">
-                    <button class="mb-btn danger" @onclick="OnResetAI">重置 AI<span class="en">RESET AI</span></button>
-                    <button class="mb-btn primary start-btn" disabled="@(Svc.SelectedMap is null)" @onclick="OnStartGame">
-                        开始游戏<span class="en">START</span>
-                    </button>
-                </div>
             </section>
 
             <!-- 右上·右：游戏选项（参考原版 GameOptionsPanel + 预设 LoadOrSaveGameOptionPresetWindow） -->
@@ -276,43 +288,74 @@ else
                 </div>
             </section>
 
-            <!-- 右下：地图预览（参考原版 MapPreviewBox） -->
+            <!-- 右下：地图预览（参考原版 MapPreviewBox，固定宽高比 + 下方出生点文字信息） -->
             <section class="gl-panel gl-preview item-in" style="animation-delay:200ms">
                 <header class="gl-ph">
                     <span>地图预览 <em>MAP PREVIEW</em></span>
                     <span class="gl-mapname">@(Svc.SelectedMap?.Map.Name ?? "未选择地图")</span>
                 </header>
                 <div class="gl-body">
-                    <div class="cfg-map-preview">
-                        <MapThumbnail MapHash="Svc.SelectedMap?.Map.SHA1" MapName="Svc.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
-                        @if (Svc.SelectedMap is null)
-                        {
-                            <div class="cfg-map-none">请选择地图</div>
-                        }
-                        else
-                        {
-                            <div class="spawn-layer">
-                                @foreach (var sp in SpawnPoints)
-                                {
-                                    var spStyle = $"left:{sp.X * 100:0.##}%;top:{sp.Y * 100:0.##}%";
-                                    var spCls = sp.IsSelf ? "self" : sp.OccupantName is null ? "free" : "taken";
-                                    <button type="button"
-                                            class="spawn-dot @spCls"
-                                            style="@spStyle"
-                                            title="@(sp.OccupantName is null ? $"出生点 {sp.Index}" : $"出生点 {sp.Index} · {sp.OccupantName}")"
-                                            @onclick="() => OnSpawnClick(sp.Index)">
-                                        <span class="spawn-num">@sp.Index</span>
-                                        @if (sp.OccupantName is not null)
-                                        {
-                                            <span class="spawn-owner" style="background:@ToCss(GetColor(sp.ColorIndex))"></span>
-                                        }
-                                    </button>
-                                }
-                            </div>
-                        }
+                    <div class="map-preview-wrap">
+                        <div class="cfg-map-preview">
+                            <MapThumbnail MapHash="Svc.SelectedMap?.Map.SHA1" MapName="Svc.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
+                            @if (Svc.SelectedMap is null)
+                            {
+                                <div class="cfg-map-none">请选择地图</div>
+                            }
+                            else
+                            {
+                                <div class="spawn-layer">
+                                    @foreach (var sp in SpawnPoints)
+                                    {
+                                        var spStyle = $"left:{sp.X * 100:0.##}%;top:{sp.Y * 100:0.##}%";
+                                        var spCls = sp.IsSelf ? "self" : sp.OccupantName is null ? "free" : "taken";
+                                        <button type="button"
+                                                class="spawn-dot @spCls"
+                                                style="@spStyle"
+                                                title="@(sp.OccupantName is null ? $"出生点 {sp.Index}" : $"出生点 {sp.Index} · {sp.OccupantName}")"
+                                                @onclick="() => OnSpawnClick(sp.Index)">
+                                            <span class="spawn-num">@sp.Index</span>
+                                            @if (sp.OccupantName is not null)
+                                            {
+                                                <span class="spawn-owner" style="background:@ToCss(GetColor(sp.ColorIndex))"></span>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
                     </div>
+
+                    <!-- 出生点位置文字信息（参考原版地图下方位置列表） -->
+                    @if (Svc.SelectedMap is not null)
+                    {
+                        <div class="map-pos-list">
+                            @foreach (var sp in SpawnPoints)
+                            {
+                                var spCoord = $"({sp.X * 100:0.##}%, {sp.Y * 100:0.##}%)";
+                                <div class="pos-item" title="出生点 @sp.Index · @spCoord">
+                                    <span class="pos-idx">@sp.Index</span>
+                                    @if (sp.OccupantName is not null)
+                                    {
+                                        <span class="pos-swatch" style="background:@ToCss(GetColor(sp.ColorIndex))"></span>
+                                    }
+                                    <span class="pos-owner @(sp.OccupantName is null ? "free" : "")">@(sp.OccupantName ?? "空位")</span>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             </section>
+        </div>
+
+        <!-- 底部操作条（原版 btnLaunchGame/btnLeaveGame：开始游戏在地图/地区选择区下方，返回主菜单在右） -->
+        <div class="groom-actions item-in" style="animation-delay:250ms">
+            <button class="mb-btn primary start-btn" disabled="@(Svc.SelectedMap is null)" @onclick="OnStartGame">
+                开始游戏<span class="en">START</span>
+            </button>
+            <button class="mb-btn" @onclick="BackToMenu">
+                返回主菜单<span class="en">MAIN MENU</span>
+            </button>
         </div>
 
         <!-- 地图右键菜单（原版 mapContextMenu：收藏/复制/删除/定位文件） -->
@@ -418,6 +461,8 @@ else
         Svc.Changed += OnChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         MapLoader.MapLoadingComplete += OnMapLoadingComplete;
+        // 阵营国旗等游戏目录资源经 GameContentServer 伺服（幂等：已启动则复用）
+        ContentServer.Start(ProgramConstants.GamePath);
         RefreshMaps();
         Svc.Initialize();
     }
@@ -493,6 +538,13 @@ else
                 state: "Skirmish",
                 side: side
             );
+
+            // 排名星数后台加载（换图时旧结果作废，未就绪显示省略号）
+            if (!ReferenceEquals(_rankMap, Svc.SelectedMap))
+            {
+                _rankMap = Svc.SelectedMap;
+                _ = LoadRankAsync(Svc.SelectedMap);
+            }
         }
 
         _ = InvokeAsync(StateHasChanged);
@@ -526,39 +578,63 @@ else
         }
     }
 
-    /// <summary>当前地图排名星数（原版 GetDefaultMapRankIndex 语义：单机胜场统计，0–3 星）。</summary>
+    /// <summary>当前地图排名星数（原版 GetDefaultMapRankIndex 语义：单机胜场统计，0–3 星）。
+    /// 统计数据库读取为后台任务，未就绪前显示省略号，避免 UI 线程被 dscore.dat 文件 I/O 阻塞。</summary>
     private string RankStars
     {
         get
         {
             if (Svc.SelectedMap is null)
                 return "—";
-            int stars = GetMapRank(Svc.SelectedMap);
-            return new string('★', stars) + new string('☆', 3 - stars);
+            if (_rankLoading || _rankStars < 0)
+                return "…";
+            return new string('★', _rankStars) + new string('☆', 3 - _rankStars);
         }
     }
 
     private StatisticsManager? _rankStats;
     private bool _rankStatsLoaded;
+    private int _rankStars = -1; // -1 = 尚未加载
+    private bool _rankLoading;
+    private GameModeMap? _rankMap; // 星数所属地图（防止旧结果覆盖新图）
 
-    private int GetMapRank(GameModeMap gmm)
+    /// <summary>后台读取统计数据库并计算当前地图星数（Task.Run 避免阻塞 UI 线程）。</summary>
+    private async Task LoadRankAsync(GameModeMap gmm)
     {
+        if (_rankLoading)
+            return;
+        _rankLoading = true;
+        _rankStars = -1;
+        await InvokeAsync(StateHasChanged);
         try
         {
-            // 懒初始化：统计数据库随游戏目录就绪后读取一次（与统计页共用单例）
-            _rankStats ??= StatisticsManager.Instance;
-            if (!_rankStatsLoaded)
+            int stars = await Task.Run(() =>
             {
-                _rankStats.ReadStatistics(ProgramConstants.GamePath);
-                _rankStatsLoaded = true;
-            }
+                // 懒初始化：统计数据库随游戏目录就绪后读取一次（与统计页共用单例）
+                _rankStats ??= StatisticsManager.Instance;
+                if (!_rankStatsLoaded)
+                {
+                    _rankStats.ReadStatistics(ProgramConstants.GamePath);
+                    _rankStatsLoaded = true;
+                }
 
-            int rank = _rankStats.GetSkirmishRankForDefaultMap(gmm.Map.UntranslatedName, gmm.MaxPlayers);
-            return Math.Clamp(rank + 1, 0, 3); // -1(未胜)→0 星 … 2(最佳)→3 星
+                int rank = _rankStats.GetSkirmishRankForDefaultMap(gmm.Map.UntranslatedName, gmm.MaxPlayers);
+                return Math.Clamp(rank + 1, 0, 3); // -1(未胜)→0 星 … 2(最佳)→3 星
+            });
+            _rankStars = stars;
         }
         catch
         {
-            return 0;
+            _rankStars = 0;
+        }
+        finally
+        {
+            _rankLoading = false;
+            // 加载期间地图已切换 → 为新图重新加载
+            if (Svc.SelectedMap is not null && Svc.SelectedMap != gmm)
+                _ = LoadRankAsync(Svc.SelectedMap);
+            else
+                await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -741,11 +817,14 @@ else
 
     // ── AI 玩家 ──
 
-    private void OnAddAI()
+    /// <summary>空槽下拉选难度：在指定槽位添加对应难度 AI（1/2/3 → Easy/Medium/Hard）。</summary>
+    private void OnEmptySlotAdd(int slot, ChangeEventArgs e)
     {
+        if (!int.TryParse(e.Value?.ToString(), out int v) || v <= 0)
+            return;
         try
         {
-            Svc.AddAI();
+            Svc.AddAI(slot, v - 1);
         }
         catch (Exception ex)
         {
@@ -863,6 +942,30 @@ else
         ?? new Rgba32(160, 220, 255, 255);
 
     private static string ToCss(Rgba32 color) => $"rgb({color.R},{color.G},{color.B})";
+
+    /// <summary>阵营图标 URL（原版 {side}icon.png 位于游戏根目录 Resources 下，
+    /// 经 GameContentServer 伺服；图标缺失时浏览器触发 onerror 隐藏）。</summary>
+    private string SideIconUrl(int index)
+    {
+        string side = index >= 0 && index < Sides.Length ? Sides[index] : "Spectator";
+        try
+        {
+            return ContentServer.IsRunning
+                ? ContentServer.MapUrl("Resources/" + Uri.EscapeDataString(side) + "icon.png")
+                : string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>根据背景色感知亮度选文字色（深底白字 / 浅底深字，保证颜色块上文字可读）。</summary>
+    private static string GetContrastColor(Rgba32 color)
+    {
+        double luma = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0;
+        return luma > 0.55 ? "#0a1520" : "#ffffff";
+    }
 
     public void Dispose()
     {

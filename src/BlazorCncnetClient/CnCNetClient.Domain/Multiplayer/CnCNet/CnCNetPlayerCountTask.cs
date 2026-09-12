@@ -33,18 +33,25 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
 
         private static void RunService(object? tokenObj)
         {
-            var waitHandle = ((CancellationTokenSource)tokenObj!).Token.WaitHandle;
+            var cts = (CancellationTokenSource)tokenObj!;
+            var waitHandle = cts.Token.WaitHandle;
 
-            while (true)
+            while (!cts.Token.IsCancellationRequested)
             {
                 (int game, int total) = GetCnCNetPlayerCount(timeoutMilliseconds: 5000);
                 PlayerCount = game;
                 TotalPlayerCount = total;
                 CnCNetGameCountUpdated?.Invoke(null, new PlayerCountEventArgs(game, total));
 
-                if (waitHandle.WaitOne(REFRESH_INTERVAL))
+                try
                 {
-                    // Cancellation signaled
+                    if (waitHandle.WaitOne(REFRESH_INTERVAL))
+                        return; // Cancellation signaled
+                }
+                catch (ObjectDisposedException)
+                {
+                    // UI 层在离开主菜单时 Dispose 了 CTS，等待句柄随之释放，WaitOne 抛
+                    // ObjectDisposedException —— 视同取消，正常结束本轮线程，避免线程池未捕获异常。
                     return;
                 }
             }

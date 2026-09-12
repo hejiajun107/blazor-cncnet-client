@@ -680,7 +680,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .ge-sub{margin:12px 0 22px;color:var(--text-2);font-size:13px;letter-spacing:1px}
 
 .groom{position:relative;z-index:5;height:100vh;display:flex;flex-direction:column;
-  padding:60px 16px 14px;gap:10px;overflow:hidden}
+  padding:60px 16px 40px;gap:10px;overflow:hidden}
 .groom-top{display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:10px 16px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(10px)}
 .gt-left{display:flex;align-items:center;gap:12px;min-width:0}
@@ -695,6 +695,12 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .gt-right{display:flex;align-items:center;gap:12px;flex:none}
 .gt-player{font-family:var(--font-orbitron);font-size:12px;color:var(--cyan-soft)}
 
+/* 遭遇战底部操作条（原版 btnLaunchGame/btnLeaveGame：开始游戏在左、返回主菜单在右） */
+.groom-actions{flex:none;margin-top:auto;display:flex;justify-content:space-between;gap:12px;padding:8px 12px;
+  border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(10px)}
+.groom-actions .mb-btn{flex:1;max-width:220px;justify-content:center}
+.groom-actions .start-btn{font-size:13px}
+
 .groom-joining{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
   color:var(--text-2);font-size:13px;letter-spacing:1px}
 .gj-spinner{width:34px;height:34px;border:2px solid var(--line);border-top-color:var(--cyan);
@@ -703,17 +709,20 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 
 .groom-grid{flex:1;min-height:0;display:grid;gap:10px;
   grid-template-columns:minmax(210px,1fr) minmax(0,1.5fr) minmax(320px,1fr);
-  grid-template-rows:minmax(0,1fr) minmax(0,1.3fr)}
+  grid-template-rows:minmax(0,1.6fr) minmax(0,1fr)}
 /* 遭遇战模块位置（参考原版 GameLobbyBase.ini）：左列=地图列表(跨两行)，
    右上=玩家配置|游戏选项，右下=大地图预览(跨两列) */
 .gl-maplist{grid-row:1 / 3}
 .gl-preview{grid-column:2 / 4}
 .gl-maplist .gl-body{display:flex;flex-direction:column;gap:10px}
-.gl-players .gl-body{display:flex;flex-direction:column;gap:8px}
+/* 玩家配置：固定 8 行紧凑表格，1280×720 无需滚动即可看满全部槽位 */
+.gl-players .gl-body{display:flex;flex-direction:column;gap:4px}
 .gl-options .gl-body{display:flex;flex-direction:column;gap:12px}
-.gl-preview .gl-body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;gap:8px}
-/* 地图预览宽高比贴合原版 MapPreviewBox(802x324)：固定 802/324，居中留白 */
-.gl-preview .cfg-map-preview{flex:0 0 auto;height:100%;max-width:100%;aspect-ratio:802/324;margin:0}
+/* 地图预览：固定宽高比（原版 MapPreviewBox 802×324）+ 下方出生点文字信息 */
+.gl-preview .gl-body{display:flex;flex-direction:column;justify-content:flex-start;padding:8px;gap:6px}
+.map-preview-wrap{flex:1 1 auto;min-height:0;position:relative}
+.gl-preview .cfg-map-preview{position:absolute;inset:0;margin:auto;width:auto;height:auto;
+  max-width:100%;max-height:100%;aspect-ratio:802/324}
 .gl-mapname{max-width:46%;font-size:11px;color:var(--text-2);font-family:var(--font-orbitron);
   letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gl-panel{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);
@@ -722,6 +731,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
   padding:9px 12px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;letter-spacing:1px}
 .gl-ph em{font-style:normal;color:var(--cyan);font-family:var(--font-orbitron);font-size:9px;letter-spacing:1px}
 .gl-lock{font-size:11px;color:var(--gold)}
+.gl-ph-right{display:flex;align-items:center;gap:10px;flex:none}
+.gl-reset{padding:2px 10px;font-size:11px;line-height:1.5}
+.gl-reset .en{font-family:var(--font-orbitron);font-size:8px;letter-spacing:1px;color:var(--dim)}
 .gl-body{flex:1;min-height:0;overflow-y:auto;padding:8px}
 
 /* 玩家槽位 */
@@ -815,18 +827,29 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .go-check input:disabled{opacity:.45;cursor:not-allowed}
 .go-dd .gl-select:disabled{opacity:.55;cursor:not-allowed}
 
-/* 玩家配置紧凑槽位表格（参考原版 PlayerOptionsPanel：PLAYER|SIDE|COLOR|TEAM） */
-.gl-tr{display:grid;grid-template-columns:minmax(0,1fr) 74px 64px 46px;gap:6px;align-items:center;
-  padding:4px 2px;border-bottom:1px solid rgba(255,255,255,.05)}
+/* 玩家配置紧凑槽位表格（参考原版 PlayerOptionsPanel：PLAYER|SIDE|COLOR|TEAM，固定 8 行） */
+.gl-tr{display:grid;grid-template-columns:minmax(0,1fr) 112px 78px 44px;gap:6px;align-items:center;
+  padding:3px 2px;border-bottom:1px solid rgba(255,255,255,.05)}
 .gl-tr-head{font-size:10px;color:var(--text-3);letter-spacing:1px;border-bottom:1px solid var(--line)}
 .gl-tr-head em{font-style:normal;font-family:var(--font-orbitron);font-size:8px;color:var(--dim)}
 .gl-tr.human{background:rgba(33,230,255,.06)}
+.gl-tr.empty-slot{opacity:.6}
+.gl-tr.empty-slot:hover{opacity:1}
 .gl-tc-name{display:flex;align-items:center;gap:6px;min-width:0}
 .gl-tc-name .nm{flex:1;min-width:0;font-size:12px;font-weight:700;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
-.gl-tr .gl-select{padding:3px 6px;font-size:11px}
+.gl-tr .gl-select{padding:2px 6px;font-size:11px;min-width:0}
 .gl-tc-name .ai-level{width:auto;flex:none;padding:2px 6px;font-size:11px}
 .gl-tc-name .ai-remove{flex:none;width:18px;height:18px;padding:0;border-radius:3px;font-size:10px}
+.gl-tc-name .ai-add-sel{flex:1;min-width:0;border-style:dashed;border-color:rgba(33,230,255,.4);
+  color:var(--text-3);font-size:11px}
+.gl-tc-name .ai-add-sel:hover{border-color:var(--cyan);color:var(--text)}
+/* 阵营列：国旗图标 + 下拉 */
+.gl-side{display:flex;align-items:center;gap:4px;min-width:0}
+.side-ic{flex:none;width:20px;height:20px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(0,0,0,.6))}
+.gl-side .gl-select{flex:1;min-width:0}
+/* 颜色下拉：选中项以对应色块显示（Chromium 会把 option 内联背景应用到收起态） */
+.color-select option{font-weight:600}
 
 /* 游戏选项（G7：复选/下拉，写 spawn.ini + 自定义地图代码） */
 .go-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px}
@@ -992,6 +1015,16 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .spawn-dot:disabled{cursor:not-allowed;opacity:.35;filter:grayscale(.6);
   box-shadow:none;transform:translate(-50%,-50%) scale(.92)}
 .spawn-dot:disabled:hover{transform:translate(-50%,-50%) scale(.92);box-shadow:none}
+
+/* 出生点位置文字信息（地图预览下方，参考原版地图位置列表） */
+.map-pos-list{flex:none;display:flex;flex-wrap:wrap;gap:3px 10px;align-items:center;justify-content:center}
+.pos-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-2);
+  font-family:var(--font-orbitron);letter-spacing:.5px;white-space:nowrap}
+.pos-idx{flex:none;width:16px;height:16px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);border-radius:50%;color:var(--cyan);font-size:9px;background:rgba(2,10,16,.6)}
+.pos-swatch{flex:none;width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.35)}
+.pos-owner{color:var(--text);max-width:90px;overflow:hidden;text-overflow:ellipsis}
+.pos-owner.free{color:var(--text-3)}
 
 /* 游戏信息面板（M3.6：房间/地图详情） */
 .map-info{margin-top:10px;padding:8px 10px;border:1px dashed var(--line);
@@ -1280,13 +1313,15 @@ input.set-text{width:210px;cursor:text}
   .game-card{padding:6px 8px;margin-bottom:5px}
   .chat-input{padding:8px}
   /* 游戏房间紧凑适配 */
-  .groom{padding:54px 10px 10px;gap:8px}
+  .groom{padding:54px 10px 32px;gap:8px}
   .groom-grid{gap:8px;grid-template-columns:minmax(180px,1fr) minmax(0,1.5fr) minmax(280px,1fr);
-    grid-template-rows:minmax(0,1fr) minmax(0,1.15fr)}
+    grid-template-rows:minmax(0,1.6fr) minmax(0,1fr)}
   .gt-title{font-size:14px}
   .slot{padding:6px 8px}
   .swatch{width:19px;height:19px}
   .gl-preview .gl-body{padding:8px}
+  .groom-actions{padding:6px 10px}
+  .groom-actions .mb-btn{max-width:190px;padding:7px 14px;font-size:12px}
   /* 设置中心紧凑适配 */
   .settings{padding:60px 14px 44px;gap:8px}
   .settings-grid{grid-template-columns:180px minmax(0,1fr);gap:8px}

@@ -362,23 +362,30 @@ namespace BlazorCncnetClient.Infrastructure
 
         // ── AI 玩家配置 ──
 
-        /// <summary>添加一个 AI 玩家：阵营/颜色/出生点取第一个空闲值，默认难度 Easy（AILevel=0）。</summary>
-        public void AddAI()
+        /// <summary>在指定槽位添加一个 AI 玩家（原版空槽下拉语义：选难度即占位）：
+        /// 阵营/颜色/出生点取第一个空闲值，名称与难度联动（Easy/Medium/Hard AI）。</summary>
+        public void AddAI(int slot, int level = 0)
         {
-            if (_aiPlayers.Count >= MaxAIPlayersConst)
+            int count = _aiPlayers.Count;
+            if (slot < 0 || slot > count || count >= MaxAIPlayersConst)
                 throw new InvalidOperationException($"最多只能添加 {MaxAIPlayersConst} 个 AI 玩家");
 
-            int index = _aiPlayers.Count;
-            var ai = new PlayerInfo(GetAIName(index), 0, 0, 0, 0)
+            level = Math.Clamp(level, 0, 2);
+            var ai = new PlayerInfo(GetAIName(level), 0, 0, 0, 0)
             {
                 IsAI = true,
-                AILevel = 0,
-                Index = index
+                AILevel = level,
+                Index = slot
             };
             ai.StartingLocation = ForceRandomStarts ? 0 : GetFirstFreeStartingLocation();
-            _aiPlayers.Add(ai);
+            _aiPlayers.Insert(slot, ai);
+            for (int i = 0; i < _aiPlayers.Count; i++)
+                _aiPlayers[i].Index = i;
             NotifyChanged();
         }
+
+        /// <summary>末尾追加一个默认 Easy AI（原版 InitDefaultSettings / 重置场景）。</summary>
+        public void AddAI() => AddAI(_aiPlayers.Count, 0);
 
         /// <summary>移除指定 AI 玩家（需是列表中的 AI）。</summary>
         public void RemoveAI(PlayerInfo ai)
@@ -401,12 +408,13 @@ namespace BlazorCncnetClient.Infrastructure
             NotifyChanged();
         }
 
-        /// <summary>设置指定 AI 玩家的难度（0=Easy / 1=Medium / 2=Hard，逻辑递增刻度）。</summary>
+        /// <summary>设置指定 AI 玩家的难度（0=Easy / 1=Medium / 2=Hard）；名称随难度联动（同原版 AI 命名）。</summary>
         public void SetAILevel(PlayerInfo ai, int level)
         {
             if (!_aiPlayers.Contains(ai))
                 return;
             ai.AILevel = Math.Clamp(level, 0, 2);
+            ai.Name = GetAIName(ai.AILevel);
             NotifyChanged();
         }
 
