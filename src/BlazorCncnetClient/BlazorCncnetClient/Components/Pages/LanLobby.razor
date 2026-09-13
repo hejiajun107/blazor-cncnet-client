@@ -58,7 +58,7 @@
                         <div class="game-card @(g.Locked ? "locked" : "") @(g.Incompatible ? "ver-mismatch" : "")"
                              @onclick="() => OnGameClick(g)">
                             <div class="gc-preview">
-                                <MapThumbnail MapHash="g.MapHash" MapName="g.Map" />
+                                <MapThumbnail MapHash="@g.MapHash" MapName="@g.Map" />
                             </div>
                             <div class="gc-top">
                                 <span class="gc-name">@g.RoomName</span>
@@ -150,7 +150,7 @@
                 <button type="button" class="gd-close" @onclick="CloseGameDetail" aria-label="关闭">✕</button>
             </header>
             <div class="gd-map">
-                <MapThumbnail MapHash="_selectedGame.MapHash" MapName="_selectedGame.Map" />
+                <MapThumbnail MapHash="@_selectedGame.MapHash" MapName="@_selectedGame.Map" />
             </div>
             <div class="gd-rows">
                 <div class="gd-row"><span>地图</span><b>@_selectedGame.Map</b></div>

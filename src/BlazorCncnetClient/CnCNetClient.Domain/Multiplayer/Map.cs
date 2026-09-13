@@ -240,8 +240,13 @@ namespace CnCNetClient.Domain.Multiplayer
 
                 // Initialize PreviewPath
                 {
-                    FileInfo mapFile = SafePath.GetFile(BaseFilePath);
-                    string previewPath = SafePath.CombineFilePath(SafePath.GetDirectory(mapFile.FullName).Parent.FullName[ProgramConstants.GamePath.Length..], FormattableString.Invariant($"{section.GetStringValue("PreviewImage", mapFile.Name)}.png"));
+                    // 以 GamePath 为根解析地图文件（不能依赖进程工作目录 CWD），
+                    // 否则 Parent.FullName[GamePath.Length..] 切片可能越界导致官方地图全部加载失败。
+                    FileInfo mapFile = SafePath.GetFile(ProgramConstants.GamePath, BaseFilePath);
+                    // 切片起点可能落在路径分隔符上，去掉前导分隔符得到规范相对路径（如 "Maps/Standard/xmp29u2.png"）
+                    string mapRelativeDir = SafePath.GetDirectory(mapFile.FullName).Parent.FullName[ProgramConstants.GamePath.Length..]
+                        .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    string previewPath = SafePath.CombineFilePath(mapRelativeDir, FormattableString.Invariant($"{section.GetStringValue("PreviewImage", mapFile.Name)}.png"));
                     if (!SafePath.GetFile(ProgramConstants.GamePath, previewPath).Exists)
                         previewPath = null;
 

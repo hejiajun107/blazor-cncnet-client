@@ -98,7 +98,7 @@ else
                     <div class="gl-body">
                         <div class="cfg-map">
                             <div class="cfg-map-preview">
-                                <MapThumbnail MapHash="Room.SelectedMap?.Map.SHA1" MapName="Room.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
+                                <MapThumbnail MapHash="@Room.SelectedMap?.Map.SHA1" MapName="@Room.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
                                 @if (Room.SelectedMap is null)
                                 {
                                     <div class="cfg-map-none">@(Room.IsHost ? "请选择地图" : "等待主机选择地图…")</div>
@@ -127,19 +127,46 @@ else
                             </div>
                             @if (Room.IsHost)
                             {
-                                <select class="gl-select" value="@SelectedMapIndex" @onchange="OnMapChange">
-                                    <option value="-1">— 选择地图 —</option>
-                                    @foreach (var group in MapGroups)
-                                    {
-                                        <optgroup label="@group.Key">
-                                            @for (int i = 0; i < group.Items.Count; i++)
+                                <!-- 游戏模式选择（原版 cmbGameMode：切换模式过滤地图列表） -->
+                                <div class="map-mode">
+                                    <span class="mm-label">游戏模式</span>
+                                    <select class="gl-select" value="@_selectedMode" @onchange="OnModeChange">
+                                        @if (ModeOptions.Count == 0)
+                                        {
+                                            <option value="">— 加载中 —</option>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var m in ModeOptions)
                                             {
-                                                var opt = group.Items[i];
-                                                <option value="@opt.Index">@opt.Display</option>
+                                                <option value="@m">@m</option>
                                             }
-                                        </optgroup>
+                                        }
+                                    </select>
+                                </div>
+                                <!-- 地图列表（原版 lbMapList：当前模式的地图直接呈现为可点选列表） -->
+                                <div class="map-list">
+                                    @if (_mapOptions.Count == 0)
+                                    {
+                                        <div class="map-list-empty">@(ModeOptions.Count == 0 ? "— 地图加载中 —" : "— 无匹配地图 —")</div>
                                     }
-                                </select>
+                                    else
+                                    {
+                                        @for (int i = 0; i < _mapOptions.Count; i++)
+                                        {
+                                            var opt = _mapOptions[i];
+                                            var idx = i; // for 循环变量为共享变量，须拷贝为局部变量供闭包捕获，否则点击时索引恒为 Count（越界）
+                                            var isSel = idx == SelectedMapIndex;
+                                            <div class="map-list-item @(isSel ? "sel" : "") @(opt.Value.IsFavorite ? "fav" : "")"
+                                                 @onclick="() => SelectMap(idx)"
+                                                 title="@opt.Display">
+                                                <span class="ml-star">★</span>
+                                                <span class="ml-name">@opt.Display</span>
+                                                <span class="ml-meta">@(opt.Value.MinPlayers)–@(opt.Value.MaxPlayers)</span>
+                                            </div>
+                                        }
+                                    }
+                                </div>
                             }
                             else
                             {
@@ -303,10 +330,46 @@ else
         }
     }
 
-    private List<MapGroup> MapGroups => _mapGroups;
-
-    private List<MapGroup> _mapGroups = new();
     private List<MapOption> _mapOptions = new();
+
+    /// <summary>当前选择的游戏模式（原版 cmbGameMode，按 MapLoader.GameModes 的 INI 顺序）。</summary>
+    private string _selectedMode = string.Empty;
+
+    /// <summary>模式下拉选项（只列出有地图的模式）。</summary>
+    private List<string> ModeOptions => MapLoader.GameModes
+        .Where(gm => MapLoader.GameModeMaps.Any(gmm => gmm.GameMode.UIName == gm.UIName))
+        .Select(gm => gm.UIName)
+        .ToList();
+
+    /// <summary>地图加载完成前模式为空；加载后默认选中第一个模式。</summary>
+    private void EnsureSelectedMode()
+    {
+        if (_selectedMode.Length > 0 || ModeOptions.Count == 0)
+            return;
+        _selectedMode = ModeOptions[0];
+    }
+
+    private void OnModeChange(ChangeEventArgs e)
+    {
+        _selectedMode = e.Value?.ToString() ?? string.Empty;
+        RefreshMaps();
+
+        // 当前选中地图不属于新模式时，自动选新模式第一张图（原版 cmbGameMode 切换语义）
+        if (Room.SelectedMap is not null
+            && _selectedMode.Length > 0
+            && Room.SelectedMap.GameMode.UIName != _selectedMode
+            && _mapOptions.Count > 0)
+        {
+            try
+            {
+                Room.ChangeMap(_mapOptions[0].Value);
+            }
+            catch (Exception ex)
+            {
+                _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+            }
+        }
+    }
 
     private int SelectedMapIndex
     {
@@ -408,12 +471,15 @@ else
 
     private void RefreshMaps()
     {
-        _mapOptions = MapLoader.GameModeMaps
-            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()))
-            .ToList();
-        _mapGroups = _mapOptions.GroupBy(o => o.Mode)
-            .Select(g => new MapGroup(g.Key, g.ToList()))
-            .ToList();
+        IEnumerable<MapOption> query = MapLoader.GameModeMaps
+            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()));
+
+        // 游戏模式过滤（原版 cmbGameMode：只显示当前模式的地图）
+        EnsureSelectedMode();
+        if (_selectedMode.Length > 0)
+            query = query.Where(o => o.Mode == _selectedMode);
+
+        _mapOptions = query.Select((o, i) => o with { Index = i }).ToList();
     }
 
     private void OnMapLoadingComplete(object? sender, EventArgs e) =>
@@ -450,12 +516,21 @@ else
 
     // ── 地图（房主） ──
 
-    private void OnMapChange(ChangeEventArgs e)
+    private void SelectMap(int index)
     {
-        if (!int.TryParse(e.Value?.ToString(), out int index) || index < 0 || index >= _mapOptions.Count)
+        if (index < 0 || index >= _mapOptions.Count)
             return;
         Room.ChangeMap(_mapOptions[index].Value);
     }
+
+    private void OnMapChange(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int index))
+            return;
+        SelectMap(index);
+    }
+
+    private void OnMapListItemClick(int index) => SelectMap(index);
 
     // ── 规则（房主） ──
 
@@ -581,6 +656,5 @@ else
     }
 
     private sealed record MapOption(GameModeMap Value, int Index, string Mode, string Display);
-    private sealed record MapGroup(string Key, List<MapOption> Items);
     private sealed record ColorOption(string Name, int Index, Rgba32 Color);
 }

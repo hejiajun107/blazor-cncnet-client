@@ -47,20 +47,47 @@ else
                     <span>地图选择 <em>MAP LIST</em></span>
                 </header>
                 <div class="gl-body">
-                    <select class="gl-select" value="@SelectedMapIndex" @onchange="OnMapChange"
-                            @oncontextmenu="OnMapContextMenu" @oncontextmenu:preventDefault="true">
-                        <option value="-1">— 选择地图 —</option>
-                        @foreach (var group in MapGroups)
-                        {
-                            <optgroup label="@group.Key">
-                                @for (int i = 0; i < group.Items.Count; i++)
+                    <!-- 游戏模式选择（原版 cmbGameMode：切换模式过滤地图列表） -->
+                    <div class="map-mode">
+                        <span class="mm-label">游戏模式</span>
+                        <select class="gl-select" value="@_selectedMode" @onchange="OnModeChange">
+                            @if (ModeOptions.Count == 0)
+                            {
+                                <option value="">— 加载中 —</option>
+                            }
+                            else
+                            {
+                                @foreach (var m in ModeOptions)
                                 {
-                                    var opt = group.Items[i];
-                                    <option value="@opt.Index">@(opt.Value.IsFavorite ? "★ " : "")@opt.Display</option>
+                                    <option value="@m">@m</option>
                                 }
-                            </optgroup>
+                            }
+                        </select>
+                    </div>
+                    <!-- 地图列表（原版 lbMapList：当前模式的地图直接呈现为可点选列表，右键收藏等） -->
+                    <div class="map-list">
+                        @if (_mapOptions.Count == 0)
+                        {
+                            <div class="map-list-empty">@(ModeOptions.Count == 0 ? "— 地图加载中 —" : "— 无匹配地图 —")</div>
                         }
-                    </select>
+                        else
+                        {
+                            @for (int i = 0; i < _mapOptions.Count; i++)
+                            {
+                                var opt = _mapOptions[i];
+                                var idx = i; // for 循环变量为共享变量，须拷贝为局部变量供闭包捕获，否则点击时索引恒为 Count（越界）
+                                var isSel = idx == SelectedMapIndex;
+                                <div class="map-list-item @(isSel ? "sel" : "") @(opt.Value.IsFavorite ? "fav" : "")"
+                                     @onclick="() => SelectMap(idx)"
+                                     @oncontextmenu="(e) => OnMapListItemContextMenu(idx, e)" @oncontextmenu:preventDefault="true"
+                                     title="@opt.Display">
+                                    <span class="ml-star">★</span>
+                                    <span class="ml-name">@opt.Display</span>
+                                    <span class="ml-meta">@(opt.Value.MinPlayers)–@(opt.Value.MaxPlayers)</span>
+                                </div>
+                            }
+                        }
+                    </div>
 
                     <!-- 地图工具条（原版 tbMapSearch / btnShowFavoriteMaps / btnMapSortAlphabetically / btnPickRandomMap） -->
                     <div class="map-tools">
@@ -75,29 +102,6 @@ else
                             <span class="en">RND</span>
                         </button>
                     </div>
-
-                    @if (Svc.SelectedMap is not null)
-                    {
-                        <div class="map-info">
-                            <div class="mi-row"><span>地图</span><b>@Svc.SelectedMap.Map.Name</b></div>
-                            <div class="mi-row"><span>作者</span><b>@Svc.SelectedMap.Map.Author</b></div>
-                            <div class="mi-row"><span>尺寸</span><b>@Svc.SelectedMap.Map.GetSizeString()</b></div>
-                            <div class="mi-row"><span>模式</span><b>@Svc.SelectedMap.GameMode.UIName</b></div>
-                            <div class="mi-row"><span>人数</span><b>@(Svc.SelectedMap.MinPlayers)–@(Svc.SelectedMap.MaxPlayers)</b></div>
-                            <div class="mi-row"><span>排名</span><b class="mi-rank">@RankStars</b></div>
-                            <div class="mi-row">
-                                <span>收藏</span>
-                                <button type="button" class="mi-star @(Svc.SelectedMap.IsFavorite ? "on" : "")" @onclick="OnToggleFavorite">
-                                    ★ <b>@(Svc.SelectedMap.IsFavorite ? "已收藏" : "收藏此图")</b>
-                                </button>
-                            </div>
-                            @if (!string.IsNullOrEmpty(Svc.SelectedMap.Map.Briefing))
-                            {
-                                <div class="mi-divider"></div>
-                                <div class="mi-briefing">@Svc.SelectedMap.Map.Briefing</div>
-                            }
-                        </div>
-                    }
                 </div>
             </section>
 
@@ -297,7 +301,7 @@ else
                 <div class="gl-body">
                     <div class="map-preview-wrap">
                         <div class="cfg-map-preview">
-                            <MapThumbnail MapHash="Svc.SelectedMap?.Map.SHA1" MapName="Svc.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
+                            <MapThumbnail MapHash="@Svc.SelectedMap?.Map.SHA1" MapName="@Svc.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
                             @if (Svc.SelectedMap is null)
                             {
                                 <div class="cfg-map-none">请选择地图</div>
@@ -345,6 +349,29 @@ else
                         </div>
                     }
                 </div>
+
+                <!-- 地图信息（紧凑条：原 map-info 从左侧列表区移入预览面板下方，横向排布） -->
+                @if (Svc.SelectedMap is not null)
+                {
+                    <div class="map-info compact">
+                        <div class="mi-row"><span>地图</span><b>@Svc.SelectedMap.Map.Name</b></div>
+                        <div class="mi-row"><span>作者</span><b>@Svc.SelectedMap.Map.Author</b></div>
+                        <div class="mi-row"><span>尺寸</span><b>@Svc.SelectedMap.Map.GetSizeString()</b></div>
+                        <div class="mi-row"><span>模式</span><b>@Svc.SelectedMap.GameMode.UIName</b></div>
+                        <div class="mi-row"><span>人数</span><b>@(Svc.SelectedMap.MinPlayers)–@(Svc.SelectedMap.MaxPlayers)</b></div>
+                        <div class="mi-row"><span>排名</span><b class="mi-rank">@RankStars</b></div>
+                        <div class="mi-row">
+                            <span>收藏</span>
+                            <button type="button" class="mi-star @(Svc.SelectedMap.IsFavorite ? "on" : "")" @onclick="OnToggleFavorite">
+                                ★ <b>@(Svc.SelectedMap.IsFavorite ? "已收藏" : "收藏此图")</b>
+                            </button>
+                        </div>
+                        @if (!string.IsNullOrEmpty(Svc.SelectedMap.Map.Briefing))
+                        {
+                            <div class="mi-briefing">@Svc.SelectedMap.Map.Briefing</div>
+                        }
+                    </div>
+                }
             </section>
         </div>
 
@@ -401,9 +428,46 @@ else
     private string[] _sides = Array.Empty<string>();
     private string[] Sides => _sides;
 
-    private List<MapGroup> MapGroups => _mapGroups;
-    private List<MapGroup> _mapGroups = new();
     private List<MapOption> _mapOptions = new();
+
+    /// <summary>当前选择的游戏模式（原版 cmbGameMode，按 MapLoader.GameModes 的 INI 顺序）。</summary>
+    private string _selectedMode = string.Empty;
+
+    /// <summary>模式下拉选项（只列出有地图的模式）。</summary>
+    private List<string> ModeOptions => MapLoader.GameModes
+        .Where(gm => MapLoader.GameModeMaps.Any(gmm => gmm.GameMode.UIName == gm.UIName))
+        .Select(gm => gm.UIName)
+        .ToList();
+
+    /// <summary>地图加载完成前模式为空；加载后默认选中第一个模式。</summary>
+    private void EnsureSelectedMode()
+    {
+        if (_selectedMode.Length > 0 || ModeOptions.Count == 0)
+            return;
+        _selectedMode = ModeOptions[0];
+    }
+
+    private void OnModeChange(ChangeEventArgs e)
+    {
+        _selectedMode = e.Value?.ToString() ?? string.Empty;
+        RefreshMaps();
+
+        // 当前选中地图不属于新模式时，自动选新模式第一张图（原版 cmbGameMode 切换语义）
+        if (Svc.SelectedMap is not null
+            && _selectedMode.Length > 0
+            && Svc.SelectedMap.GameMode.UIName != _selectedMode
+            && _mapOptions.Count > 0)
+        {
+            try
+            {
+                Svc.ChangeMap(_mapOptions[0].Value);
+            }
+            catch (Exception ex)
+            {
+                _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
+            }
+        }
+    }
 
     private int TotalPlayers => 1 + Svc.AIPlayers.Count;
 
@@ -511,11 +575,13 @@ else
         else if (_sortMode == 2)
             query = query.OrderByDescending(o => o.Display, StringComparer.OrdinalIgnoreCase);
 
-        // 过滤/排序后重建索引：select 的 option value 与 SelectedMapIndex 均以列表内位置为准
+        // 游戏模式过滤（原版 cmbGameMode：只显示当前模式的地图）
+        EnsureSelectedMode();
+        if (_selectedMode.Length > 0)
+            query = query.Where(o => o.Mode == _selectedMode);
+
+        // 过滤/排序后重建索引：地图列表项位置即索引
         _mapOptions = query.Select((o, i) => o with { Index = i }).ToList();
-        _mapGroups = _mapOptions.GroupBy(o => o.Mode)
-            .Select(g => new MapGroup(g.Key, g.ToList()))
-            .ToList();
     }
 
     private void OnMapLoadingComplete(object? sender, EventArgs e) =>
@@ -564,9 +630,9 @@ else
         Nav.NavigateTo("/menu");
     }
 
-    private void OnMapChange(ChangeEventArgs e)
+    private void SelectMap(int index)
     {
-        if (!int.TryParse(e.Value?.ToString(), out int index) || index < 0 || index >= _mapOptions.Count)
+        if (index < 0 || index >= _mapOptions.Count)
             return;
         try
         {
@@ -577,6 +643,15 @@ else
             _ = JS.InvokeVoidAsync("cncnet.toast", ex.Message);
         }
     }
+
+    private void OnMapChange(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int index))
+            return;
+        SelectMap(index);
+    }
+
+    private void OnMapListItemClick(int index) => SelectMap(index);
 
     /// <summary>当前地图排名星数（原版 GetDefaultMapRankIndex 语义：单机胜场统计，0–3 星）。
     /// 统计数据库读取为后台任务，未就绪前显示省略号，避免 UI 线程被 dscore.dat 文件 I/O 阻塞。</summary>
@@ -653,13 +728,12 @@ else
     private bool _mapCtxVisible;
     private double _mapCtxX, _mapCtxY;
 
-    /// <summary>右键地图下拉框：对当前选中的地图打开菜单（右键列表项时 Chromium 会先选中该项）。</summary>
-    private void OnMapContextMenu(MouseEventArgs e)
+    /// <summary>右键地图列表项：对该地图打开菜单（收藏/复制/删除/定位文件）。</summary>
+    private void OnMapListItemContextMenu(int index, MouseEventArgs e)
     {
-        var gmm = Svc.SelectedMap;
-        if (gmm is null)
+        if (index < 0 || index >= _mapOptions.Count)
             return;
-        _mapCtxTarget = gmm;
+        _mapCtxTarget = _mapOptions[index].Value;
         _mapCtxX = e.ClientX;
         _mapCtxY = e.ClientY;
         _mapCtxVisible = true;
@@ -975,7 +1049,6 @@ else
     }
 
     private sealed record MapOption(GameModeMap Value, int Index, string Mode, string Display);
-    private sealed record MapGroup(string Key, List<MapOption> Items);
     private sealed record ColorOption(string Name, int Index, Rgba32 Color);
     private sealed record TeamOption(string Value, string Label);
 }

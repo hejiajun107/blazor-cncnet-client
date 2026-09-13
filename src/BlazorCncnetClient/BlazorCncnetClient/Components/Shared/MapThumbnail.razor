@@ -46,6 +46,7 @@ else
                 return;
             _url = url;
             _failed = url is null;
+            CnCNetClient.Tools.Logger.Log($"MapThumbnail: hash='{hash}' name='{name}' url={(url is null ? "NULL" : $"OK len={url.Length}")}");
         }
         catch
         {

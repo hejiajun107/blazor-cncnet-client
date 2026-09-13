@@ -82,8 +82,9 @@
                         @for (int i = 0; i < Svc.Matches.Count; i++)
                         {
                             var m = Svc.Matches[i];
-                            <button type="button" class="stats-tr stats-row @(i == _selectedRow ? "on" : "")"
-                                    @onclick="() => OnSelectRow(i)">
+                            var idx = i; // for 循环变量为共享变量，须拷贝为局部变量供闭包捕获，否则点击时索引恒为 Count（越界）
+                            <button type="button" class="stats-tr stats-row @(idx == _selectedRow ? "on" : "")"
+                                    @onclick="() => OnSelectRow(idx)">
                                 <span>@m.DateText</span>
                                 <span title="@m.MapName">@m.MapName</span>
                                 <span>@m.GameMode</span>

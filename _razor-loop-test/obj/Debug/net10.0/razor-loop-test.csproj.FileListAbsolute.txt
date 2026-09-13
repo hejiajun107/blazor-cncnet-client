@@ -1,0 +1,8 @@
+F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\_razor-loop-test\obj\Debug\net10.0\EmbeddedAttribute.cs
+F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\_razor-loop-test\obj\Debug\net10.0\ValidatableTypeAttribute.cs
+F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\_razor-loop-test\obj\Debug\net10.0\rpswa.dswa.cache.json
+F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\_razor-loop-test\obj\Debug\net10.0\razor-loop-test.GeneratedMSBuildEditorConfig.editorconfig
+F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\_razor-loop-test\obj\Debug\net10.0\razor-loop-test.AssemblyInfoInputs.cache
+F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\_razor-loop-test\obj\Debug\net10.0\razor-loop-test.AssemblyInfo.cs
+F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\_razor-loop-test\obj\Debug\net10.0\razor-loop-test.csproj.CoreCompileInputs.cache
+F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\_razor-loop-test\obj\Debug\net10.0\razor-loop-test.sourcelink.json

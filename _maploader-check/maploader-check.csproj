@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>maploader-check</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="CnCNetClient.Core"><HintPath>F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\src\BlazorCncnetClient\BlazorCncnetClient\bin\Debug\net10.0\CnCNetClient.Core.dll</HintPath></Reference>
+    <Reference Include="CnCNetClient.Domain"><HintPath>F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\src\BlazorCncnetClient\BlazorCncnetClient\bin\Debug\net10.0\CnCNetClient.Domain.dll</HintPath></Reference>
+    <Reference Include="CnCNetClient.Tools"><HintPath>F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\src\BlazorCncnetClient\BlazorCncnetClient\bin\Debug\net10.0\CnCNetClient.Tools.dll</HintPath></Reference>
+    <Reference Include="CnCNetClient.Online"><HintPath>F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\src\BlazorCncnetClient\BlazorCncnetClient\bin\Debug\net10.0\CnCNetClient.Online.dll</HintPath></Reference>
+    <Reference Include="SixLabors.ImageSharp"><HintPath>F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\src\BlazorCncnetClient\BlazorCncnetClient\bin\Debug\net10.0\SixLabors.ImageSharp.dll</HintPath></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>F:\work\PhotinoCLient\blazor-cncnet-client\blazor-cncnet-client\src\BlazorCncnetClient\BlazorCncnetClient\bin\Debug\net10.0\Newtonsoft.Json.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

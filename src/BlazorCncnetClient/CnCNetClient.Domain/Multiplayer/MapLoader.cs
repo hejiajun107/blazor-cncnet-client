@@ -826,8 +826,9 @@ namespace CnCNetClient.Domain.Multiplayer
 
         public Image? GetPreviewTextureFromMap(Map map, bool syncLoadOnCacheMiss = false)
         {
+            // PreviewPath 是相对 GamePath 的路径，必须拼 GamePath 再加载，不能直接 Image.Load(map.PreviewPath)（依赖 CWD）。
             if (map?.IsImmediatePreviewImageAvailable() ?? false)
-                return Image.Load(map.PreviewPath);
+                return Image.Load(SafePath.GetFile(ProgramConstants.GamePath, map.PreviewPath).FullName);
 
             using var cacheLease = GetCachedPreviewImageFromMap(map, syncLoadOnCacheMiss);
 

@@ -64,13 +64,17 @@ namespace BlazorCncnetClient.Infrastructure
         {
             var map = FindMap(mapHash, mapName);
             if (map is null)
+            {
+                CnCNetClient.Tools.Logger.Log($"MapPreviewService: map not found hash='{mapHash}' name='{mapName}'");
                 return null;
+            }
 
             Image? image = null;
             try
             {
                 // syncLoadOnCacheMiss: 命中缓存立即返回；未命中走 FastMapPreviewExtractor 提取（复用 MapPreviewCacheManager）
                 image = _mapLoader.GetPreviewTextureFromMap(map, syncLoadOnCacheMiss: true);
+                CnCNetClient.Tools.Logger.Log($"MapPreviewService: map='{map.Name}' previewPath='{map.PreviewPath}' immediate={map.IsImmediatePreviewImageAvailable()} image={(image != null ? "OK" : "NULL")}");
                 if (image is null)
                     return null;
 
@@ -78,9 +82,10 @@ namespace BlazorCncnetClient.Infrastructure
                 image.SaveAsPng(ms);
                 return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
             }
-            catch
+            catch (Exception ex)
             {
                 // 单张预览失败不影响大厅；返回 null 走占位
+                CnCNetClient.Tools.Logger.Log($"MapPreviewService: encode failed for '{map?.Name}': {ex.GetType().Name}: {ex.Message}");
                 return null;
             }
             finally
