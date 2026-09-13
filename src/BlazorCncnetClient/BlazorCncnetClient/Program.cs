@@ -272,6 +272,20 @@ namespace BlazorCncnetClient
 
             try
             {
+                // M5.6 地图集合预热：启动即后台加载官方 + 自定义地图。
+                // 否则懒加载首次触发在进入遭遇战/房间页时（MapThumbnail → MapPreviewService），
+                // 333+ 张地图解析会与页面渲染抢 CPU，导致进入遭遇战页明显卡顿。
+                try
+                {
+                    // InfiniFrameBlazorApp 暴露的是 ServiceProvider（IServiceProvider），而非 Services（后者在 Builder 上）。
+                    var mapLoader = app.ServiceProvider.GetRequiredService<MapLoader>();
+                    _ = mapLoader.LoadMapsAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "地图集合预热启动失败（进入遭遇战页时仍会懒加载兜底）");
+                }
+
                 app.Run();
             }
             finally

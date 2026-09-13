@@ -1,9 +1,11 @@
 @implements IDisposable
 @inject MapPreviewService MapPreview
+@inject IJSRuntime JS
 
 @if (_url is not null)
 {
-    <img src="@_url" alt="@MapName" class="map-thumb-img @CssClass" loading="lazy" />
+    <img src="@_url" alt="@MapName" class="map-thumb-img @CssClass" loading="lazy"
+         @ref="_imgRef" @onload="OnImgLoaded" />
 }
 else if (_failed)
 {
@@ -22,6 +24,20 @@ else
     private string? _url;
     private bool _failed;
     private CancellationTokenSource? _cts;
+    private ElementReference _imgRef;
+
+    /// <summary>图片加载完成：把自然宽高比写回 .cfg-map-preview 容器，保证出生点覆盖层与图片重合。</summary>
+    private async Task OnImgLoaded()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("cncnet.fitMapPreview", _imgRef);
+        }
+        catch
+        {
+            // JS 缺失时容器保持默认比例（仅影响出生点覆盖层对齐精度）
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {

@@ -515,12 +515,13 @@ else
                                     <div class="eo-mappings">
                                         @for (int st = 1; st <= Room.MaxPlayers; st++)
                                         {
-                                            var teamValue = GetExtraMappingTeam(st);
+                                            var slot = st; // for 循环变量为共享变量，须拷贝为局部变量供闭包捕获，否则 onchange 时索引恒为 MaxPlayers+1
+                                            var teamValue = GetExtraMappingTeam(slot);
                                             <div class="eo-map-cell">
-                                                <span class="eo-map-idx">@st</span>
+                                                <span class="eo-map-idx">@slot</span>
                                                 <select class="gl-select eo-map-sel" value="@teamValue"
-                                                        disabled="@(!Room.IsHost || !Room.AllowedTeamStartMappingLocations.Contains(st))"
-                                                        @onchange="(e) => OnExtraMappingChange(st, e)">
+                                                        disabled="@(!Room.IsHost || !Room.AllowedTeamStartMappingLocations.Contains(slot))"
+                                                        @onchange="(e) => OnExtraMappingChange(slot, e)">
                                                     @foreach (var opt in ExtraMappingTeamOptions)
                                                     {
                                                         <option value="@opt.Value">@opt.Label</option>

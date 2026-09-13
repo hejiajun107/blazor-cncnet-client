@@ -400,5 +400,42 @@
         } catch (e) { /* 忽略复制失败 */ }
     }
 
-    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText };
+    // 地图预览对齐：出生点覆盖层（.spawn-layer，inset:0）与缩略图必须完全重合。
+    // 缩略图以 object-fit:contain 渲染并保留原始宽高比；若容器只固定一个比例（如 802/324）
+    // 或仅改 aspect-ratio，一旦容器宽度/高度受父级 max-width/max-height 约束发生截断，
+    // contain 就会在容器内留白 → 出生点百分比坐标与图片像素错位。
+    // 改为：按图片自然宽高比 + 父容器可用空间（clientWidth/clientHeight）直接算出容器实际宽高，
+    // 使图片铺满容器无留白，覆盖层坐标与图片一一对应（多页共用，无 JS 时忽略）。
+    // 窗口缩放/布局变化时经 ResizeObserver 重新对齐；首次 onload 若布局未就绪则稍后重试。
+    function fitMapPreview(img) {
+        try {
+            if (!img || !img.isConnected || !img.naturalWidth || !img.naturalHeight) return;
+            const box = img.closest('.cfg-map-preview');
+            const wrap = box ? box.parentElement : null;
+            if (!box || !wrap) return;
+            const availW = wrap.clientWidth;
+            const availH = wrap.clientHeight;
+            if (!availW || !availH) {
+                if (!img._fitRetried) {
+                    img._fitRetried = true;
+                    setTimeout(() => fitMapPreview(img), 80);
+                }
+                return;
+            }
+            const r = img.naturalWidth / img.naturalHeight;
+            let w, h;
+            if (availW / availH > r) { h = availH; w = Math.round(h * r); }
+            else { w = availW; h = Math.round(w / r); }
+            box.style.width = w + 'px';
+            box.style.height = h + 'px';
+            box.style.aspectRatio = '';
+            if (!box._fitObserved) {
+                box._fitObserved = true;
+                try { new ResizeObserver(() => fitMapPreview(img)).observe(wrap); }
+                catch (e) { /* 旧浏览器无 ResizeObserver：保持初始对齐 */ }
+            }
+        } catch (e) { /* 忽略 */ }
+    }
+
+    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview };
 })();

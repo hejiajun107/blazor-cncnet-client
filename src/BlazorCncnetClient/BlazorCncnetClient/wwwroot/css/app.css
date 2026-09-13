@@ -828,18 +828,26 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .go-check input:disabled{opacity:.45;cursor:not-allowed}
 .go-dd .gl-select:disabled{opacity:.55;cursor:not-allowed}
 
-/* 玩家配置紧凑槽位表格（参考原版 PlayerOptionsPanel：PLAYER|SIDE|COLOR|TEAM，固定 8 行） */
-.gl-tr{display:grid;grid-template-columns:minmax(0,1fr) 112px 78px 44px;gap:6px;align-items:center;
+/* 玩家配置紧凑槽位表格（参考原版 PlayerOptionsPanel：PLAYER|SIDE|COLOR|START|TEAM，固定 8 行）。
+   固定列总宽控制在 ~250px（1280×720 下第 2 列可用 ~300px，玩家名列余量不足），
+   避免 5 列后玩家名列被挤没导致列表「满」/溢出。 */
+.gl-tr{display:grid;grid-template-columns:minmax(0,1fr) 94px 62px 38px 38px;gap:4px;align-items:center;
   padding:3px 2px;border-bottom:1px solid rgba(255,255,255,.05)}
 .gl-tr-head{font-size:10px;color:var(--text-3);letter-spacing:1px;border-bottom:1px solid var(--line)}
 .gl-tr-head em{font-style:normal;font-family:var(--font-orbitron);font-size:8px;color:var(--dim)}
 .gl-tr.human{background:rgba(33,230,255,.06)}
 .gl-tr.empty-slot{opacity:.6}
 .gl-tr.empty-slot:hover{opacity:1}
+/* 行可点击选中（原版 SelectedPlayer：点击行→地图上点出生点分配给它） */
+.gl-tr{cursor:pointer}
+.gl-tr .gl-select{cursor:pointer}
+.gl-tr.sel{background:rgba(33,230,255,.13);box-shadow:inset 2px 0 0 var(--cyan)}
+.gl-tr.sel .nm{color:var(--cyan)}
 .gl-tc-name{display:flex;align-items:center;gap:6px;min-width:0}
 .gl-tc-name .nm{flex:1;min-width:0;font-size:12px;font-weight:700;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .gl-tr .gl-select{padding:2px 6px;font-size:11px;min-width:0}
+.gl-tr .gl-select:disabled{opacity:.45;cursor:not-allowed}
 .gl-tc-name .ai-level{width:auto;flex:none;padding:2px 6px;font-size:11px}
 .gl-tc-name .ai-remove{flex:none;width:18px;height:18px;padding:0;border-radius:3px;font-size:10px}
 .gl-tc-name .ai-add-sel{flex:1;min-width:0;border-style:dashed;border-color:rgba(33,230,255,.4);
@@ -849,6 +857,8 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .gl-side{display:flex;align-items:center;gap:4px;min-width:0}
 .side-ic{flex:none;width:20px;height:20px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(0,0,0,.6))}
 .gl-side .gl-select{flex:1;min-width:0}
+/* 出生点列：纯数字/随机下拉，窄列居中 */
+.gl-start{text-align:center;font-size:10px;padding:2px 3px}
 /* 颜色下拉：选中项以对应色块显示（Chromium 会把 option 内联背景应用到收起态） */
 .color-select option{font-weight:600}
 

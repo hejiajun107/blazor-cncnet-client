@@ -120,7 +120,8 @@ namespace CnCNetClient.Domain.Multiplayer.LAN
         /// </summary>
         public void StartReceiveLoop()
         {
-            Thread thread = new Thread(ReceiveMessages);
+            // 后台线程：LAN 对局进行中退出应用时，进程不会被接收循环挂住无法终止
+            Thread thread = new Thread(ReceiveMessages) { IsBackground = true };
             thread.Start();
         }
 

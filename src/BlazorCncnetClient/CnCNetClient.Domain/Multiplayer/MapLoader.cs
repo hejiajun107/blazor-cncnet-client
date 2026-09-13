@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -43,6 +44,12 @@ namespace CnCNetClient.Domain.Multiplayer
         private MapFileWatcher mapFileWatcher;
         private readonly object mapModificationLock = new object();
         private const int _mapChangeRetryCount = 3;
+
+        // 地图全量加载防重入：Program.cs 预热与 MapPreviewService 懒触发可能并发调用 LoadMapsAsync，
+        // 若各自启动一次 LoadMapsInternalAsync，会重复解析 333+ 张地图并并发写 _initialGameModes，
+        // 导致 CPU 双倍峰值与进入遭遇战页明显卡顿（M5.6 修复）。
+        private readonly object _mapsLoadLock = new object();
+        private Task? _mapsLoadingTask;
 
         // Mutable buffer used only during the initial map-loading pass. After
         // LoadMapsInternalAsync publishes the first snapshot, it is set to null
@@ -131,8 +138,15 @@ namespace CnCNetClient.Domain.Multiplayer
 
         /// <summary>
         /// Asynchronously loads maps based on INI info as well as those in the custom maps directory.
+        /// 防重入：预热与懒触发并发调用时复用同一个加载任务，避免重复解析/并发写 _initialGameModes。
         /// </summary>
-        public Task LoadMapsAsync() => Task.Run(LoadMapsInternalAsync);
+        public Task LoadMapsAsync()
+        {
+            lock (_mapsLoadLock)
+            {
+                return _mapsLoadingTask ??= Task.Run(LoadMapsInternalAsync);
+            }
+        }
 
         private async Task LoadMapsInternalAsync()
         {
@@ -422,44 +436,38 @@ namespace CnCNetClient.Domain.Multiplayer
                 return;
             }
 
-            Task<Map>[] tasks = keys.Select(key => Task.Run(() =>
-            {
-                try
+            // 限流并行解析（M5.6）：333+ 张官方地图若全并行 Task.Run 会瞬间占满 CPU，
+            // 预热加载期间 UI 交互卡顿；限制并发数后按原 keys 顺序回填结果。
+            var mapsByIndex = new ConcurrentDictionary<int, Map>();
+            await Parallel.ForEachAsync(
+                keys.Select((key, index) => (key, index)),
+                new ParallelOptions { MaxDegreeOfParallelism = Math.Max(2, Environment.ProcessorCount / 2) },
+                (item, _) =>
                 {
-                    string mapFilePathValue = mpMapsIni.GetStringValue(MultiMapsSection, key, string.Empty);
-                    string mapFilePath = SafePath.CombineFilePath(mapFilePathValue);
-                    FileInfo mapFile = SafePath.GetFile(ProgramConstants.GamePath, FormattableString.Invariant($"{mapFilePath}.{ClientConfiguration.Instance.MapFileExtension}"));
-
-                    if (!mapFile.Exists)
+                    try
                     {
-                        Logger.Log("Map " + mapFile.FullName + " doesn't exist!");
-                        return null;
+                        string mapFilePathValue = mpMapsIni.GetStringValue(MultiMapsSection, item.key, string.Empty);
+                        string mapFilePath = SafePath.CombineFilePath(mapFilePathValue);
+                        FileInfo mapFile = SafePath.GetFile(ProgramConstants.GamePath, FormattableString.Invariant($"{mapFilePath}.{ClientConfiguration.Instance.MapFileExtension}"));
+
+                        if (!mapFile.Exists)
+                        {
+                            Logger.Log("Map " + mapFile.FullName + " doesn't exist!");
+                            return ValueTask.CompletedTask;
+                        }
+
+                        var map = new Map(mapFilePathValue, false);
+                        if (map.InitializeFromMpMapsINI(mpMapsIni))
+                            mapsByIndex[item.index] = map;
                     }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"Error loading map for key {item.key}: {ex}");
+                    }
+                    return ValueTask.CompletedTask;
+                });
 
-                    var map = new Map(mapFilePathValue, false);
-                    if (!map.InitializeFromMpMapsINI(mpMapsIni))
-                        return null;
-
-                    return map;
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"Error loading map for key {key}: {ex}");
-                    return null;
-                }
-            })).ToArray();
-
-            Task waitMultiMapsTask = Task.WhenAll(tasks);
-            while (await Task.WhenAny(waitMultiMapsTask, Task.Delay(1000)) != waitMultiMapsTask)
-            {
-                string message = "MapLoader: Waiting for the multiplayer map loading task to complete. Remaining files: " + tasks.Count(t => !t.IsCompleted) + ". Total: " + tasks.Length;
-                Debug.WriteLine(message);
-                Logger.Log(message);
-            }
-
-            await waitMultiMapsTask;
-
-            foreach (Map map in tasks.Select(t => t.Result).Where(m => m != null))
+            foreach ((int index, Map map) in mapsByIndex.OrderBy(kv => kv.Key))
             {
                 AddMapToGameModes(map, _initialGameModes, false);
                 _translatedMapNames[map.UntranslatedName] = map.Name;
@@ -527,40 +535,37 @@ namespace CnCNetClient.Domain.Multiplayer
             {
                 int mapFileExtensionWithDotLength = $".{ClientConfiguration.Instance.MapFileExtension}".Length;
 
-                Task<string>[] tasks = mapFiles.Select(mapFile => Task.Run(() =>
-                {
-                    string baseFilePath = mapFile.FullName.Substring(ProgramConstants.GamePath.Length);
-                    baseFilePath = baseFilePath.Substring(0, baseFilePath.Length - mapFileExtensionWithDotLength);
-
-                    string normalizedPath = baseFilePath
-                        .Replace(Path.DirectorySeparatorChar, '/')
-                        .Replace(Path.AltDirectorySeparatorChar, '/');
-
-                    if (customMapCache.Items.TryGetValue(normalizedPath, out var cachedItem) && !cachedItem.IsOutdated())
+                // 限流并行（M5.6）：与官方地图同理，避免自定义地图全并行解析占满 CPU。
+                var pathsByIndex = new ConcurrentDictionary<int, string>();
+                await Parallel.ForEachAsync(
+                    mapFiles.Select((mapFile, index) => (mapFile, index)),
+                    new ParallelOptions { MaxDegreeOfParallelism = Math.Max(2, Environment.ProcessorCount / 2) },
+                    (item, _) =>
                     {
-                        // Use cached map
-                        return normalizedPath;
-                    }
+                        string baseFilePath = item.mapFile.FullName.Substring(ProgramConstants.GamePath.Length);
+                        baseFilePath = baseFilePath.Substring(0, baseFilePath.Length - mapFileExtensionWithDotLength);
 
-                    // Not in cache or outdated
-                    var map = new Map(normalizedPath, true);
-                    if (map.InitializeFromCustomMap())
-                        customMapCache.Items[normalizedPath] = new CustomMapCache.Item(map);
+                        string normalizedPath = baseFilePath
+                            .Replace(Path.DirectorySeparatorChar, '/')
+                            .Replace(Path.AltDirectorySeparatorChar, '/');
 
-                    return normalizedPath;
-                })).ToArray();
+                        if (customMapCache.Items.TryGetValue(normalizedPath, out var cachedItem) && !cachedItem.IsOutdated())
+                        {
+                            // Use cached map
+                            pathsByIndex[item.index] = normalizedPath;
+                            return ValueTask.CompletedTask;
+                        }
 
-                Task waitCustomMapsTask = Task.WhenAll(tasks);
-                while (await Task.WhenAny(waitCustomMapsTask, Task.Delay(1000)) != waitCustomMapsTask)
-                {
-                    string message = "MapLoader: Waiting for the custom map loading task to complete. Remaining files: " + tasks.Count(t => !t.IsCompleted) + ". Total: " + tasks.Length;
-                    Debug.WriteLine(message);
-                    Logger.Log(message);
-                }
+                        // Not in cache or outdated
+                        var map = new Map(normalizedPath, true);
+                        if (map.InitializeFromCustomMap())
+                            customMapCache.Items[normalizedPath] = new CustomMapCache.Item(map);
 
-                await waitCustomMapsTask;
+                        pathsByIndex[item.index] = normalizedPath;
+                        return ValueTask.CompletedTask;
+                    });
 
-                localMapPaths = tasks.Select(t => t.Result).ToList();
+                localMapPaths = pathsByIndex.OrderBy(kv => kv.Key).Select(kv => kv.Value).ToList();
             }
 
             stopwatch.Stop();

@@ -123,11 +123,13 @@ else
                         <span class="gl-tc-name">玩家 <em>PLAYER</em></span>
                         <span>阵营 <em>SIDE</em></span>
                         <span>颜色 <em>COLOR</em></span>
+                        <span>出生点 <em>START</em></span>
                         <span>队伍 <em>TEAM</em></span>
                     </div>
 
                     <!-- 人类玩家行 -->
-                    <div class="gl-tr human">
+                    <div class="gl-tr human @(ReferenceEquals(_selectedPlayer, Svc.HumanPlayer) ? "sel" : "")"
+                         @onclick="() => OnPlayerRowClick(Svc.HumanPlayer)">
                         <div class="gl-tc-name">
                             <span class="slot-color" style="background:@ToCss(GetColor(HumanColorId))"></span>
                             <span class="nm">@ProgramConstants.PLAYERNAME</span>
@@ -149,6 +151,13 @@ else
                                 <option value="@_colors[c].Index" style="background:@ToCss(_colors[c].Color);color:@GetContrastColor(_colors[c].Color)">@_colors[c].Name</option>
                             }
                         </select>
+                        <select class="gl-select gl-start" disabled="@(Svc.ForceRandomStarts || Svc.IsHumanSpectator)" value="@HumanStartLocation" @onchange="OnHumanStartChange">
+                            <option value="0">随机</option>
+                            @foreach (var st in StartLocationOptions)
+                            {
+                                <option value="@st">@st</option>
+                            }
+                        </select>
                         <select class="gl-select" value="@HumanTeamId" disabled="@(!Svc.TeamsEnabled || Svc.UseTeamStartMappings)" @onchange="OnHumanTeamChange">
                             <option value="0">-</option>
                             @for (int t = 0; t < TeamNames.Count; t++)
@@ -161,8 +170,10 @@ else
                     <!-- AI 槽位（固定 7 行：占用行显示配置，空槽下拉直接选难度添加，同原版 ddPlayerName） -->
                     @for (int i = 0; i < SkirmishService.MaxAIPlayersConst; i++)
                     {
+                        var slotIndex = i; // for 循环变量为共享变量，须拷贝为局部变量供闭包捕获，否则点击空槽时索引恒为 7 导致 AddAI 越界失败
                         var ai = i < Svc.AIPlayers.Count ? Svc.AIPlayers[i] : null;
-                        <div class="gl-tr @(ai is null ? "empty-slot" : "")">
+                        <div class="gl-tr @(ai is null ? "empty-slot" : "") @(ai is not null && ReferenceEquals(_selectedPlayer, ai) ? "sel" : "")"
+                             @onclick="() => OnPlayerRowClick(ai)">
                             <div class="gl-tc-name">
                                 @if (ai is not null)
                                 {
@@ -173,11 +184,11 @@ else
                                         <option value="1">中等</option>
                                         <option value="2">困难</option>
                                     </select>
-                                    <button class="ai-remove" title="移除" @onclick="() => OnRemoveAI(ai)">✕</button>
+                                    <button class="ai-remove" title="移除" @onclick="() => OnRemoveAI(ai)" @onclick:stopPropagation="true">✕</button>
                                 }
                                 else
                                 {
-                                    <select class="gl-select ai-add-sel" value="0" @onchange="(e) => OnEmptySlotAdd(i, e)">
+                                    <select class="gl-select ai-add-sel" value="0" @onchange="(e) => OnEmptySlotAdd(slotIndex, e)">
                                         <option value="0">— 空位 —</option>
                                         <option value="1">简单 AI</option>
                                         <option value="2">中等 AI</option>
@@ -203,6 +214,13 @@ else
                                     <option value="@_colors[c].Index" style="background:@ToCss(_colors[c].Color);color:@GetContrastColor(_colors[c].Color)">@_colors[c].Name</option>
                                 }
                             </select>
+                            <select class="gl-select gl-start" disabled="@(ai is null || Svc.ForceRandomStarts)" value="@(ai?.StartingLocation ?? 0)" @onchange="(e) => { if (ai is not null) OnAIStartChange(ai, e); }">
+                                <option value="0">随机</option>
+                                @foreach (var st in StartLocationOptions)
+                                {
+                                    <option value="@st">@st</option>
+                                }
+                            </select>
                             <select class="gl-select" disabled="@(ai is null || !Svc.TeamsEnabled || Svc.UseTeamStartMappings)" value="@(ai?.TeamId ?? 0)" @onchange="(e) => { if (ai is not null) OnAITeamChange(ai, e); }">
                                 <option value="0">-</option>
                                 @for (int t = 0; t < TeamNames.Count; t++)
@@ -219,12 +237,13 @@ else
                         <div class="ally-grid">
                             @for (int st = 1; st <= Svc.MaxPlayers; st++)
                             {
-                                var teamValue = GetMappingTeam(st);
+                                var slot = st; // for 循环变量为共享变量，须拷贝为局部变量供闭包捕获，否则 onchange 时索引恒为 MaxPlayers+1
+                                var teamValue = GetMappingTeam(slot);
                                 <div class="ally-cell">
-                                    <span class="ally-idx">@st</span>
+                                    <span class="ally-idx">@slot</span>
                                     <select class="gl-select ally-sel" value="@teamValue"
-                                            disabled="@(!Svc.AllowedTeamStartMappingLocations.Contains(st))"
-                                            @onchange="(e) => OnMappingChange(st, e)">
+                                            disabled="@(!Svc.AllowedTeamStartMappingLocations.Contains(slot))"
+                                            @onchange="(e) => OnMappingChange(slot, e)">
                                         @foreach (var opt in MappingTeamOptions)
                                         {
                                             <option value="@opt.Value">@opt.Label</option>
@@ -428,6 +447,10 @@ else
     private string[] _sides = Array.Empty<string>();
     private string[] Sides => _sides;
 
+    /// <summary>当前选中玩家（点击玩家行选中；在地图上点出生点即分配给它，同原版 SelectedPlayer 交互）。
+    /// null = 未选中（地图点击默认分配人类玩家）。</summary>
+    private PlayerInfo? _selectedPlayer;
+
     private List<MapOption> _mapOptions = new();
 
     /// <summary>当前选择的游戏模式（原版 cmbGameMode，按 MapLoader.GameModes 的 INI 顺序）。</summary>
@@ -486,6 +509,9 @@ else
 
     /// <summary>队伍下拉显示名（1..4 → A..D）。</summary>
     private static List<string> TeamNames => ProgramConstants.TEAMS;
+
+    /// <summary>出生点下拉选项（地图允许的出生点；强制随机出生时下拉禁用并仅显示「随机」）。</summary>
+    private List<int> StartLocationOptions => Svc.StartLocationOptions;
 
     /// <summary>自动结盟出生点下拉选项（x=阻挡 / -=无 / A..D=队伍）。</summary>
     private static List<TeamOption> MappingTeamOptions => new()
@@ -871,6 +897,22 @@ else
             SetHuman(HumanSideId, v, HumanStartLocation);
     }
 
+    private void OnHumanStartChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            SetHuman(HumanSideId, HumanColorId, v);
+    }
+
+    /// <summary>点击玩家行：选中该玩家（后续在地图上点出生点即分配给它，同原版 SelectedPlayer 交互）。
+    /// 空槽（null）点击仅取消选中。</summary>
+    private void OnPlayerRowClick(PlayerInfo? player)
+    {
+        // 点击移除按钮时按钮已 stopPropagation，此处兜底：已被移除的 AI 不再选中
+        if (player is not null && !Svc.GetPlayerInfos().Contains(player))
+            return;
+        _selectedPlayer = player;
+    }
+
     private void OnSpawnClick(int index)
     {
         // 强制随机出生地图：禁用地图点击选点（同原版 EnableContextMenu 条件）
@@ -879,12 +921,23 @@ else
         var sp = SpawnPoints.FirstOrDefault(s => s.Index == index);
         if (sp is null)
             return;
-        if (sp.OccupantName is not null && !sp.IsSelf)
+
+        // 地图点击分配当前选中的玩家（未选中时默认人类玩家）
+        var target = _selectedPlayer ?? Svc.HumanPlayer;
+        if (target is null)
+            return;
+
+        var occupant = Svc.GetPlayerInfos().FirstOrDefault(p => p.StartingLocation == index);
+        if (occupant is not null && !ReferenceEquals(occupant, target))
         {
-            _ = JS.InvokeVoidAsync("cncnet.toast", $"出生点 {index} 已被 {sp.OccupantName} 占用");
+            _ = JS.InvokeVoidAsync("cncnet.toast", $"出生点 {index} 已被 {occupant.Name} 占用");
             return;
         }
-        SetHuman(HumanSideId, HumanColorId, index);
+
+        if (target.IsAI)
+            Svc.SetAIOption(target, target.SideId, target.ColorId, index);
+        else
+            Svc.SetHumanOption(target.SideId, target.ColorId, index);
     }
 
     private void SetHuman(int side, int color, int start) => Svc.SetHumanOption(side, color, start);
@@ -906,7 +959,12 @@ else
         }
     }
 
-    private void OnRemoveAI(PlayerInfo ai) => Svc.RemoveAI(ai);
+    private void OnRemoveAI(PlayerInfo ai)
+    {
+        if (ReferenceEquals(_selectedPlayer, ai))
+            _selectedPlayer = null;
+        Svc.RemoveAI(ai);
+    }
 
     private void OnAISideChange(PlayerInfo ai, ChangeEventArgs e)
     {

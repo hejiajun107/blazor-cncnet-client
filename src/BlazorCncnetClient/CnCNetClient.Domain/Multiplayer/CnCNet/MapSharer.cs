@@ -71,7 +71,8 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
                 if (MapUploadQueue.Count == 1)
                 {
                     ParameterizedThreadStart pts = new ParameterizedThreadStart(Upload);
-                    Thread thread = new Thread(pts);
+                    // 后台线程：避免地图上传进行中退出应用时进程被该线程挂住无法终止
+                    Thread thread = new Thread(pts) { IsBackground = true };
                     object[] mapAndGame = new object[2];
                     mapAndGame[0] = map;
                     mapAndGame[1] = myGame.ToLower();
@@ -260,7 +261,8 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
                     details[2] = mapName;
 
                     ParameterizedThreadStart pts = new ParameterizedThreadStart(Download);
-                    Thread thread = new Thread(pts);
+                    // 后台线程：避免地图下载进行中退出应用时进程被该线程挂住无法终止
+                    Thread thread = new Thread(pts) { IsBackground = true };
                     thread.Start(details);
                 }
             }

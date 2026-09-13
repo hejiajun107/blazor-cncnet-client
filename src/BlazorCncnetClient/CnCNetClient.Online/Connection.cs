@@ -157,7 +157,14 @@ namespace CnCNetClient.Online
 
             MessageQueueDelay = TimeSpan.FromMilliseconds(ClientConfiguration.Instance.SendSleep);
 
-            Thread connection = new Thread(ConnectToServer);
+            // 前台线程会阻止进程退出：客户端在主菜单即自动连接，窗口关闭后 Main 返回时
+            // 若该线程仍存活，进程不会终止（残留进程占用资源，导致二次启动失败）。设为后台线程，
+            // 进程退出时随 CLR 一并终止。
+            Thread connection = new Thread(ConnectToServer)
+            {
+                IsBackground = true,
+                Name = "CnCNet-Connection"
+            };
             connection.Start();
         }
 
@@ -213,7 +220,11 @@ namespace CnCNetClient.Online
 
                         connectionManager.OnConnected();
 
-                        Thread sendQueueHandler = new Thread(RunSendQueue);
+                        Thread sendQueueHandler = new Thread(RunSendQueue)
+                        {
+                            IsBackground = true,
+                            Name = "CnCNet-SendQueue"
+                        };
                         sendQueueHandler.Start();
 
                         tcpClient = client;

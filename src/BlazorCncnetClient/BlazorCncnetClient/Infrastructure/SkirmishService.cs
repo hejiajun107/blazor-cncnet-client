@@ -251,6 +251,10 @@ namespace BlazorCncnetClient.Infrastructure
             && !SelectedMap.ForceNoTeams
             && TeamStartMappingPresets.Count > 0;
 
+        /// <summary>地图允许的出生点（升序，1..MaxPlayers；未选图时为通用范围）。
+        /// 玩家行「出生点」下拉数据源（同原版 ddStartLocation 选项）。</summary>
+        public List<int> StartLocationOptions => GetSortedAllowedStartingLocations();
+
         /// <summary>当前地图允许编辑的自动结盟出生点集合（同原版 AllowedStartingLocations）。</summary>
         public HashSet<int> AllowedTeamStartMappingLocations
         {
