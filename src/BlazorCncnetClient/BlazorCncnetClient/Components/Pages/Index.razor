@@ -1,5 +1,6 @@
 @page "/"
 @inject EnvironmentCheck Env
+@inject GameFileSetupService GameFiles
 @inject ILogger<Index> Logger
 @inject NavigationManager Nav
 
@@ -14,25 +15,78 @@
 
     <div class="msg @(Env.IsReady ? "ok" : "warn")">@Env.Message</div>
 
-    <div class="actions">
-        @if (Env.IsReady)
-        {
-            <button class="btn primary" @onclick="GoMainMenu">进入主菜单</button>
-        }
-        else
-        {
-            <button class="btn" @onclick="ReDetect">重新检测</button>
-        }
-        <button class="btn" @onclick="PreviewMainMenu">预览主菜单（开发）</button>
-    </div>
+    @* 游戏运行文件缺失引导（用户确认清单：gamemd.exe/核心 mix/Ares 链等）。
+        已定位游戏目录但缺必要文件时，引导选择完整 YR 目录并提取，完成后复检。 *@
+    @if (GameFiles.MissingFiles.Length > 0)
+    {
+        <div class="msg warn">
+            <strong>缺少游戏运行文件（@GameFiles.MissingFiles.Length 个）</strong><br />
+            请选择完整的「尤里的复仇」安装目录，客户端将自动提取缺失文件：
+            <span class="missing">@string.Join("、", GameFiles.MissingFiles)</span>
+            @if (!string.IsNullOrEmpty(GameFiles.LastMessage))
+            {
+                <br /><span class="detail">@GameFiles.LastMessage</span>
+            }
+        </div>
+        <div class="actions">
+            <button class="btn primary" disabled="@_busy" @onclick="ExtractGameFiles">
+                @(_busy ? "正在提取…" : "选择尤里的复仇目录并提取")
+            </button>
+            @if (GameFiles.IsGameReady)
+            {
+                <button class="btn" @onclick="GoMainMenu">进入主菜单</button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="actions">
+            @if (Env.IsReady)
+            {
+                <button class="btn primary" @onclick="GoMainMenu">进入主菜单</button>
+            }
+            else
+            {
+                <button class="btn" @onclick="ReDetect">重新检测</button>
+            }
+            <button class="btn" @onclick="PreviewMainMenu">预览主菜单（开发）</button>
+        </div>
+    }
 </div>
 
 @code {
+    private bool _busy;
+
     protected override void OnInitialized()
     {
         Logger.LogInformation("启动环境检测开始");
         Env.Detect();
         Logger.LogInformation("启动环境检测结束: {Ready} - {Message}", Env.IsReady, Env.Message);
+
+        // 游戏运行文件检测（启动时即提示缺失，引导提取）。
+        GameFiles.Detect();
+    }
+
+    private async Task ExtractGameFiles()
+    {
+        if (_busy)
+            return;
+
+        _busy = true;
+        try
+        {
+            var (copied, skipped) = await GameFiles.PickAndExtractAsync();
+            Logger.LogInformation("游戏文件提取完成: 拷贝 {Copied} 个, 跳过 {Skipped} 个, 仍缺 {Missing} 个",
+                copied.Length, skipped.Length, GameFiles.MissingFiles.Length);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "游戏文件提取失败");
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private void ReDetect() => Env.Detect();

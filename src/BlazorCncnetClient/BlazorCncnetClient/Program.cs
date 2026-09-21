@@ -99,6 +99,8 @@ namespace BlazorCncnetClient
 
             // 启动环境检测（M2.2）：定位游戏资源 + 初始化 ClientConfiguration
             appBuilder.Services.AddSingleton<EnvironmentCheck>();
+            // 游戏运行文件引导：检测 GamePath 缺失的必要 YR 文件，缺失时首页引导选择完整目录并提取
+            appBuilder.Services.AddSingleton<GameFileSetupService>();
 
             // 主题系统（M2.5）：design tokens（CSS 变量）+ IThemeProvider + 运行时切换 + localStorage 持久化
             // 注：scoped 注册，与组件共享同一 WebView 上下文的 IJSRuntime。

@@ -437,5 +437,19 @@
         } catch (e) { /* 忽略 */ }
     }
 
+    /* ── FPS 统计（真实渲染帧率：rAF 由 Chromium 渲染器驱动，计数即实际合成帧）。
+        纯本地、零网络。每秒结算一次并做 EMA 平滑，写回所有 [data-fps] 元素。
+        窗口最小化时 Chromium 会暂停 rAF，读数停更属正常行为。 */
+    let _fpsFrames = 0;
+    let _fpsSmooth = 0;
+    (function fpsLoop() { _fpsFrames++; requestAnimationFrame(fpsLoop); })();
+    setInterval(() => {
+        const raw = _fpsFrames;
+        _fpsFrames = 0;
+        _fpsSmooth = _fpsSmooth === 0 ? raw : _fpsSmooth * 0.75 + raw * 0.25;
+        const v = Math.round(_fpsSmooth);
+        document.querySelectorAll('[data-fps]').forEach(el => { el.textContent = String(v); });
+    }, 1000);
+
     window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview };
 })();

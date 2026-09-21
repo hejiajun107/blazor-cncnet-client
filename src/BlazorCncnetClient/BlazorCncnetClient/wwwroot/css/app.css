@@ -369,6 +369,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .env-check .msg{margin:1.25rem 0;padding:.6rem .9rem;border:1px solid var(--line);background:rgba(6,20,30,.45)}
 .env-check .msg.ok{color:var(--ok);border-color:rgba(74,222,128,.4)}
 .env-check .msg.warn{color:var(--gold);border-color:rgba(255,211,77,.4)}
+.env-check .missing{display:inline-block;margin-top:.35rem;padding:.2rem .5rem;font-size:12px;word-break:break-all;
+  border:1px dashed rgba(255,211,77,.4);background:rgba(255,211,77,.06)}
+.env-check .detail{display:inline-block;margin-top:.35rem;color:var(--text-2);font-size:12px}
 .env-check .actions{display:flex;gap:.75rem}
 .env-check .btn{padding:.55rem 1.4rem;border:1px solid var(--line);background:rgba(10,30,42,.85);color:var(--text);
   cursor:pointer;font-size:14px;font-family:var(--font-cn);letter-spacing:1px;transition:var(--t-item) var(--ease-out)}
