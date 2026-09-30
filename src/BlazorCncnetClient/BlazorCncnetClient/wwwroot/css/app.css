@@ -1032,7 +1032,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
   transition:transform var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out)}
 .spawn-dot:hover{transform:translate(-50%,-50%) scale(1.28);box-shadow:0 0 0 2px rgba(33,230,255,.35)}
 .spawn-num{position:relative;z-index:2;font-family:var(--font-orbitron);font-size:9px;line-height:1;color:var(--cyan)}
-.spawn-owner{position:absolute;inset:0;border-radius:50%;opacity:.9;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 0 8px rgba(0,0,0,.6)}
+.spawn-owner{position:absolute;inset:0;border-radius:50%;background:var(--cyan);opacity:.9;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 0 8px rgba(0,0,0,.6)}
 .spawn-dot.taken{border-color:transparent;cursor:not-allowed}
 .spawn-dot.taken .spawn-num{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.95)}
 .spawn-dot.self{border-color:var(--gold);
@@ -1269,6 +1269,13 @@ select.set-select,input.set-text{background:rgba(5,16,24,.9);border:1px solid va
   padding:6px 10px;font-family:var(--font-cn);font-size:12px;outline:none;cursor:pointer}
 select.set-select:focus,input.set-text:focus{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan)}
 input.set-text{width:210px;cursor:text}
+/* 底部操作栏（对齐原版 OptionsWindow 的 Save/Cancel 按钮） */
+.set-bar{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:12px;
+  padding:10px 16px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(12px)}
+.set-bar-status{flex:1;min-width:0;font-family:var(--font-orbitron);font-size:10px;letter-spacing:2px;
+  color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.set-bar-status.has-draft{color:var(--gold)}
+.set-bar .mb-btn{min-width:104px;justify-content:center}
 
 /* ── 统计窗口（M4.8：/stats，参考原版 StatisticsWindow） ── */
 .stats{display:flex;flex-direction:column}

@@ -81,6 +81,8 @@ public static class GameProcessLogic
             Process qresProcess = new Process();
             qresProcess.StartInfo.FileName = ProgramConstants.QRES_EXECUTABLE;
             qresProcess.StartInfo.UseShellExecute = false;
+            // 工作目录设回游戏根目录，避免 QRes 派生的游戏进程在 ClientApp\ 下找不到 spawn.ini
+            qresProcess.StartInfo.WorkingDirectory = ProgramConstants.GamePath;
 
             if (!string.IsNullOrEmpty(extraCommandLine))
                 qresProcess.StartInfo.Arguments = "c=16 /R " + "\"" + SafePath.CombineFilePath(ProgramConstants.GamePath, gameExecutableName) + "\" " + additionalExecutableName + "-SPAWN " + extraCommandLine;
@@ -121,6 +123,9 @@ public static class GameProcessLogic
             gameProcess.StartInfo.FileName = gameFileInfo.FullName;
             gameProcess.StartInfo.Arguments = arguments;
             gameProcess.StartInfo.UseShellExecute = false;
+            // 对齐旧版启动语义：游戏按进程工作目录读 spawn.ini/资源。旧版客户端位于游戏根目录
+            // 即 CWD=GamePath；迁移版自包含在 ClientApp\ 子目录，须显式设回游戏根目录，否则找不到 spawn.ini。
+            gameProcess.StartInfo.WorkingDirectory = ProgramConstants.GamePath;
 
             gameProcess.EnableRaisingEvents = true;
             gameProcess.Exited += Process_Exited;

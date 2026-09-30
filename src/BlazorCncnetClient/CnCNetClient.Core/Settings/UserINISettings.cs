@@ -23,6 +23,7 @@ namespace CnCNetClient.Core
         public const string GAME_FILTERS = "GameFilters";
         public const string GAME_OPTION_FILTERS = "GameOptionFilters";
         private const string FAVORITE_MAPS = "FavoriteMaps";
+        private const string REPLAYS = "Replays";
 
         private const bool DEFAULT_SHOW_FRIENDS_ONLY_GAMES = false;
         private const bool DEFAULT_HIDE_LOCKED_GAMES = false;
@@ -117,6 +118,10 @@ namespace CnCNetClient.Core
             BorderlessWindowedClient = new BoolSetting(iniFile, VIDEO, "BorderlessWindowedClient", ClientConfiguration.Instance.UserDefault_BorderlessWindowedClient);
             IntegerScaledClient = new BoolSetting(iniFile, VIDEO, "IntegerScaledClient", ClientConfiguration.Instance.UserDefault_IntegerScaledClient);
             ClientFPS = new IntSetting(iniFile, VIDEO, "ClientFPS", 60);
+            // M 设置对齐旧客户端：客户端窗口分辨率独立于游戏分辨率（原版 Startup.cs 动态创建，
+            // 默认取桌面推荐分辨率；移植版固定下限 1280x720 与窗口最小尺寸一致）
+            ClientResolutionX = new IntSetting(iniFile, VIDEO, "ClientResolutionX", 1280);
+            ClientResolutionY = new IntSetting(iniFile, VIDEO, "ClientResolutionY", 720);
             DisplayToggleableExtraTextures = new BoolSetting(iniFile, VIDEO, "DisplayToggleableExtraTextures", true);
 
             // RA1 reads MultiplayerScoreVolume instead of ScoreVolume. This value is handled when saving
@@ -186,6 +191,8 @@ namespace CnCNetClient.Core
             HidePasswordedGames = new BoolSetting(iniFile, GAME_FILTERS, "HidePasswordedGames", DEFAULT_HIDE_PASSWORDED_GAMES);
             HideIncompatibleGames = new BoolSetting(iniFile, GAME_FILTERS, "HideIncompatibleGames", DEFAULT_HIDE_INCOMPATIBLE_GAMES);
             MaxPlayerCount = new IntRangeSetting(iniFile, GAME_FILTERS, "MaxPlayerCount", DEFAULT_MAX_PLAYER_COUNT, 2, 8);
+
+            RecordReplays = new BoolSetting(iniFile, REPLAYS, "RecordReplays", true);
 
             LoadFavoriteMaps(iniFile);
         }
@@ -281,6 +288,9 @@ namespace CnCNetClient.Core
         public IntSetting MapSortState { get; private set; }
 
         public BoolSetting SearchAllGameModes { get; private set; }
+
+        /// <summary>是否录制对局到复盘文件（旧版 UserINISettings.RecordReplays，[Replays] 节）。</summary>
+        public BoolSetting RecordReplays { get; private set; }
 
         /*********************/
         /* GAME LIST FILTERS */
@@ -482,6 +492,28 @@ namespace CnCNetClient.Core
                 SettingsIni.SetDoubleValue(OPTIONS, "MultiplayerScoreVolume", SettingsIni.GetDoubleValue(OPTIONS, "ScoreVolume", 0.7));
 
             SettingsIni.WriteIniFile();
+
+            // M 设置对齐旧客户端：游戏分辨率须写入游戏自身 INI（原版 UserINISettings 即游戏 INI；
+            // 移植版隔离到 ClientSettings.ini 后需回写，否则游戏启动读不到 ScreenWidth/ScreenHeight）。
+            // 游戏 INI 名取自 ClientDefinitions.ini [Settings] SettingsFile（YR 为 RA2MD.ini）。
+            try
+            {
+                string gameIniPath = SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.SettingsIniName);
+                if (File.Exists(gameIniPath))
+                {
+                    var gameIni = new IniFile(gameIniPath);
+                    string section = ClientConfiguration.Instance.ClientGameType == ClientType.RA ? OPTIONS : VIDEO;
+                    string widthKey = ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Width" : "ScreenWidth";
+                    string heightKey = ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Height" : "ScreenHeight";
+                    gameIni.SetIntValue(section, widthKey, IngameScreenWidth);
+                    gameIni.SetIntValue(section, heightKey, IngameScreenHeight);
+                    gameIni.WriteIniFile();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Failed to write in-game resolution to game INI: " + ex);
+            }
 
             SettingsSaved?.Invoke(this, EventArgs.Empty);
         }

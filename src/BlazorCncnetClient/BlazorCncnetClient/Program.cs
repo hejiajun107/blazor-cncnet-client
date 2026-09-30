@@ -101,6 +101,21 @@ namespace BlazorCncnetClient
             appBuilder.Services.AddSingleton<EnvironmentCheck>();
             // 游戏运行文件引导：检测 GamePath 缺失的必要 YR 文件，缺失时首页引导选择完整目录并提取
             appBuilder.Services.AddSingleton<GameFileSetupService>();
+            // 游戏渲染器管理（渲染器设置）：读 Renderers.ini 按 OS 兼容选择 ddraw 渲染器，Save() 应用配置。
+            // 依赖游戏资源（Renderers.ini 在 Resources），环境未就绪时构造抛 ClientConfigurationException →
+            // 工厂兜底返回 null，设置页渲染器下拉在不可用时禁用（GetService 走 null，不阻断页面）。
+            appBuilder.Services.AddSingleton<CnCNetClient.Domain.DirectDrawWrapperManager>(_ =>
+            {
+                try
+                {
+                    return new CnCNetClient.Domain.DirectDrawWrapperManager();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "渲染器列表加载失败（游戏资源未就绪），渲染器选择暂不可用");
+                    return null!;
+                }
+            });
 
             // 主题系统（M2.5）：design tokens（CSS 变量）+ IThemeProvider + 运行时切换 + localStorage 持久化
             // 注：scoped 注册，与组件共享同一 WebView 上下文的 IJSRuntime。
@@ -235,6 +250,10 @@ namespace BlazorCncnetClient
 
 
             appBuilder.WithInfiniFrameWindowBuilder(builder => {
+                // M 设置对齐旧客户端：客户端窗口分辨率读 ClientSettings.ini [Video] ClientResolutionX/Y
+                // （原版 GameClass.SetGraphicsMode 语义），下限保持 1280x720（窗口最小尺寸）。
+                var clientResX = Math.Max(1280, (int)UserINISettings.Instance.ClientResolutionX);
+                var clientResY = Math.Max(720, (int)UserINISettings.Instance.ClientResolutionY);
                 builder
                     // .SetTransparent(true)
                     // .SetChromeless(true)
@@ -247,7 +266,7 @@ namespace BlazorCncnetClient
                     .SetTitle("CNCNet Client")
                     // 用 int 重载，避免宿主层引入 System.Drawing
                     .SetLocation(100, 100)
-                    .SetSize(1280, 720)
+                    .SetSize(clientResX, clientResY)
                     .SetMinSize(1280, 720) // 限制窗口最小尺寸（适配 1280*720 / 1920*1080）
                     .EnableDevTools(true)
                     //.SetChromeless(true)

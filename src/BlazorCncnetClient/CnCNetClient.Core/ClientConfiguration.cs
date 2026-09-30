@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -221,6 +221,12 @@ namespace CnCNetClient.Core
         public int ThemeCount => clientDefinitionsIni.GetSectionKeys("Themes").Count;
 
         public string LocalGame => clientDefinitionsIni.GetStringValue(SETTINGS, "LocalGame", "DTA");
+
+        public bool ReplaySupport => clientDefinitionsIni.GetBooleanValue(SETTINGS, "ReplaySupport", false);
+
+        public string ReplaysDirectory => clientDefinitionsIni.GetStringValue(SETTINGS, "ReplaysDirectory", "Replays");
+
+        public string ReplayFileExtension => clientDefinitionsIni.GetStringValue(SETTINGS, "ReplayFileExtension", "yrrp");
 
         public bool SidebarHack => clientDefinitionsIni.GetBooleanValue(SETTINGS, "SidebarHack", false);
 

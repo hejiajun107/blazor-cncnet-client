@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -139,10 +140,19 @@ public static class SpawnIniGenerator
         settings.SetIntValue("Side", houseInfos[myIndex].InternalSideIndex);
         settings.SetBooleanValue("IsSpectator", houseInfos[myIndex].IsSpectator);
         settings.SetIntValue("Color", houseInfos[myIndex].ColorIndex);
+
+        // 对齐旧版 G2：本端加载画面随阵营名（原版 GameLobbyBase.WriteSpawnIni L1706）
+        settings.SetStringValue("CustomLoadScreen", LoadingScreenController.GetLoadScreenName(houseInfos[myIndex].InternalSideIndex.ToString()));
+
         settings.SetIntValue("AIPlayers", aiCount);
         settings.SetIntValue("Seed", randomSeed);
         if (gameModeMap.IsCoop)
             settings.SetBooleanValue("AutoSurrender", false);
+
+        // 对齐旧版：PVP 的人类队伍数 >1 时进入教练模式（原版 L1709-1710）
+        if (GetPvPTeamCount(players, houseInfos) > 1)
+            settings.SetBooleanValue("CoachMode", true);
+
         spawnIni.AddSection(settings);
 
         // M3.7 网关/对局标识：GameID + 本端是否主机 + 本端端口（隧道接入后追加 [Tunnel] 节）
@@ -164,6 +174,16 @@ public static class SpawnIniGenerator
         {
             foreach (GameSessionOption option in gameOptions)
                 option.ApplySpawnIniCode(spawnIni);
+        }
+
+        // 对齐旧版：GameOptions.ini [ForcedSpawnIniOptions] 强制选项（原版 L1722-1733）
+        var forcedGameOptionsIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), ClientConfiguration.GAME_OPTIONS));
+        List<string> forcedSpawnKeys = forcedGameOptionsIni.GetSectionKeys("ForcedSpawnIniOptions");
+        if (forcedSpawnKeys is not null)
+        {
+            foreach (string key in forcedSpawnKeys)
+                spawnIni.SetStringValue("Settings", key,
+                    forcedGameOptionsIni.GetStringValue("ForcedSpawnIniOptions", key, string.Empty));
         }
 
         // 强制选项：游戏模式 + 地图（含 Credits/UnitCount/中立/特殊颜色等；遭遇战携带 AI 数量与 coop 标记）
@@ -248,7 +268,11 @@ public static class SpawnIniGenerator
             spawnIni);
 
         spawnIni.SetStringValue("Settings", "MapSHA1", gameModeMap.Map.SHA1);
-        spawnIni.SetStringValue("Settings", "BroadcastedGameOptionValues", "0"); // M3.7 无打包游戏选项
+        spawnIni.SetStringValue("Settings", "BroadcastedGameOptionValues",
+            gameOptions is null ? string.Empty : GetPackedGameOptionValuesString(gameOptions)); // 对齐旧版 GetPackedGameOptionValuesString
+
+        // 对齐旧版 GameLobbyBase.WriteSpawnIni：写复盘录制元数据（EnableReplayRecording / GamePackageVersion / ReplayFileOut）
+        ReplayManager.PrepareRecording(spawnIni, gameModeMap.Map.UntranslatedName);
 
         spawnIni.WriteIniFile();
 
@@ -292,6 +316,34 @@ public static class SpawnIniGenerator
         _ = players; // 出生点叠加（ManipulateStartingLocations）在 M3.7 简化版未做，后续 M3.9 补
     }
 
+    /// <summary>
+    /// 打包广播到大厅的游戏选项值字符串（对齐旧版 <c>GameLobbyBase.GetPackedGameOptionValuesString</c>）：
+    /// 取 BroadcastToLobby 的复选框 Checked → BoolArrayIntoBytes 编码 → 补足 4 字节 → 每 4 字节 ReadInt32LittleEndian，
+    /// 再接 BroadcastToLobby 下拉框的 SelectedIndex；逗号拼接，空则空串。
+    /// </summary>
+    private static string GetPackedGameOptionValuesString(IReadOnlyList<GameSessionOption> gameOptions)
+    {
+        var values = new List<int>();
+
+        var broadcastCheckBoxes = gameOptions.OfType<GameSessionCheckBoxOption>().Where(cb => cb.BroadcastToLobby).ToList();
+        if (broadcastCheckBoxes.Count > 0)
+        {
+            bool[] checkboxValues = broadcastCheckBoxes.Select(cb => cb.Checked).ToArray();
+            List<byte> byteList = Conversions.BoolArrayIntoBytes(checkboxValues).ToList();
+            while (byteList.Count % 4 != 0)
+                byteList.Add(0);
+            byte[] byteArray = byteList.ToArray();
+            for (int i = 0; i < byteArray.Length / 4; i++)
+                values.Add(BinaryPrimitives.ReadInt32LittleEndian(byteArray.AsSpan(i * 4)));
+        }
+
+        var broadcastDropDowns = gameOptions.OfType<GameSessionDropDownOption>().Where(dd => dd.BroadcastToLobby).ToList();
+        if (broadcastDropDowns.Count > 0)
+            values.AddRange(broadcastDropDowns.Select(dd => dd.SelectedIndex));
+
+        return values.Count > 0 ? string.Join(",", values) : string.Empty;
+    }
+
     private static int FindPlayerIndex(IReadOnlyList<PlayerInfo> players, string name)
     {
         for (int i = 0; i < players.Count; i++)
@@ -300,6 +352,24 @@ public static class SpawnIniGenerator
                 return i;
         }
         return 0;
+    }
+
+    /// <summary>
+    /// 计算人类（非观战）玩家的队伍数（原版 GameLobbyBase.GetPvPTeamCount）：
+    /// 用于决定是否启用 CoachMode。观战者与未分队的玩家不计入。
+    /// </summary>
+    private static int GetPvPTeamCount(IReadOnlyList<PlayerInfo> players, PlayerHouseInfo[] houseInfos)
+    {
+        var teamIds = new HashSet<int>();
+        for (int i = 0; i < players.Count; i++)
+        {
+            if (houseInfos[i].IsSpectator)
+                continue;
+            int teamId = players[i].TeamId;
+            if (teamId > 0)
+                teamIds.Add(teamId);
+        }
+        return teamIds.Count;
     }
 
     // ── 单机任务（战役）spawn.ini（M4.6，移植原版 CampaignSelector.LaunchMission + WriteMissionSectionToSpawnIni） ──

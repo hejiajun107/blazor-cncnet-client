@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Launch exe（外壳，用于根目录整洁）：真实客户端自包含发布原样搬进 Client\，
+         本启动器 NativeAOT 编译为单文件裸原生 exe，审留在安装根目录。
+         只负责：设置 CNCNET_APP_ROOT=自身目录 → 拉起 Client\BlazorCncnetClient.exe →
+         转发参数/透传退出码，并在客户端请求重启（自更新后）时重新拉起。 -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Launcher</AssemblyName>
+    <RootNamespace>CnCNetClient.Launcher</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

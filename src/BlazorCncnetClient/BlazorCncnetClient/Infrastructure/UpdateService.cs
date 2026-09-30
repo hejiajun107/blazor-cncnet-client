@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CnCNetClient.Core;
+using CnCNetClient.Domain;
 using CnCNetClient.Integration.Lifecycle;
 using CnCNetClient.Tools;
 using CnCNetClient.Updater;
@@ -14,6 +15,9 @@ namespace BlazorCncnetClient.Infrastructure;
 /// </summary>
 public sealed class UpdateService : IDisposable
 {
+    /// <summary>外壳启动器可执行文件名（位于 GamePath 根 / 安装根），自更新后由 SecondStageUpdater 重启。</summary>
+    private const string LauncherExeName = "Launcher.exe";
+
     private readonly EnvironmentCheck _env;
     private readonly AppExitNotifier _exitNotifier;
     private bool _wired;
@@ -102,13 +106,19 @@ public sealed class UpdateService : IDisposable
             SafePath.CombineDirectoryPath(_env.GamePath, ProgramConstants.BASE_RESOURCE_PATH),
             ClientConfiguration.Instance.SettingsIniName,
             ClientConfiguration.Instance.LocalGame,
-            SafePath.GetFile(ProgramConstants.StartupExecutable).Name);
+            // 自更新后将重启的第二阶段入口：必须是位于 GamePath 根（安装根）的可执行，
+            // 这样 SecondStageUpdater 才能在 {GamePath}\ 下找到它并拉起。
+            // 客户端本体在 ClientApp\ 下，故这里不传客户端自身 exe 名，而传 Launcher（外壳）。
+            LauncherExeName);
 
         WireEvents();
         WireComponentEvents();
 
         // 读取本地 version 文件，得出本地版本 / 更新系统版本。
         Updater.CheckLocalFileVersions();
+
+        // 复盘元数据需要实际安装的游戏版本号（Domain 无法引用 Updater，经此注入）。
+        ReplayManager.UpdaterReplayGameVersion = Updater.GameVersion;
 
         IsAvailable = true;
         RaiseStateChanged();

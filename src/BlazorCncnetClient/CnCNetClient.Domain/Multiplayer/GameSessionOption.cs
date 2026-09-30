@@ -45,6 +45,13 @@ public abstract class GameSessionOption
     /// <summary>界面显示名（复选为 Text，下拉为 OptionName）。</summary>
     public string DisplayName { get; }
 
+    /// <summary>
+    /// 是否广播到大厅（同原版 <c>IGameSessionSetting.BroadcastToLobby</c>）。
+    /// 仅对影响 spawn.ini 的选项有意义：进入 GetBroadcastableSettings / 打包 BroadcastedGameOptionValues。
+    /// 默认 false。
+    /// </summary>
+    public bool BroadcastToLobby { get; set; }
+
     /// <summary>是否影响 spawn.ini（无则仅影响地图代码，如 StolenTech / NavalCombat）。</summary>
     public abstract bool AffectsSpawnIni { get; }
 
@@ -103,6 +110,14 @@ public abstract class GameSessionOption
                 new[] { "10", "9", "8", "7", "6", "5", "4", "3", "2", "1", "0" },
                 defaultIndex: 10, spawnIniOption: "UnitCount", writeMode: GameOptionWriteMode.String),
         };
+
+        // 广播到大厅的选项（同原版 GameLobbyBase.ini BroadcaseToLobby=yes 的默认集）：
+        // 左列 6 个直接写 spawn.ini 的复选框 + 2 个下拉框；右列纯地图代码选项不广播。
+        // 顺序即 GO 协议位掩码顺序，房主与加入者两端口径必须一致（见 GetGameOptionsCode）。
+        var broadcast = new List<string> { "chkShortGame", "chkRedeplMCV", "chkSuperWeapons", "chkCrates", "chkBuildOffAlly", "chkMultiEngineer", "cmbCredits", "cmbStartingUnits" };
+        foreach (GameSessionOption option in options)
+            option.BroadcastToLobby = broadcast.Contains(option.Name);
+
         return options;
     }
 }

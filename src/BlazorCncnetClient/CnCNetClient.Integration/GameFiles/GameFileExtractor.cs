@@ -12,14 +12,16 @@ namespace CnCNetClient.Integration.GameFiles;
 /// 尤里的复仇（YR）运行必要文件的检测与提取。
 /// 客户端目录（GamePath）缺失清单内任一文件时，引导用户选择完整 YR 安装目录，
 /// 并从该目录把缺失文件提取（拷贝）到客户端目录，使目录成为完整可玩的游戏根目录。
-/// 文件清单已与用户确认（2026-09-16）：核心 9 项 + ClientDefinitions 配置的启动加载器。
+/// 文件清单已与用户确认（2026-09-16，2026-09-30 补 multimd/mapsmd03）：核心 11 项 + ClientDefinitions 配置的启动加载器。
 /// </summary>
 public static class GameFileExtractor
 {
     /// <summary>
     /// YR 核心运行文件（用户确认清单）：
     /// gamemd.exe 主程序；ra2/ra2md.mix 核心数据；language/langmd.mix 语言；
-    /// expandmd01.mix 扩展包；movmd03.mix 过场动画；BINKW32.DLL 视频解码；Blowfish.dll 加密。
+    /// expandmd01.mix 扩展包；movmd03.mix 过场动画；multimd.mix 多人界面资源；
+    /// mapsmd03.mix 地图包（游戏检测存在性，即使内容为空也必须存在）；
+    /// BINKW32.DLL 视频解码；Blowfish.dll 加密。
     /// </summary>
     private static readonly string[] CoreGameFiles =
     {
@@ -29,7 +31,9 @@ public static class GameFileExtractor
         "gamemd.exe",
         "langmd.mix",
         "language.mix",
+        "mapsmd03.mix",
         "movmd03.mix",
+        "multimd.mix",
         "ra2.mix",
         "ra2md.mix"
     };

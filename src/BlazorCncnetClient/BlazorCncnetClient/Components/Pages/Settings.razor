@@ -2,22 +2,28 @@
 @implements IDisposable
 @using System.Globalization
 @using CnCNetClient.Core
+@using CnCNetClient.Domain
+@using CnCNetClient.Tools
 @using CnCNetClient.Updater
 @using BlazorCncnetClient.Infrastructure.Theme
+@using Microsoft.Extensions.Logging
 @inject SettingsService SettingsSvc
 @inject ITranslationService TranslationSvc
 @inject IThemeProvider ThemeProvider
 @inject UpdateService UpdateSvc
+@inject IServiceProvider Services
+@inject ILogger<Settings> Logger
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <div class="settings page-anim">
     <header class="settings-top item-in">
         <div class="st-left">
-            <button class="mb-btn item-in" @onclick="GoBack">‹ @Ui("Settings.Back", "返回")</button>
+            <button class="mb-btn item-in" @onclick="OnCancel">‹ @Ui("Settings.Back", "返回")</button>
         </div>
         <div class="st-mid">
             <span class="st-title">@Ui("Settings.Title", "设置中心")</span>
-            <span class="st-en">SETTINGS TERMINAL · 即改即存</span>
+            <span class="st-en">SETTINGS TERMINAL · 保存生效</span>
         </div>
         <div class="st-right">
             <span class="st-player">@(ProgramConstants.PLAYERNAME.Length > 0 ? ProgramConstants.PLAYERNAME : "未连接")</span>
@@ -62,6 +68,13 @@
             }
         </section>
     </div>
+
+    @* M 草稿-提交模式（对齐原版 OptionsWindow）：控件只改内存草稿，底部「保存/取消」统一提交。 *@
+    <footer class="set-bar item-in" style="animation-delay:120ms">
+        <span class="set-bar-status@(HasDraft ? " has-draft" : "")">@(HasDraft ? "· 有未保存的修改" : "设置已同步")</span>
+        <button class="mb-btn" @onclick="OnCancel">@Ui("Settings.Cancel", "取消")</button>
+        <button class="mb-btn primary" @onclick="OnSave">@Ui("Settings.Save", "保存设置")</button>
+    </footer>
 </div>
 
 @code {
@@ -79,11 +92,14 @@
     ];
 
     private string Active { get; set; } = "display";
-    private string _playerName = string.Empty;
+
+    /// <summary>M 草稿：尚未提交的设置改动（对齐原版控件值先于 Save 落盘的语义）。</summary>
+    private readonly Dictionary<string, object> _draft = new();
+
+    private bool HasDraft => _draft.Count > 0;
 
     protected override void OnInitialized()
     {
-        _playerName = SettingsSvc.Ini.PlayerName.Value;
         SettingsSvc.SettingsChanged += OnSettingsChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
@@ -101,6 +117,8 @@
         UpdateSvc.StateChanged += OnUpdateStateChanged;
         // r9-5：组件面板订阅组件下载进度/完成事件。
         UpdateSvc.ComponentChanged += OnComponentChanged;
+        // 游戏渲染器：首帧即加载兼容列表（资源未就绪时静默为空，下拉禁用）。
+        EnsureRenderers();
     }
 
     private void OnUpdateStateChanged() => InvokeAsync(StateHasChanged);
@@ -110,8 +128,6 @@
     private void OnSettingsChanged() => InvokeAsync(StateHasChanged);
     private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
-
-    private void GoBack() => Nav.NavigateTo("/menu");
 
     /// <summary>按当前 UI 文化取 Resx 文案（UI 键走 Resx，spec §6.8；缺失回退默认值）。</summary>
     private static string Ui(string key, string fallback) => fallback.L10N(UIStrings.KeyPrefix + key);
@@ -124,35 +140,44 @@
             : Active;
     }
 
+    /* ── 草稿读写 ── */
+    private bool GetBool(string key, bool fallback)
+        => _draft.TryGetValue(key, out var v) && v is bool b ? b : fallback;
+
+    private int GetInt(string key, int fallback)
+        => _draft.TryGetValue(key, out var v) && v is int i ? i : fallback;
+
+    private double GetDouble(string key, double fallback)
+        => _draft.TryGetValue(key, out var v) && v is double d ? d : fallback;
+
+    private string GetStr(string key, string fallback)
+        => _draft.TryGetValue(key, out var v) && v is string s ? s : fallback;
+
+    private void SetDraft(string key, object value)
+    {
+        _draft[key] = value;
+        StateHasChanged();
+    }
+
+    private void SetDraftBool(string key, ChangeEventArgs e)
+        => SetDraft(key, e.Value is bool b && b);
+
+    private void SetDraftInt(string key, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v))
+            SetDraft(key, v);
+    }
+
+    private void SetDraftDouble(string key, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
+            SetDraft(key, v);
+    }
+
     private void OnLanguageChange(ChangeEventArgs e)
     {
         if (e.Value?.ToString() is { Length: > 0 } code)
             TranslationSvc.SetLanguage(code);
-    }
-
-    /* ── 通用「即改即存」处理器 ── */
-    private void ToggleBool(Action<bool> setter, ChangeEventArgs e)
-    {
-        setter(e.Value is bool b && b);
-        SettingsSvc.Save();
-    }
-
-    private void SetInt(Action<int> setter, ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var v))
-        {
-            setter(v);
-            SettingsSvc.Save();
-        }
-    }
-
-    private void SetDouble(Action<double> setter, ChangeEventArgs e)
-    {
-        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
-        {
-            setter(v);
-            SettingsSvc.Save();
-        }
     }
 
     private async Task OnThemeChange(ChangeEventArgs e)
@@ -161,11 +186,305 @@
         await ThemeProvider.ApplyAsync(key);
     }
 
-    private void SavePlayerName(ChangeEventArgs e)
+    /* ── 游戏渲染器选择（原版 Display render options，草稿内暂存，保存时应用） ── */
+
+    private DirectDrawWrapperManager? _renderers;
+    private List<DirectDrawWrapper> _rendererList = new();
+
+    /// <summary>当前渲染器 internal name（草稿优先；资源未就绪为空串，下拉禁用）。</summary>
+    private string CurrentRendererInternalName =>
+        GetStr("renderer", _renderers?.SelectedRenderer.InternalName ?? string.Empty);
+
+    /// <summary>当前生效渲染器（草稿优先；渲染器资源未就绪为空）。</summary>
+    private DirectDrawWrapper? CurrentRenderer
     {
-        var name = (e.Value ?? string.Empty).ToString()!.Trim();
-        _playerName = name;
-        SettingsSvc.SetAndSave(ini => ini.PlayerName.Value = name);
+        get
+        {
+            if (_renderers is null)
+                return null;
+            string name = GetStr("renderer", _renderers.SelectedRenderer.InternalName);
+            return _rendererList.FirstOrDefault(r => r.InternalName == name) ?? _renderers.SelectedRenderer;
+        }
+    }
+
+    /// <summary>窗口化当前值（草稿优先；旧版语义：DxWnd 类渲染器从自身配置 INI 读，否则读 UserINISettings）。</summary>
+    private bool WindowedChecked => GetBool("windowed", ReadWindowedFromRenderer(CurrentRenderer));
+
+    /// <summary>无边框当前值（草稿优先；渲染器有 BorderlessWindowedModeKey 时从自身配置 INI 读，否则读 UserINISettings）。</summary>
+    private bool BorderlessChecked => GetBool("borderless", ReadBorderlessFromRenderer(CurrentRenderer));
+
+    /// <summary>旧版 DisplayOptionsPanel：渲染器 UsesCustomWindowedOption 时窗口化状态存其配置 INI（如 dxwnd.ini [DxWnd] RunInWindow）。</summary>
+    private bool ReadWindowedFromRenderer(DirectDrawWrapper? renderer)
+    {
+        if (renderer is not null && renderer.UsesCustomWindowedOption())
+        {
+            try
+            {
+                var rendererIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, renderer.ConfigFileName));
+                return rendererIni.GetBooleanValue(renderer.WindowedModeSection!, renderer.WindowedModeKey!, false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "读取渲染器窗口化配置失败：{Name}", renderer.InternalName);
+            }
+            return false;
+        }
+        return SettingsSvc.Ini.WindowedMode.Value;
+    }
+
+    /// <summary>旧版 DisplayOptionsPanel：渲染器有 BorderlessWindowedModeKey 时无边框存其配置 INI（可反向），否则读 UserINISettings。</summary>
+    private bool ReadBorderlessFromRenderer(DirectDrawWrapper? renderer)
+    {
+        if (renderer is not null && !string.IsNullOrEmpty(renderer.BorderlessWindowedModeKey))
+        {
+            try
+            {
+                var rendererIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, renderer.ConfigFileName));
+                bool setting = rendererIni.GetBooleanValue(renderer.WindowedModeSection!, renderer.BorderlessWindowedModeKey, false);
+                return renderer.IsBorderlessWindowedModeKeyReversed ? !setting : setting;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "读取渲染器无边框配置失败：{Name}", renderer.InternalName);
+            }
+            return false;
+        }
+        return SettingsSvc.Ini.BorderlessWindowedMode.Value;
+    }
+
+    /// <summary>窗口化切换：取消勾选时按旧版 ChkWindowedMode_CheckedChanged 连带取消无边框。</summary>
+    private void OnWindowedChange(ChangeEventArgs e)
+    {
+        bool isChecked = e.Value is bool b && b;
+        SetDraft("windowed", isChecked);
+        if (!isChecked)
+            SetDraft("borderless", false);
+    }
+
+    private void EnsureRenderers()
+    {
+        if (_renderers is not null)
+            return;
+
+        var mgr = (DirectDrawWrapperManager?)Services.GetService(typeof(DirectDrawWrapperManager));
+        if (mgr is null)
+            return;
+
+        _renderers = mgr;
+        _rendererList = mgr
+            .GetRenderers(ClientConfiguration.Instance.GetOperatingSystemVersion())
+            .ToList();
+    }
+
+    private void OnRendererChange(ChangeEventArgs e)
+    {
+        EnsureRenderers();
+        if (_renderers is null)
+            return;
+
+        string? name = e.Value?.ToString();
+        if (string.IsNullOrEmpty(name))
+            return;
+
+        if (_rendererList.Any(r => r.InternalName == name))
+        {
+            // 旧版切换渲染器后立即刷新窗口化勾选（DisplayOptionsPanel.LoadRenderer）；
+            // 清除草稿让 UI 回退到新渲染器配置 INI / UserINISettings 的当前值。
+            _draft.Remove("windowed");
+            _draft.Remove("borderless");
+            SetDraft("renderer", name);
+        }
+    }
+
+    /* ── 分辨率（原版 ddIngameResolution / ddClientResolution 语义） ── */
+
+    /// <summary>游戏分辨率档位（YR 常见档；当前值不在列表时由 EnsureInList 补入）。</summary>
+    private static readonly string[] IngameResolutions =
+    [
+        "640x480", "800x600", "1024x768", "1152x864", "1280x720", "1280x960",
+        "1280x1024", "1366x768", "1440x900", "1600x900", "1680x1050", "1920x1080",
+        "1920x1200", "2560x1440", "2560x1600", "3840x2160",
+    ];
+
+    /// <summary>客户端窗口分辨率档位（下限 1280x720，与窗口最小尺寸一致）。</summary>
+    private static readonly string[] ClientResolutions =
+    [
+        "1280x720", "1366x768", "1440x900", "1536x864", "1600x900", "1680x1050",
+        "1920x1080", "1920x1200", "2560x1440", "2560x1600", "3840x2160",
+    ];
+
+    private string CurrentIngameRes =>
+        GetStr("ingameRes", $"{SettingsSvc.Ini.IngameScreenWidth.Value}x{SettingsSvc.Ini.IngameScreenHeight.Value}");
+
+    private string CurrentClientRes =>
+        GetStr("clientRes", $"{SettingsSvc.Ini.ClientResolutionX.Value}x{SettingsSvc.Ini.ClientResolutionY.Value}");
+
+    /// <summary>分辨率下拉选项：标准档 + 当前值兜底（保证 select 始终能显示现有设置）。</summary>
+    private static IEnumerable<string> EnsureInList(IEnumerable<string> presets, string current)
+        => presets.Contains(current) ? presets : presets.Append(current);
+
+    private static bool TryParseRes(string text, out int w, out int h)
+    {
+        w = h = 0;
+        var parts = text.Split('x');
+        return parts.Length == 2
+               && int.TryParse(parts[0], out w)
+               && int.TryParse(parts[1], out h);
+    }
+
+    private void OnIngameResChange(ChangeEventArgs e)
+    {
+        if (e.Value?.ToString() is { Length: > 0 } res)
+            SetDraft("ingameRes", res);
+    }
+
+    private void OnClientResChange(ChangeEventArgs e)
+    {
+        if (e.Value?.ToString() is { Length: > 0 } res)
+            SetDraft("clientRes", res);
+    }
+
+    /* ── 保存 / 取消（原版 OptionsWindow.BtnSave_LeftClick / BtnBack_LeftClick） ── */
+
+    /// <summary>保存草稿：全部写回 UserINISettings + 渲染器应用 + 落盘；涉及重启项时 toast 提示。</summary>
+    private void OnSave()
+    {
+        // 分辨率（游戏 INI 回写在 UserINISettings.SaveSettings 内完成）
+        if (_draft.TryGetValue("ingameRes", out var ir) && ir is string ires && TryParseRes(ires, out int iw, out int ih))
+        {
+            SettingsSvc.Ini.IngameScreenWidth.Value = iw;
+            SettingsSvc.Ini.IngameScreenHeight.Value = ih;
+        }
+        if (_draft.TryGetValue("clientRes", out var cr) && cr is string cres && TryParseRes(cres, out int cw, out int ch))
+        {
+            SettingsSvc.Ini.ClientResolutionX.Value = cw;
+            SettingsSvc.Ini.ClientResolutionY.Value = ch;
+        }
+
+        // 渲染器（DirectDrawWrapperManager.Save 应用 ddraw 配置并持久化 [Compatibility] Renderer）
+        if (_draft.TryGetValue("renderer", out var rv) && rv is string rname && _renderers is not null)
+        {
+            DirectDrawWrapper? selected = _rendererList.FirstOrDefault(r => r.InternalName == rname);
+            if (selected is not null)
+            {
+                try
+                {
+                    _renderers.Save(selected);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "应用游戏渲染器失败：{Name}", rname);
+                }
+            }
+        }
+
+        // 窗口化 / 无边框（旧版 DisplayOptionsPanel.Save 分流语义）：
+        // 渲染器自定义窗口化（DxWnd 等 UsesCustomWindowedOption）→ 写其配置 INI（dxwnd.ini），
+        // 此时 UserINISettings.Video.Windowed 不保存（旧版 chkWindowedMode.Checked && !UsesCustomWindowedOption）；
+        // 无边框在渲染器提供 BorderlessWindowedModeKey 时同样只写渲染器配置 INI。
+        bool windowed = WindowedChecked;
+        bool borderless = BorderlessChecked;
+        var windowedRenderer = _renderers?.SelectedRenderer;
+
+        if (windowedRenderer is not null && windowedRenderer.UsesCustomWindowedOption())
+        {
+            SettingsSvc.Ini.WindowedMode.Value = false;
+            try
+            {
+                var rendererIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, windowedRenderer.ConfigFileName));
+                rendererIni.SetBooleanValue(windowedRenderer.WindowedModeSection!, windowedRenderer.WindowedModeKey!, windowed);
+                if (!string.IsNullOrEmpty(windowedRenderer.BorderlessWindowedModeKey))
+                {
+                    bool borderlessIniValue = windowedRenderer.IsBorderlessWindowedModeKeyReversed ? !borderless : borderless;
+                    rendererIni.SetBooleanValue(windowedRenderer.WindowedModeSection!, windowedRenderer.BorderlessWindowedModeKey, borderlessIniValue);
+                }
+                rendererIni.WriteIniFile();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "写入渲染器窗口化配置失败：{Name}", windowedRenderer.InternalName);
+            }
+        }
+        else
+        {
+            SettingsSvc.Ini.WindowedMode.Value = windowed;
+            SettingsSvc.Ini.BorderlessWindowedMode.Value =
+                borderless && string.IsNullOrEmpty(windowedRenderer?.BorderlessWindowedModeKey);
+        }
+
+        // 其余设置项
+        void Bool(string key, Action<bool> setter)
+        {
+            if (_draft.TryGetValue(key, out var v) && v is bool b)
+                setter(b);
+        }
+        void Int(string key, Action<int> setter)
+        {
+            if (_draft.TryGetValue(key, out var v) && v is int i)
+                setter(i);
+        }
+        void Double(string key, Action<double> setter)
+        {
+            if (_draft.TryGetValue(key, out var v) && v is double d)
+                setter(d);
+        }
+        void Str(string key, Action<string> setter)
+        {
+            if (_draft.TryGetValue(key, out var v) && v is string s)
+                setter(s);
+        }
+
+        Int("clientFps", v => SettingsSvc.Ini.ClientFPS.Value = v);
+        Bool("minimizeOnGameStart", v => SettingsSvc.Ini.MinimizeWindowsOnGameStart.Value = v);
+        Bool("forceLowDetail", v => SettingsSvc.Ini.ForceLowestDetailLevel.Value = v);
+
+        Double("soundVolume", v => SettingsSvc.Ini.SoundVolume.Value = v);
+        Double("scoreVolume", v => SettingsSvc.Ini.ScoreVolume.Value = v);
+        Double("voiceVolume", v => SettingsSvc.Ini.VoiceVolume.Value = v);
+        Bool("playMainMenuMusic", v => SettingsSvc.Ini.PlayMainMenuMusic.Value = v);
+        Bool("messageSound", v => SettingsSvc.Ini.MessageSound.Value = v);
+
+        Int("scrollRate", v => SettingsSvc.Ini.ScrollRate.Value = v);
+        Int("doubleTapInterval", v => SettingsSvc.Ini.DoubleTapInterval.Value = v);
+        Int("gameSpeed", v => SettingsSvc.Ini.GameSpeed.Value = v);
+        Int("difficulty", v => SettingsSvc.Ini.Difficulty.Value = v);
+        Bool("autoTrimUnderscores", v => SettingsSvc.Ini.AutoRemoveUnderscoresFromName.Value = v);
+
+        Str("playerName", v => SettingsSvc.Ini.PlayerName.Value = v);
+        Bool("skipConnectDialog", v => SettingsSvc.Ini.SkipConnectDialog.Value = v);
+        Bool("persistentMode", v => SettingsSvc.Ini.PersistentMode.Value = v);
+        Bool("autoConnect", v => SettingsSvc.Ini.AutomaticCnCNetLogin.Value = v);
+        Bool("pingCustomTunnels", v => SettingsSvc.Ini.PingUnofficialCnCNetTunnels.Value = v);
+        Bool("mapSharing", v => SettingsSvc.Ini.EnableMapSharing.Value = v);
+        Bool("tunnelList", v => SettingsSvc.Ini.AlwaysDisplayTunnelList.Value = v);
+
+        Bool("checkUpdates", v => SettingsSvc.Ini.CheckForUpdates.Value = v);
+
+        Bool("privacyAccepted", v => SettingsSvc.Ini.PrivacyPolicyAccepted.Value = v);
+        Bool("discord", v => SettingsSvc.Ini.DiscordIntegration.Value = v);
+        Bool("steam", v => SettingsSvc.Ini.SteamIntegration.Value = v);
+
+        SettingsSvc.Save();
+
+        // 需要重启客户端才生效的项：客户端分辨率 / 无边框窗口 / 渲染器（下次启动游戏应用）
+        bool restartRequired = _draft.ContainsKey("clientRes")
+            || _draft.ContainsKey("borderless")
+            || _draft.ContainsKey("renderer");
+        string msg = restartRequired
+            ? "设置已保存 · 部分设置重启客户端后生效"
+            : "设置已保存";
+        _ = JS.InvokeVoidAsync("cncnet.toast", msg, "ok");
+
+        _draft.Clear();
+        Nav.NavigateTo("/menu");
+    }
+
+    /// <summary>取消：丢弃草稿（未写盘），直接返回（同原版 Cancel 按钮）。</summary>
+    private void OnCancel()
+    {
+        _draft.Clear();
+        StateHasChanged();
+        Nav.NavigateTo("/menu");
     }
 
     /* ── 各分区渲染 ── */
@@ -195,22 +514,46 @@
                 </select>
             </div>
         </div>
+        @* 游戏分辨率（原版 ddIngameResolution；保存时写回游戏 INI ScreenWidth/ScreenHeight） *@
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">游戏分辨率</span><span class="set-hint">IN-GAME RESOLUTION · 下次启动游戏生效</span></div>
+            <div class="set-ctl">
+                <select class="set-select" value="@CurrentIngameRes" @onchange="OnIngameResChange">
+                    @foreach (var r in EnsureInList(IngameResolutions, $"{SettingsSvc.Ini.IngameScreenWidth.Value}x{SettingsSvc.Ini.IngameScreenHeight.Value}"))
+                    {
+                        <option value="@r">@r</option>
+                    }
+                </select>
+            </div>
+        </div>
+        @* 客户端窗口分辨率（原版 ddClientResolution；重启客户端生效） *@
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">客户端窗口分辨率</span><span class="set-hint">CLIENT RESOLUTION · 重启客户端生效</span></div>
+            <div class="set-ctl">
+                <select class="set-select" value="@CurrentClientRes" @onchange="OnClientResChange">
+                    @foreach (var r in EnsureInList(ClientResolutions, $"{SettingsSvc.Ini.ClientResolutionX.Value}x{SettingsSvc.Ini.ClientResolutionY.Value}"))
+                    {
+                        <option value="@r">@r</option>
+                    }
+                </select>
+            </div>
+        </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">窗口化运行</span><span class="set-hint">WINDOWED MODE</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.WindowedMode.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.WindowedMode.Value = v, e)" />
+                    <input type="checkbox" checked="@(WindowedChecked)"
+                           @onchange="OnWindowedChange" />
                     <span class="tk"></span>
                 </label>
             </div>
         </div>
         <div class="set-row">
-            <div class="set-info"><span class="set-name">无边框窗口</span><span class="set-hint">BORDERLESS WINDOW</span></div>
+            <div class="set-info"><span class="set-name">无边框窗口</span><span class="set-hint">BORDERLESS WINDOW · 需开启窗口化</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.BorderlessWindowedMode.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.BorderlessWindowedMode.Value = v, e)" />
+                    <input type="checkbox" disabled="@(!WindowedChecked)" checked="@(BorderlessChecked)"
+                           @onchange="@(e => SetDraftBool("borderless", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -219,17 +562,17 @@
             <div class="set-info"><span class="set-name">客户端帧率</span><span class="set-hint">CLIENT FPS</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="30" max="240" step="15"
-                       value="@SettingsSvc.Ini.ClientFPS.Value"
-                       @onchange="e => SetInt(v => SettingsSvc.Ini.ClientFPS.Value = v, e)" />
-                <span class="set-val">@SettingsSvc.Ini.ClientFPS.Value</span>
+                       value="@(GetInt("clientFps", SettingsSvc.Ini.ClientFPS.Value))"
+                       @onchange="@(e => SetDraftInt("clientFps", e))" />
+                <span class="set-val">@GetInt("clientFps", SettingsSvc.Ini.ClientFPS.Value)</span>
             </div>
         </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">启动游戏时最小化窗口</span><span class="set-hint">MINIMIZE ON GAME START</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.MinimizeWindowsOnGameStart.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.MinimizeWindowsOnGameStart.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("minimizeOnGameStart", SettingsSvc.Ini.MinimizeWindowsOnGameStart.Value))"
+                           @onchange="@(e => SetDraftBool("minimizeOnGameStart", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -238,10 +581,31 @@
             <div class="set-info"><span class="set-name">强制最低画质</span><span class="set-hint">FORCE LOW DETAIL</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.ForceLowestDetailLevel.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.ForceLowestDetailLevel.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("forceLowDetail", SettingsSvc.Ini.ForceLowestDetailLevel.Value))"
+                           @onchange="@(e => SetDraftBool("forceLowDetail", e))" />
                     <span class="tk"></span>
                 </label>
+            </div>
+        </div>
+        @* 游戏渲染器选择（原版 Display 选项卡 render options：按 OS 兼容列表选 ddraw 渲染器，
+            保存时经 DirectDrawWrapperManager.Save 应用配置。资源未就绪时下拉禁用并提示）。 *@
+        <div class="set-row">
+            <div class="set-info"><span class="set-name">游戏渲染器</span><span class="set-hint">GAME RENDERER · 兼容性选择</span></div>
+            <div class="set-ctl">
+                <select class="set-select" disabled="@(_rendererList.Count == 0)"
+                        value="@CurrentRendererInternalName" @onchange="OnRendererChange">
+                    @if (_rendererList.Count == 0)
+                    {
+                        <option value="">不可用（游戏资源未就绪）</option>
+                    }
+                    else
+                    {
+                        @foreach (var r in _rendererList)
+                        {
+                            <option value="@r.InternalName">@r.UIName</option>
+                        }
+                    }
+                </select>
             </div>
         </div>
     };
@@ -253,35 +617,35 @@
             <div class="set-info"><span class="set-name">主音量</span><span class="set-hint">MASTER VOLUME</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="0" max="1" step="0.05"
-                       value="@SettingsSvc.Ini.SoundVolume.Value.ToString(CultureInfo.InvariantCulture)"
-                       @onchange="e => SetDouble(v => SettingsSvc.Ini.SoundVolume.Value = v, e)" />
-                <span class="set-val">@((int)(SettingsSvc.Ini.SoundVolume.Value * 100))%</span>
+                       value="@(GetDouble("soundVolume", SettingsSvc.Ini.SoundVolume.Value).ToString(CultureInfo.InvariantCulture))"
+                       @onchange="@(e => SetDraftDouble("soundVolume", e))" />
+                <span class="set-val">@((int)(GetDouble("soundVolume", SettingsSvc.Ini.SoundVolume.Value) * 100))%</span>
             </div>
         </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">背景音乐音量</span><span class="set-hint">SCORE VOLUME</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="0" max="1" step="0.05"
-                       value="@SettingsSvc.Ini.ScoreVolume.Value.ToString(CultureInfo.InvariantCulture)"
-                       @onchange="e => SetDouble(v => SettingsSvc.Ini.ScoreVolume.Value = v, e)" />
-                <span class="set-val">@((int)(SettingsSvc.Ini.ScoreVolume.Value * 100))%</span>
+                       value="@(GetDouble("scoreVolume", SettingsSvc.Ini.ScoreVolume.Value).ToString(CultureInfo.InvariantCulture))"
+                       @onchange="@(e => SetDraftDouble("scoreVolume", e))" />
+                <span class="set-val">@((int)(GetDouble("scoreVolume", SettingsSvc.Ini.ScoreVolume.Value) * 100))%</span>
             </div>
         </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">语音音量</span><span class="set-hint">VOICE VOLUME</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="0" max="1" step="0.05"
-                       value="@SettingsSvc.Ini.VoiceVolume.Value.ToString(CultureInfo.InvariantCulture)"
-                       @onchange="e => SetDouble(v => SettingsSvc.Ini.VoiceVolume.Value = v, e)" />
-                <span class="set-val">@((int)(SettingsSvc.Ini.VoiceVolume.Value * 100))%</span>
+                       value="@(GetDouble("voiceVolume", SettingsSvc.Ini.VoiceVolume.Value).ToString(CultureInfo.InvariantCulture))"
+                       @onchange="@(e => SetDraftDouble("voiceVolume", e))" />
+                <span class="set-val">@((int)(GetDouble("voiceVolume", SettingsSvc.Ini.VoiceVolume.Value) * 100))%</span>
             </div>
         </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">主菜单音乐</span><span class="set-hint">MAIN MENU MUSIC</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.PlayMainMenuMusic.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.PlayMainMenuMusic.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("playMainMenuMusic", SettingsSvc.Ini.PlayMainMenuMusic.Value))"
+                           @onchange="@(e => SetDraftBool("playMainMenuMusic", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -290,8 +654,8 @@
             <div class="set-info"><span class="set-name">聊天消息音效</span><span class="set-hint">MESSAGE SOUND</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.MessageSound.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.MessageSound.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("messageSound", SettingsSvc.Ini.MessageSound.Value))"
+                           @onchange="@(e => SetDraftBool("messageSound", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -305,34 +669,34 @@
             <div class="set-info"><span class="set-name">滚动速度</span><span class="set-hint">SCROLL RATE</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="1" max="8" step="1"
-                       value="@SettingsSvc.Ini.ScrollRate.Value"
-                       @onchange="e => SetInt(v => SettingsSvc.Ini.ScrollRate.Value = v, e)" />
-                <span class="set-val">@SettingsSvc.Ini.ScrollRate.Value</span>
+                       value="@(GetInt("scrollRate", SettingsSvc.Ini.ScrollRate.Value))"
+                       @onchange="@(e => SetDraftInt("scrollRate", e))" />
+                <span class="set-val">@GetInt("scrollRate", SettingsSvc.Ini.ScrollRate.Value)</span>
             </div>
         </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">双击间隔（毫秒）</span><span class="set-hint">DOUBLE TAP INTERVAL</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="10" max="100" step="5"
-                       value="@SettingsSvc.Ini.DoubleTapInterval.Value"
-                       @onchange="e => SetInt(v => SettingsSvc.Ini.DoubleTapInterval.Value = v, e)" />
-                <span class="set-val">@SettingsSvc.Ini.DoubleTapInterval.Value</span>
+                       value="@(GetInt("doubleTapInterval", SettingsSvc.Ini.DoubleTapInterval.Value))"
+                       @onchange="@(e => SetDraftInt("doubleTapInterval", e))" />
+                <span class="set-val">@GetInt("doubleTapInterval", SettingsSvc.Ini.DoubleTapInterval.Value)</span>
             </div>
         </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">游戏速度</span><span class="set-hint">GAME SPEED</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="0" max="4" step="1"
-                       value="@SettingsSvc.Ini.GameSpeed.Value"
-                       @onchange="e => SetInt(v => SettingsSvc.Ini.GameSpeed.Value = v, e)" />
-                <span class="set-val">@SettingsSvc.Ini.GameSpeed.Value</span>
+                       value="@(GetInt("gameSpeed", SettingsSvc.Ini.GameSpeed.Value))"
+                       @onchange="@(e => SetDraftInt("gameSpeed", e))" />
+                <span class="set-val">@GetInt("gameSpeed", SettingsSvc.Ini.GameSpeed.Value)</span>
             </div>
         </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">游戏难度</span><span class="set-hint">DIFFICULTY</span></div>
             <div class="set-ctl">
-                <select class="set-select" value="@SettingsSvc.Ini.Difficulty.Value"
-                        @onchange="e => SetInt(v => SettingsSvc.Ini.Difficulty.Value = v, e)">
+                <select class="set-select" value="@(GetInt("difficulty", SettingsSvc.Ini.Difficulty.Value))"
+                        @onchange="@(e => SetDraftInt("difficulty", e))">
                     <option value="1">难度 1</option>
                     <option value="2">难度 2</option>
                     <option value="3">难度 3</option>
@@ -344,8 +708,8 @@
             <div class="set-info"><span class="set-name">自动去除昵称下划线</span><span class="set-hint">AUTO TRIM UNDERSCORES</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.AutoRemoveUnderscoresFromName.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.AutoRemoveUnderscoresFromName.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("autoTrimUnderscores", SettingsSvc.Ini.AutoRemoveUnderscoresFromName.Value))"
+                           @onchange="@(e => SetDraftBool("autoTrimUnderscores", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -356,18 +720,19 @@
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
         <div class="set-row">
-            <div class="set-info"><span class="set-name">玩家名</span><span class="set-hint">PLAYER NAME · 下次登录生效</span></div>
+            <div class="set-info"><span class="set-name">玩家名</span><span class="set-hint">PLAYER NAME · 保存后生效</span></div>
             <div class="set-ctl">
                 <input class="set-text" maxlength="30" spellcheck="false" autocomplete="off"
-                       value="@_playerName" @onchange="SavePlayerName" />
+                       value="@(GetStr("playerName", SettingsSvc.Ini.PlayerName.Value))"
+                       @onchange="@(e => SetDraft("playerName", (e.Value ?? string.Empty).ToString()!.Trim()))" />
             </div>
         </div>
         <div class="set-row">
             <div class="set-info"><span class="set-name">记住我（跳过登录窗口）</span><span class="set-hint">SKIP CONNECT DIALOG</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.SkipConnectDialog.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.SkipConnectDialog.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("skipConnectDialog", SettingsSvc.Ini.SkipConnectDialog.Value))"
+                           @onchange="@(e => SetDraftBool("skipConnectDialog", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -376,8 +741,8 @@
             <div class="set-info"><span class="set-name">离开大厅保持连接</span><span class="set-hint">PERSISTENT MODE</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.PersistentMode.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.PersistentMode.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("persistentMode", SettingsSvc.Ini.PersistentMode.Value))"
+                           @onchange="@(e => SetDraftBool("persistentMode", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -386,8 +751,8 @@
             <div class="set-info"><span class="set-name">启动自动连接</span><span class="set-hint">AUTO CONNECT</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.AutomaticCnCNetLogin.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.AutomaticCnCNetLogin.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("autoConnect", SettingsSvc.Ini.AutomaticCnCNetLogin.Value))"
+                           @onchange="@(e => SetDraftBool("autoConnect", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -396,8 +761,8 @@
             <div class="set-info"><span class="set-name">Ping 自定义隧道</span><span class="set-hint">PING CUSTOM TUNNELS</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.PingUnofficialCnCNetTunnels.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.PingUnofficialCnCNetTunnels.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("pingCustomTunnels", SettingsSvc.Ini.PingUnofficialCnCNetTunnels.Value))"
+                           @onchange="@(e => SetDraftBool("pingCustomTunnels", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -406,8 +771,8 @@
             <div class="set-info"><span class="set-name">允许地图分享</span><span class="set-hint">ENABLE MAP SHARING</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.EnableMapSharing.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.EnableMapSharing.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("mapSharing", SettingsSvc.Ini.EnableMapSharing.Value))"
+                           @onchange="@(e => SetDraftBool("mapSharing", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -416,8 +781,8 @@
             <div class="set-info"><span class="set-name">始终显示隧道列表</span><span class="set-hint">ALWAYS SHOW TUNNEL LIST</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.AlwaysDisplayTunnelList.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.AlwaysDisplayTunnelList.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("tunnelList", SettingsSvc.Ini.AlwaysDisplayTunnelList.Value))"
+                           @onchange="@(e => SetDraftBool("tunnelList", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -431,8 +796,8 @@
             <div class="set-info"><span class="set-name">启动时检查更新</span><span class="set-hint">CHECK FOR UPDATES ON START</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.CheckForUpdates.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.CheckForUpdates.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("checkUpdates", SettingsSvc.Ini.CheckForUpdates.Value))"
+                           @onchange="@(e => SetDraftBool("checkUpdates", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -590,8 +955,8 @@
             <div class="set-info"><span class="set-name">已接受隐私政策</span><span class="set-hint">PRIVACY POLICY ACCEPTED</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.PrivacyPolicyAccepted.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.PrivacyPolicyAccepted.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("privacyAccepted", SettingsSvc.Ini.PrivacyPolicyAccepted.Value))"
+                           @onchange="@(e => SetDraftBool("privacyAccepted", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -600,8 +965,8 @@
             <div class="set-info"><span class="set-name">Discord 集成</span><span class="set-hint">DISCORD INTEGRATION</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.DiscordIntegration.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.DiscordIntegration.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("discord", SettingsSvc.Ini.DiscordIntegration.Value))"
+                           @onchange="@(e => SetDraftBool("discord", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
@@ -610,8 +975,8 @@
             <div class="set-info"><span class="set-name">Steam 集成</span><span class="set-hint">STEAM INTEGRATION</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@SettingsSvc.Ini.SteamIntegration.Value"
-                           @onchange="e => ToggleBool(v => SettingsSvc.Ini.SteamIntegration.Value = v, e)" />
+                    <input type="checkbox" checked="@(GetBool("steam", SettingsSvc.Ini.SteamIntegration.Value))"
+                           @onchange="@(e => SetDraftBool("steam", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
