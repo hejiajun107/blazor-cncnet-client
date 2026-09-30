@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>UpdateE2E</RootNamespace>
+    <AssemblyName>update-e2e</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\blazor-cncnet-client\src\BlazorCncnetClient\CnCNetClient.Updater\CnCNetClient.Updater.csproj" />
+  </ItemGroup>
+
+</Project>
