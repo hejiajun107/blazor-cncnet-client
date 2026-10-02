@@ -73,6 +73,12 @@ namespace BlazorCncnetClient
             // InvalidOperationException("UserINISettings not initialized!")，导致登录一直卡在「连接中」。
             UserINISettings.Initialize("ClientSettings.ini");
 
+            // Client 用户数据目录（friend_list / custom_map_cache_v5 / SkirmishSettings.ini 等）。
+            // MapLoader 加载自定义地图结束时写 custom_map_cache_v5 到该目录，缺失时抛
+            // DirectoryNotFoundException 使整个地图加载中断、快照不发布 → 发布版地图列表为空。
+            // （bin\Debug 因历史残留有该目录而正常，发布目录无此目录故必现）
+            Directory.CreateDirectory(ProgramConstants.ClientUserFilesPath);
+
             // 按持久化语言（默认 zh-CN）设置 CurrentUICulture，保证首帧 Resx 即正确语言。
             try
             {

@@ -106,17 +106,40 @@ namespace BlazorCncnetClient.Infrastructure
 
             if (!string.IsNullOrEmpty(mapName))
             {
+                // CnCNet 广播地图名带人数前缀 "[N] "（如 "[2] A Hill Between"），
+                // 本地 MPMaps.ini 的 Description 带 "(N) " 前缀（如 "(2) A Hill Between"）。
+                // 两边分别剥离前缀后精确比较，否则本地已安装地图也会因前缀差异落入 NO MAP。
+                var cleanBroadcast = StripCountPrefix(mapName, '[');
                 foreach (var gameModeMap in _mapLoader.GameModeMaps)
                 {
                     var map = gameModeMap.Map;
-                    if (string.Equals(map.Name, mapName, StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(map.UntranslatedName, mapName, StringComparison.OrdinalIgnoreCase)
+                    var cleanLocal = StripCountPrefix(map.Name ?? string.Empty, '(');
+                    var cleanLocalUntranslated = StripCountPrefix(map.UntranslatedName ?? string.Empty, '(');
+                    if (string.Equals(cleanLocal, cleanBroadcast, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(cleanLocalUntranslated, cleanBroadcast, StringComparison.OrdinalIgnoreCase)
                         || string.Equals(map.BaseFilePath, mapName, StringComparison.OrdinalIgnoreCase))
                         return map;
                 }
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// 剥离地图名前缀 "[N] "（bracket='['）或 "(N) "（bracket='('）。
+        /// CnCNet 广播与本地 MPMaps.ini 对同一张图的显示名前缀格式不同，匹配前需归一化。
+        /// </summary>
+        private static string StripCountPrefix(string mapName, char bracket)
+        {
+            if (mapName.Length >= 4 && mapName[0] == bracket)
+            {
+                char closeBracket = bracket == '[' ? ']' : ')';
+                int close = mapName.IndexOf(closeBracket);
+                if (close is > 1 and < 4 && close + 1 < mapName.Length && mapName[close + 1] == ' ')
+                    return mapName[(close + 2)..];
+            }
+
+            return mapName;
         }
 
         private void EnsureMapsLoaded()

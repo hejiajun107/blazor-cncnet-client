@@ -131,10 +131,8 @@
         ThemeProvider.ThemeChanged += OnThemeChanged;
         // 原版 PrivacyNotification：未接受隐私政策前，每次进入主菜单弹底部提示
         _privacyOpen = !UserINISettings.Instance.PrivacyPolicyAccepted.Value;
-        // r9-1：CnCNet 在线人数（原版 MainMenu 在初始化时启动 CnCNetPlayerCountTask）
+        // r9-1：CnCNet 在线人数（任务由全局悬浮顶栏 TopBar 启动，本页仅订阅刷新 #r1）
         CnCNetPlayerCountTask.CnCNetGameCountUpdated += OnPlayerCountUpdated;
-        _playerCountCts = new CancellationTokenSource();
-        CnCNetPlayerCountTask.InitializeService(_playerCountCts);
         // r9-1：更新状态链接（原版 lblUpdateStatus，启动检查结果由 TryStartupUpdateCheck 触发）
         UpdateSvc.StateChanged += OnUpdateStateChanged;
         RefreshUpdateStatus();
@@ -144,7 +142,6 @@
 
     // ── r9-1：CnCNet 在线人数（原版 CnCNetPlayerCountTask + lblCnCNetPlayerCount） ──
 
-    private CancellationTokenSource? _playerCountCts;
     private int _onlinePlayers = -1;
 
     /// <summary>在线人数刷新（后台线程触发，InvokeAsync 编回 UI 上下文后更新 #r1）。</summary>
@@ -317,8 +314,6 @@
     {
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         CnCNetPlayerCountTask.CnCNetGameCountUpdated -= OnPlayerCountUpdated;
-        _playerCountCts?.Cancel();
-        _playerCountCts?.Dispose();
         UpdateSvc.StateChanged -= OnUpdateStateChanged;
         if (_dotNetRef is not null)
         {

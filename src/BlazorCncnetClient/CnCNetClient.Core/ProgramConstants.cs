@@ -26,7 +26,12 @@ namespace CnCNetClient.Core
 
         public const string QRES_EXECUTABLE = "qres.dat";
 
-        public const string CNCNET_PROTOCOL_REVISION = "R14";
+        /// <summary>
+        /// CnCNet 游戏列表/房间协议修订号（原版即为 "A"，勿改为网络握手修订号）。
+        /// 服务器 GAME 广播、建房广播、房间 TOPIC 均以此字段校验；迁移版曾误设 "R14"
+        /// 导致 <c>LobbyService.OnBroadcastCTCP</c> 丢弃全部房间广播、大厅房间列表恒为空。
+        /// </summary>
+        public const string CNCNET_PROTOCOL_REVISION = "A";
         public const string LAN_PROTOCOL_REVISION = "RL8";
         public const int LAN_PORT = 1234;
         public const int LAN_INGAME_PORT = 1234;

@@ -1,19 +1,42 @@
 @namespace BlazorCncnetClient.Components.Shared
 @implements IDisposable
+@using System.Threading
+@using CnCNetClient.Core
+@using CnCNetClient.Online
+@using CnCNetClient.Domain.Multiplayer.CnCNet
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject IServiceProvider Services
+@inject CnCNetManager CncNet
+@inject LoginService Login
 
-<header class="hud">
+<!-- 全局悬浮顶栏（原版 TopBar：默认藏在屏幕上方，鼠标移到顶部滑出，失焦后收回）。
+     按钮：主菜单 / 设置 / 登出；右侧状态：连接灯、玩家名、在线人数、日期时间。 -->
+<div class="hud-peek" aria-hidden="true"></div>
+<header class="hud" id="hud-topbar">
     <div class="sys">
         <span class="live @StatusClass"></span>
         @if (!string.IsNullOrEmpty(StatusText))
         {
             <span class="live-txt @StatusClass">@StatusText</span>
         }
-        <b>@Brand</b>
-        @if (!string.IsNullOrEmpty(SubText))
-        {
-            <span>· @SubText</span>
-        }
     </div>
+
+    <nav class="hud-menu">
+        <button type="button" class="hm" @onclick="GoSkirmish">遭遇战大厅<span class="en">SKIRMISH · F2</span></button>
+        <button type="button" class="hm" @onclick="GoOnlineLobby">CnCNet 大厅<span class="en">CNCNET · F3</span></button>
+        <button type="button" class="hm" @onclick="GoPM">私信<span class="en">PM · F4</span></button>
+        <button type="button" class="hm" @onclick="GoSettings">选项<span class="en">OPTIONS · F12</span></button>
+        @if (_isConnected)
+        {
+            <button type="button" class="hm hm-out" @onclick="OnLogout">登出<span class="en">LOGOUT</span></button>
+        }
+        else
+        {
+            <button type="button" class="hm" @onclick="OnLogin">登录<span class="en">LOGIN</span></button>
+        }
+    </nav>
+
     <div class="sys">
         @if (ChildContent is not null)
         {
@@ -23,20 +46,12 @@
         {
             <span>玩家 <b>@PlayerName</b></span>
         }
-        @if (ShowClock)
-        {
-            <span class="clock">@Clock</span>
-        }
+        <span class="online">在线 @(_onlineTotal > 0 ? _onlineTotal.ToString() : "—")</span>
+        <span class="clock">@DateText · @Clock</span>
     </div>
 </header>
 
 @code {
-    /// <summary>品牌名（左侧主标，Orbitron）。</summary>
-    [Parameter] public string Brand { get; set; } = "COMMAND NET";
-
-    /// <summary>副标题（分隔点后的小字）。</summary>
-    [Parameter] public string? SubText { get; set; }
-
     /// <summary>状态灯修饰类：""=在线（青呼吸）、retry=重连（琥珀）、off=离线（红常亮）。</summary>
     [Parameter] public string StatusClass { get; set; } = string.Empty;
 
@@ -53,15 +68,136 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     private string Clock { get; set; } = string.Empty;
+    private string DateText { get; set; } = string.Empty;
     private System.Threading.Timer? _timer;
+    private CancellationTokenSource? _playerCountCts;
+    private int _onlineTotal = -1;
+    private bool _isConnected;
+    private DotNetObjectReference<TopBar>? _dotNetRef;
 
     protected override void OnInitialized()
     {
         Tick();
         _timer = new System.Threading.Timer(_ => InvokeAsync(Tick), null, 1000, 1000);
+
+        // 连接状态驱动登录/登出按钮切换
+        _isConnected = CncNet.IsConnected;
+        CncNet.Connected += OnConnected;
+        CncNet.Disconnected += OnDisconnected;
+
+        // 在线人数：全局唯一启动源（原版 TopBar 持有 CnCNetPlayerCountTask，各页仅订阅）。
+        // MainMenu 页不再自行启动，避免双线程重复拉取 status API。
+        _playerCountCts = new CancellationTokenSource();
+        CnCNetPlayerCountTask.InitializeService(_playerCountCts);
+        CnCNetPlayerCountTask.CnCNetGameCountUpdated += OnPlayerCountUpdated;
     }
 
-    private void Tick() => Clock = DateTime.Now.ToString("HH:mm:ss");
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("cncnet.initTopBar", _dotNetRef);
+        }
+    }
 
-    public void Dispose() => _timer?.Dispose();
+    private void OnPlayerCountUpdated(object? sender, PlayerCountEventArgs e)
+    {
+        _ = InvokeAsync(() =>
+        {
+            _onlineTotal = e.TotalPlayerCount;
+            StateHasChanged();
+        });
+    }
+
+    private void Tick()
+    {
+        Clock = DateTime.Now.ToString("HH:mm:ss");
+        DateText = DateTime.Now.ToString("yyyy-MM-dd");
+    }
+
+    private void GoSkirmish() => Nav.NavigateTo("/skirmish");
+
+    private void GoSettings() => Nav.NavigateTo("/settings");
+
+    /// <summary>CnCNet 大厅（原版 F3）：已连接直接进入，未连接先弹登录浮窗。</summary>
+    private async Task GoOnlineLobby()
+    {
+        if (_isConnected)
+        {
+            Nav.NavigateTo("/online/lobby");
+            return;
+        }
+        var result = await Login.ShowAsync();
+        if (result == LoginResult.Connected)
+            Nav.NavigateTo("/online/lobby");
+    }
+
+    /// <summary>私信（原版 F4）：迁移版无独立私信窗口，进入大厅聊天区；未连接先登录。</summary>
+    private async Task GoPM()
+    {
+        if (!_isConnected)
+        {
+            var result = await Login.ShowAsync();
+            if (result != LoginResult.Connected)
+                return;
+        }
+        Nav.NavigateTo("/online/lobby");
+    }
+
+    /// <summary>全局快捷键（原版 TopBar 键盘监听）：F2 遭遇战 / F3 CnCNet 大厅 / F4 私信 / F12 选项。</summary>
+    [JSInvokable]
+    public Task OnTopBarHotKey(int key)
+    {
+        switch (key)
+        {
+            case 2: GoSkirmish(); break;
+            case 3: _ = GoOnlineLobby(); break;
+            case 4: _ = GoPM(); break;
+            case 12: GoSettings(); break;
+        }
+        return Task.CompletedTask;
+    }
+
+    private void OnConnected(object? sender, EventArgs e) => InvokeAsync(RefreshConnectionState);
+
+    private void OnDisconnected(object? sender, EventArgs e) => InvokeAsync(RefreshConnectionState);
+
+    private void RefreshConnectionState()
+    {
+        _isConnected = CncNet.IsConnected;
+        StateHasChanged();
+    }
+
+    /// <summary>登录（未连接时）：打开全局登录浮窗（LoginService / LoginModal），成功由 Connected 事件刷新按钮。</summary>
+    private async Task OnLogin()
+    {
+        var result = await Login.ShowAsync();
+        if (result == LoginResult.Connected)
+            _ = JS.InvokeVoidAsync("cncnet.toast", "已连接 CnCNet");
+    }
+
+    /// <summary>登出（原版 btnLogout）：断开 CnCNet 连接并清除本地昵称，回到主菜单；按钮随即变为「登录」。</summary>
+    private void OnLogout()
+    {
+        CncNet.Disconnect();
+        ProgramConstants.PLAYERNAME = "No name";
+        _ = JS.InvokeVoidAsync("cncnet.toast", "已登出 CnCNet");
+        Nav.NavigateTo("/menu");
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        CncNet.Connected -= OnConnected;
+        CncNet.Disconnected -= OnDisconnected;
+        CnCNetPlayerCountTask.CnCNetGameCountUpdated -= OnPlayerCountUpdated;
+        _playerCountCts?.Cancel();
+        _playerCountCts?.Dispose();
+        if (_dotNetRef is not null)
+        {
+            _ = JS.InvokeVoidAsync("cncnet.disposeTopBar");
+            _dotNetRef.Dispose();
+        }
+    }
 }

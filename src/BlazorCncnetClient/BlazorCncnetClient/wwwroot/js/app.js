@@ -451,5 +451,50 @@
         document.querySelectorAll('[data-fps]').forEach(el => { el.textContent = String(v); });
     }, 1000);
 
-    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview };
+    /* ── 全局悬浮顶栏（原版 TopBar：鼠标移到顶部滑出，移开 1s 收回；F2/F3/F4/F12 快捷键） ── */
+    let _topBarHideTimer = null;
+    function initTopBar(dotnetRef) {
+        const bar = document.getElementById('hud-topbar');
+        if (!bar) return;
+        const show = () => {
+            if (_topBarHideTimer) { clearTimeout(_topBarHideTimer); _topBarHideTimer = null; }
+            bar.classList.add('show');
+        };
+        const hide = () => {
+            if (_topBarHideTimer) clearTimeout(_topBarHideTimer);
+            _topBarHideTimer = setTimeout(() => bar.classList.remove('show'), 1000);
+        };
+        // 触发区 56px（顶部滑出判定）；顶栏展开后鼠标悬停在其矩形内则保持显示
+        const onMove = (e) => {
+            if (e.clientY <= 56) { show(); return; }
+            const r = bar.getBoundingClientRect();
+            if (r.height > 0 && e.clientY >= r.top && e.clientY <= r.bottom && e.clientX >= r.left && e.clientX <= r.right) { show(); return; }
+            hide();
+        };
+        // 原版 TopBar 键盘监听：F2 遭遇战大厅 / F3 CnCNet 大厅 / F4 私信 / F12 选项
+        const onKey = (e) => {
+            let k = null;
+            if (e.keyCode === 113) k = 2;        // F2
+            else if (e.keyCode === 114) k = 3;   // F3
+            else if (e.keyCode === 115) k = 4;   // F4
+            else if (e.keyCode === 123) k = 12;  // F12
+            if (k !== null) {
+                e.preventDefault();
+                dotnetRef.invokeMethodAsync('OnTopBarHotKey', k);
+            }
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('keydown', onKey);
+        bar._topBarCleanup = () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('keydown', onKey);
+            if (_topBarHideTimer) { clearTimeout(_topBarHideTimer); _topBarHideTimer = null; }
+        };
+    }
+    function disposeTopBar() {
+        const bar = document.getElementById('hud-topbar');
+        if (bar && bar._topBarCleanup) { bar._topBarCleanup(); delete bar._topBarCleanup; }
+    }
+
+    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar };
 })();

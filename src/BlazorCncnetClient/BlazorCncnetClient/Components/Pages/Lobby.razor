@@ -557,6 +557,8 @@
         LobbySvc.PmChanged += OnPmChanged;
         LobbySvc.PmReceived += OnPmReceived;
         ThemeProvider.ThemeChanged += OnThemeChanged;
+        // 连接状态变化时刷新左侧状态条（lt-conn），否则停留在进入页面时的旧值（顶栏/底栏已实时刷新）
+        Mon.StateChanged += OnMonConnectionChanged;
 
         // 2-2 从在线房间跳转而来：?pm=<昵称> 直达私聊会话
         var pmName = GetQueryParam(Nav.ToAbsoluteUri(Nav.Uri), "pm");
@@ -602,6 +604,8 @@
             await JS.InvokeVoidAsync("cncnet.scrollToBottom", _pmChatEnd);
         }
     }
+
+    private void OnMonConnectionChanged() => InvokeAsync(StateHasChanged);
 
     private void OnChanged()
     {
@@ -1059,6 +1063,7 @@
         LobbySvc.PmChanged -= OnPmChanged;
         LobbySvc.PmReceived -= OnPmReceived;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
+        Mon.StateChanged -= OnMonConnectionChanged;
         _renderThrottle?.Dispose();
         _renderThrottle = null;
         if (_dotNetRef is not null)
