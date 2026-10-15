@@ -40,5 +40,7 @@
 		<ProjectReference Include="..\CnCNetClient.Domain\CnCNetClient.Domain.csproj" />
 		<ProjectReference Include="..\CnCNetClient.Online\CnCNetClient.Online.csproj" />
 		<ProjectReference Include="..\CnCNetClient.Updater\CnCNetClient.Updater.csproj" />
+		<!-- 插件契约（F4）：随发布自动落在 ClientApp\，为插件作者提供"零配置引用"副本 -->
+		<ProjectReference Include="..\CnCNetClient.Plugin.Abstractions\CnCNetClient.Plugin.Abstractions.csproj" />
 	</ItemGroup>
 </Project>

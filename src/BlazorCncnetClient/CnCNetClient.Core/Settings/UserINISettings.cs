@@ -493,22 +493,30 @@ namespace CnCNetClient.Core
 
             SettingsIni.WriteIniFile();
 
-            // M 设置对齐旧客户端：游戏分辨率须写入游戏自身 INI（原版 UserINISettings 即游戏 INI；
-            // 移植版隔离到 ClientSettings.ini 后需回写，否则游戏启动读不到 ScreenWidth/ScreenHeight）。
+            // M 设置对齐旧客户端：旧版 UserINISettings 即游戏自身 INI（RA2MD.ini），
+            // 全部设置（分辨率/音量/游戏速度/滚屏等）落在游戏 INI 供游戏启动读取。
+            // 移植版隔离到 ClientSettings.ini 后，保存时需把客户端设置全段同步回游戏 INI，
+            // 否则游戏启动读不到这些键、退回到默认值（游戏只读 [Video]/[Audio]/[Options] 等兼容段，
+            // 客户端专有段如 [Multiplayer] 会被游戏忽略，与旧版同文件语义一致）。
             // 游戏 INI 名取自 ClientDefinitions.ini [Settings] SettingsFile（YR 为 RA2MD.ini）。
             try
             {
                 string gameIniPath = SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.SettingsIniName);
-                if (File.Exists(gameIniPath))
+                if (!File.Exists(gameIniPath))
+                    File.WriteAllText(gameIniPath, string.Empty);
+
+                var gameIni = new IniFile(gameIniPath);
+                foreach (string section in SettingsIni.GetSections())
                 {
-                    var gameIni = new IniFile(gameIniPath);
-                    string section = ClientConfiguration.Instance.ClientGameType == ClientType.RA ? OPTIONS : VIDEO;
-                    string widthKey = ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Width" : "ScreenWidth";
-                    string heightKey = ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Height" : "ScreenHeight";
-                    gameIni.SetIntValue(section, widthKey, IngameScreenWidth);
-                    gameIni.SetIntValue(section, heightKey, IngameScreenHeight);
-                    gameIni.WriteIniFile();
+                    var sectionIni = SettingsIni.GetSection(section);
+                    if (sectionIni is null)
+                        continue;
+
+                    foreach ((var key, var value) in sectionIni.Keys)
+                        gameIni.SetStringValue(section, key, value);
                 }
+
+                gameIni.WriteIniFile();
             }
             catch (Exception ex)
             {

@@ -6,4 +6,5 @@
   <Project Path="CnCNetClient.Updater/CnCNetClient.Updater.csproj" />
   <Project Path="CnCNetClient.Domain/CnCNetClient.Domain.csproj" />
   <Project Path="CnCNetClient.Online/CnCNetClient.Online.csproj" />
+  <Project Path="CnCNetClient.Plugin.Abstractions/CnCNetClient.Plugin.Abstractions.csproj" />
 </Solution>

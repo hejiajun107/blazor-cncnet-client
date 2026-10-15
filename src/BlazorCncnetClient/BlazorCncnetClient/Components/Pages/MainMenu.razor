@@ -15,6 +15,7 @@
 @inject UpdateService UpdateSvc
 @inject UiDefinitionService UiDefs
 @inject DiscordPresenceService Discord
+@inject PluginCatalog Plugins
 
 <main class="stage">
     <section class="left">
@@ -69,6 +70,8 @@
                 <span class="go">›</span>
             </button>
         }
+        @* F4 追加型槽位：插件自定义渲染的菜单入口（勿与 AddMenuEntry 的按钮式入口重复声明） *@
+        <PluginSlot Key="menu.entry" />
         <div class="pf"><span class="cn">© 2026 CNCNet CLIENT</span><span>ESC · 返回</span></div>
     </aside>
 
@@ -102,7 +105,7 @@
 @code {
     /// <summary>首次运行隐私提示可见性（原版 PrivacyNotification：PrivacyPolicyAccepted 未勾选时显示）。</summary>
     private bool _privacyOpen;
-    private sealed record MenuItem(string Key, string Cn, string En, string Icon, bool IsPrimary = false);
+    private sealed record MenuItem(string Key, string Cn, string En, string Icon, bool IsPrimary = false, string? Route = null);
 
     private static readonly MenuItem[] MenuItems =
     [
@@ -120,10 +123,33 @@
         new("exit", "退出", "Exit", "✕"),
     ];
 
-    /// <summary>按 ClientDefinitions.ini [UI] HiddenMenus 过滤后的可见入口（F3）。</summary>
+    /// <summary>按 ClientDefinitions.ini [UI] HiddenMenus 过滤后的可见入口（F3）+ 插件菜单项（F4）。</summary>
     private MenuItem[]? _visible;
-    private MenuItem[] VisibleMenuItems =>
-        _visible ??= MenuItems.Where(m => !UiDefs.HiddenMenus.Contains(m.Key)).ToArray();
+    private MenuItem[] VisibleMenuItems => _visible ??= BuildMenu();
+
+    /// <summary>
+    /// 合并内置入口与插件入口（F4）：内置项（HiddenMenus 过滤后）→ 插件项（按 Order 升序，
+    /// 默认 100）→「退出」。插件项通过 <see cref="MenuItem.Route"/> 跳转其提供的页面。
+    /// </summary>
+    private MenuItem[] BuildMenu()
+    {
+        var builtins = MenuItems.Where(m => !UiDefs.HiddenMenus.Contains(m.Key)).ToList();
+
+        var pluginItems = Plugins.EnabledMenuEntries
+            .OrderBy(e => e.Order)
+            .Select(e => new MenuItem($"plugin:{e.Key}", e.Label, e.LabelEn, e.Icon, Route: e.Route))
+            .ToList();
+        if (pluginItems.Count == 0)
+            return builtins.ToArray();
+
+        int exitIndex = builtins.FindIndex(m => m.Key == "exit");
+        if (exitIndex < 0)
+            builtins.AddRange(pluginItems);
+        else
+            builtins.InsertRange(exitIndex, pluginItems);
+
+        return builtins.ToArray();
+    }
 
     protected override void OnInitialized()
     {
@@ -324,6 +350,13 @@
 
     private async Task OnMenuClick(MenuItem item)
     {
+        // F4 插件入口：直接跳转插件声明的路由（不做占位 toast）
+        if (item.Route is { Length: > 0 } pluginRoute)
+        {
+            Nav.NavigateTo(pluginRoute);
+            return;
+        }
+
         // M2.4/M2.7/M3.1：暂以 toast / MessageBox / 登录浮窗占位，后续各功能页接入后改为真实导航。
         switch (item.Key)
         {

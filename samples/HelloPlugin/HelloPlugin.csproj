@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>HelloPlugin</RootNamespace>
+    <AssemblyName>HelloPlugin</AssemblyName>
+    <!-- 插件是类库（非可执行），运行时由客户端 Assembly.LoadFrom 载入 -->
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 插件契约（F4）：唯一必需的编译期依赖。
+         Private=false → 不把契约 DLL 复制到插件输出目录：
+         宿主已加载同一份契约（默认 ALC 下按简单名复用），插件目录再放一份没有意义，
+         反而会让"是否加载了第二份类型"变得难以排查。 -->
+    <ProjectReference Include="..\..\src\BlazorCncnetClient\CnCNetClient.Plugin.Abstractions\CnCNetClient.Plugin.Abstractions.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 自描述 + 样式随生成输出，便于直接取 bin 目录内产物部署到 Plugins/hello-plugin/ -->
+    <Content Include="plugin.ini" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="plugin.css" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -5,8 +5,13 @@
 @inject InfiniFrameDispatcher Dispatcher
 @inject GlobalExceptionHandler GlobalErrors
 @inject GameLogCollector GameLogs
+@inject PluginCatalog Plugins
 
-<Router AppAssembly="@typeof(Program).Assembly" NotFoundPage="@typeof(PageNotFound)">
+@* F4 插件机制：AdditionalAssemblies 让插件程序集内的 @page 路由自动被发现
+   （路由冲突在 PluginCatalog.DetectRouteConflicts 中告警）。 *@
+<Router AppAssembly="@typeof(Program).Assembly"
+        AdditionalAssemblies="@Plugins.PageAssemblies"
+        NotFoundPage="@typeof(PageNotFound)">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
     </Found>

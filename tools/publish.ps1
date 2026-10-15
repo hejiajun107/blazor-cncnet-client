@@ -4,11 +4,13 @@
 #   .\tools\publish.ps1                          # 默认：Release / win-x64 / 自包含 / dist
 #   .\tools\publish.ps1 -SelfContained:$false    # 框架依赖（目标机需装 .NET 10 Desktop Runtime）
 #   .\tools\publish.ps1 -OutputDir out           # 自定义输出目录（相对仓库根）
+#   .\tools\publish.ps1 -PackPluginSdk           # 额外打包插件契约 nupkg → <OutputDir>/nuget（不进入 publish）
 #
 # 产物（安装根）：
 #   <OutputDir>/publish\Launcher.exe     — NativeAOT 原生外壳启动器（留在根，无运行时依赖）
 #   <OutputDir>/publish\ClientApp\       — 客户端自包含整体（含我的 exe + 运行库 + DLL + wwwroot）
 #   <OutputDir>/_publish-report.txt      — 打包校验报告
+#   <OutputDir>/nuget\*.nupkg            — （仅 -PackPluginSdk）插件 SDK，供插件作者 dotnet add package
 #
 # 目录定位说明：客户端 FindGamePath 会从 ClientApp\ 向上找 Resources 目录取父目录为游戏根
 # （与官方 xna-cncnet-client 同款契约）。故将本输出整体放入游戏目录（Resources 所在树），
@@ -20,7 +22,8 @@ param(
     [switch]$SelfContained = $true,
     [string]$OutputDir = "dist",
     [switch]$StageUpdate,
-    [string]$ServerVersion = ""
+    [string]$ServerVersion = "",
+    [switch]$PackPluginSdk
 )
 
 $ErrorActionPreference = "Stop"
@@ -142,6 +145,20 @@ $report | Set-Content -Path $reportPath -Encoding UTF8
 $report | ForEach-Object { Write-Host $_ }
 
 if ($fail -ne 0) { throw "打包校验未通过，详见 $reportPath" }
+
+# ── 插件 SDK（F4，可选）：打包契约 nupkg，供插件作者 dotnet add package 引用。
+#    输出到 <OutputDir>/nuget（与 publish 平级 → 不进入发布校验范围）。────────
+if ($PackPluginSdk) {
+    $sdkProj = Join-Path (Split-Path -Parent (Split-Path -Parent $csproj)) "CnCNetClient.Plugin.Abstractions\CnCNetClient.Plugin.Abstractions.csproj"
+    if (-not (Test-Path $sdkProj)) { throw "找不到插件契约工程：$sdkProj" }
+    $nugetOut = Join-Path $outRoot "nuget"
+    Write-Host ""
+    Write-Host "==> dotnet pack 插件 SDK（$sdkProj → $nugetOut）"
+    & dotnet pack $sdkProj -c $Configuration -o $nugetOut --nologo
+    if ($LASTEXITCODE -ne 0) { throw "插件 SDK 打包失败（exit=$LASTEXITCODE）" }
+    Write-Host "插件 SDK（nupkg）: $nugetOut"
+}
+
 Write-Host ""
 Write-Host "打包完成：$publish"
 Write-Host "提示：将 publish 目录整体放入游戏目录（Resources 所在目录树），双击 Launcher.exe 启动即可；WebView2 缺失时客户端会引导安装。"

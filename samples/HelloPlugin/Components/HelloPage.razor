@@ -1,0 +1,22 @@
+@page "/plugin/hello-plugin/home"
+@* 示例：插件新增的独立页面（宿主 Router 通过 AdditionalAssemblies 发现本路由；默认套用 MainLayout） *@
+@inject HelloGreeter Greeter
+@inject NavigationManager Nav
+
+<div class="hello-page">
+    <div class="hello-card">
+        <div class="hello-head">
+            <span class="hello-title">你好插件</span>
+            <span class="hello-en">HELLO PLUGIN · 示例页面</span>
+        </div>
+        <p class="hello-body">@Greeter.Message</p>
+        <ul class="hello-list">
+            <li>路由 <code>/plugin/hello-plugin/home</code> 由插件程序集提供</li>
+            <li>顶栏徽标与设置页侧栏来自「追加型槽位」</li>
+            <li>本页可直接 <code>@@inject</code> 宿主服务（共享默认 ALC，类型同源）</li>
+        </ul>
+        <div class="hello-actions">
+            <button type="button" class="hello-btn" @onclick='() => Nav.NavigateTo("/menu")'>‹ 返回主菜单</button>
+        </div>
+    </div>
+</div>

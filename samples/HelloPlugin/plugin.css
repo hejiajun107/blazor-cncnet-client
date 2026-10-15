@@ -1,0 +1,54 @@
+/* 示例插件样式（F4）：由 plugin.ini [Plugin] Style 声明，客户端经内容伺服注入 <link>。
+   仅用宿主已有的 CSS 变量（tokens），跟随主题自动适配。 */
+
+.hello-page { padding: 24px; }
+
+.hello-card {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.hello-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.hello-title { font-size: 20px; font-weight: 700; color: var(--cyan); }
+.hello-en { font-family: var(--font-orbitron); font-size: 10px; letter-spacing: 2px; color: var(--dim); }
+
+.hello-body { margin: 0 0 12px; font-size: 14px; line-height: 1.6; }
+
+.hello-list { margin: 0 0 16px; padding-left: 18px; font-size: 13px; line-height: 1.9; color: var(--text-2); }
+.hello-list code { color: var(--cyan); }
+
+.hello-actions { display: flex; justify-content: flex-end; }
+.hello-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: var(--font-cn);
+}
+.hello-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* 设置页侧栏卡片 */
+.hello-aside {
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hello-aside-t { font-size: 13px; font-weight: 700; color: var(--cyan); }
+.hello-aside-d { font-size: 11px; line-height: 1.5; color: var(--dim); }
+
+/* 主菜单自定义入口（menu.entry）：沿用宿主 .mbtn 外观，仅加左侧强调 */
+.hello-mbtn { border-left: 2px solid var(--cyan); }
+
+/* 在线大厅面板（page.lobby.aside）：占满 .lobby-grid 一整行 */
+.hello-lobby { grid-column: 1 / -1; }
+.hello-lobby-body { padding: 12px 14px; font-size: 13px; line-height: 1.7; color: var(--text-2); }
+.hello-lobby-body code { color: var(--cyan); }
+.hello-lobby-body .dim { color: var(--dim); font-size: 12px; }

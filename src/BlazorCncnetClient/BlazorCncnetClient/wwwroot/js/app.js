@@ -59,6 +59,33 @@
         if (cached) document.documentElement.dataset.theme = cached;
     })();
 
+    /* ── 插件资源注入（F4：外部插件目录的 css/js，经 GameContentServer 伺服） ────
+       与 applyTheme 的 <link> 注入同款链路；幂等：同 key 重复调用只更新 href，
+       插件资源加载失败仅留 console/toast，不影响页面。 */
+    const pluginLinks = new Map();
+    function injectCss(key, url) {
+        if (!key || !url) return;
+        let el = pluginLinks.get(key);
+        if (!el) {
+            el = document.createElement('link');
+            el.rel = 'stylesheet';
+            el.dataset.plugin = key;
+            el.onerror = () => console.warn('[plugin] 样式加载失败：' + key + ' → ' + url);
+            document.head.appendChild(el);
+            pluginLinks.set(key, el);
+        }
+        el.href = url;
+    }
+    function injectJs(url) {
+        if (!url) return;
+        const s = document.createElement('script');
+        s.src = url;
+        s.defer = true;
+        s.dataset.plugin = '1';
+        s.onerror = () => console.warn('[plugin] 脚本加载失败：' + url);
+        document.head.appendChild(s);
+    }
+
     /* ── 背景星粒（MainLayout #bg-canvas） ─────────────────────── */
     function initStars(canvasId) {
         const canvas = document.getElementById(canvasId);
@@ -496,5 +523,5 @@
         if (bar && bar._topBarCleanup) { bar._topBarCleanup(); delete bar._topBarCleanup; }
     }
 
-    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar };
+    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, injectCss, injectJs, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar };
 })();

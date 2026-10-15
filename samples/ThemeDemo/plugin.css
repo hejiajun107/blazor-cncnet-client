@@ -1,0 +1,24 @@
+/* 样例 ThemeDemo · 纯资源插件（无需编译）
+   演示两件事：① 覆盖 design tokens 换肤  ② 注入一个可见标记，证明 CSS 确实生效。
+
+   注意覆盖范围：宿主有三档主题选择器 —— :root（主菜单）、
+   :root[data-theme="inner"]（内页：设置/大厅）、:root[data-theme="ra"]（红警）。
+   后两者带属性选择器、特异性更高，只写 :root 会出现"主菜单变了、内页没变"。
+   （F1 的 [Themes] 目录无此问题：它走"注入 link + 移除 data-theme"。） */
+:root,
+:root[data-theme="inner"],
+:root[data-theme="ra"]{
+  --bg-0:#1a0b2e;
+  --bg-1:#231145;
+  --cyan:#ffd23f;
+  --cyan-soft:#ffe9a8;
+  --line:rgba(255,210,63,.35);
+}
+
+/* 可见标记：右上角固定标签。正式皮肤请删掉这一段（它只用于"一眼确认布局生效"）。 */
+body::after{
+  content:"THEME DEMO";
+  position:fixed; top:8px; right:8px; z-index:99999;
+  padding:6px 10px; background:#ffd23f; color:#201a06;
+  font:700 12px/1 monospace; border-radius:4px;
+}

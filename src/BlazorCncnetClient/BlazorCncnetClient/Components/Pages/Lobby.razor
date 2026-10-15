@@ -197,6 +197,8 @@
                 }
             </div>
         </section>
+        @* F4 追加型槽位：插件面板（.lobby-grid 为三列网格；插件可用 grid-column:1/-1 占满整行） *@
+        <PluginSlot Key="page.lobby.aside" />
     </div>
 
     @if (_menuOpen && _menuUser is not null)

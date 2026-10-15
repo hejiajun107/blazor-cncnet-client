@@ -5,6 +5,7 @@
 @inject NavigationManager Nav
 @inject ConnectionMonitor Mon
 @inject ReplaceableComponentService Replacer
+@inject PluginAssetInjector PluginAssets
 
 <!-- HUD 顶栏（全局，TopBar 通用组件，spec §5.3；状态灯/文本由 ConnectionMonitor 驱动，M3.10）。
      主题切换已移至设置页（Settings.razor），此处仅保留版本/帧率读数 -->
@@ -61,6 +62,8 @@
         {
             // 主题系统：加载持久化主题并应用（M2.5）
             await ThemeProvider.InitializeAsync();
+            // F4 插件资源（style/script）：首帧注入 WebView（幂等）
+            await PluginAssets.InjectAllAsync();
             // 星粒背景动效（尊重 prefers-reduced-motion，内部处理）
             await JS.InvokeVoidAsync("cncnet.initStars", "bg-canvas");
         }

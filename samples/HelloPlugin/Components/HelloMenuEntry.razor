@@ -1,0 +1,9 @@
+@* 示例：贡献到 menu.entry 槽位的自定义渲染菜单入口（位于主菜单按钮列表之后、页脚之前） *@
+@inject NavigationManager Nav
+
+<button type="button" class="mbtn hello-mbtn item-in" style="animation-delay:900ms"
+        @onclick='() => Nav.NavigateTo("/plugin/hello-plugin/home")'>
+    <span class="ic">★</span>
+    <span class="txt"><span class="cn">你好插件</span><br><span class="en">HELLO PLUGIN</span></span>
+    <span class="go">›</span>
+</button>

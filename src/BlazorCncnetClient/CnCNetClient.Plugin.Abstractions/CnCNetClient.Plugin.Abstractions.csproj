@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CnCNetClient.Plugin.Abstractions</RootNamespace>
+    <AssemblyName>CnCNetClient.Plugin.Abstractions</AssemblyName>
+    <Description>CNCNet Client 插件契约（外部插件唯一编译期依赖；nupkg 主版本号 = PluginApi.CurrentVersion）。</Description>
+    <!-- 主版本号与 PluginApi.CurrentVersion 对应；契约不兼容变更时递增 CurrentVersion 并发布新的主版本 nupkg。 -->
+    <Version>1.0.0</Version>
+    <!-- 契约不做强命名：默认 ALC 下同简单名程序集已加载即复用，强命名只会引入绑定重定向麻烦。 -->
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+
+  <!-- 契约只依赖 ASP.NET Core 共享框架（Microsoft.AspNetCore.Components / Extensions.DependencyInjection.Abstractions）。
+       不引用宿主实现，避免循环依赖。 -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

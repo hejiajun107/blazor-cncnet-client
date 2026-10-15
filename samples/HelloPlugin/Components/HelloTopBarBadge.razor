@@ -1,0 +1,11 @@
+@* 示例：贡献到 layout.topbar 槽位的按钮（宿主 TopBar 菜单区渲染，样式类 .hm 来自宿主 app.css） *@
+@inject IJSRuntime JS
+@inject HelloGreeter Greeter
+
+<button type="button" class="hm" @onclick="OnClick" title="示例插件">
+    ★<span class="en">HELLO</span>
+</button>
+
+@code {
+    private void OnClick() => _ = JS.InvokeVoidAsync("cncnet.toast", Greeter.Message);
+}

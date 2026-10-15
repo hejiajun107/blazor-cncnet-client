@@ -279,6 +279,12 @@ public sealed class GameContentServer : IDisposable
             ".ico" => "image/x-icon",
             ".svg" => "image/svg+xml",
             ".css" => "text/css; charset=utf-8",
+            // F4 插件资源：脚本/JSON/字体（脚本类型错误会被 Chromium 以严格 MIME 检查拒绝执行）
+            ".js" or ".mjs" => "text/javascript; charset=utf-8",
+            ".json" => "application/json; charset=utf-8",
+            ".woff2" => "font/woff2",
+            ".woff" => "font/woff",
+            ".ttf" => "font/ttf",
             _ => "application/octet-stream"
         };
     }

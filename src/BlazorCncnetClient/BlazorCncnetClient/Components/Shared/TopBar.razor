@@ -35,6 +35,8 @@
         {
             <button type="button" class="hm" @onclick="OnLogin">登录<span class="en">LOGIN</span></button>
         }
+        @* F4 追加型槽位：插件可在顶栏菜单区追加按钮/指示器（.plugin-slot 为 display:contents，不破坏 flex 布局） *@
+        <PluginSlot Key="layout.topbar" />
     </nav>
 
     <div class="sys">

@@ -1,0 +1,23 @@
+@* F4 追加型槽位：渲染全部插件贡献的组件（与「替换型」ReplaceableComponent 语义分离）。
+   无贡献时输出空，宿主布局不受影响。 *@
+@inject ReplaceableComponentService Replacer
+
+@if (_types.Count > 0)
+{
+    <div class="plugin-slot" data-slot="@Key">
+        @foreach (var type in _types)
+        {
+            <DynamicComponent Type="@type" />
+        }
+    </div>
+}
+
+@code {
+    /// <summary>槽位键（如 layout.topbar / page.settings.aside）。</summary>
+    [Parameter, EditorRequired]
+    public string Key { get; set; } = string.Empty;
+
+    private IReadOnlyList<Type> _types = [];
+
+    protected override void OnParametersSet() => _types = Replacer.ResolveSlot(Key);
+}

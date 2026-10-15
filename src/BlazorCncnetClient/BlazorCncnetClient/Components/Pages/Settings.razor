@@ -39,6 +39,8 @@
                     <span class="set-nav-tx"><span class="cn">@Ui("Settings.Nav." + s.Key, s.Cn)</span><span class="en">@s.En</span></span>
                 </button>
             }
+            @* F4 追加型槽位：插件可在设置页侧栏追加自有内容（.plugin-slot 为 display:contents） *@
+            <PluginSlot Key="page.settings.aside" />
         </nav>
 
         <section class="set-panel item-in" style="animation-delay:60ms">

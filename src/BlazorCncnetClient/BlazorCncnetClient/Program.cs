@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using BlazorCncnetClient.Components;
 using BlazorCncnetClient.Infrastructure;
+using BlazorCncnetClient.Infrastructure.Plugins;
 using BlazorCncnetClient.Infrastructure.Theme;
 using CnCNetClient.Core;
 using CnCNetClient.Core.I18N;
@@ -26,26 +27,32 @@ namespace BlazorCncnetClient
         {
             var appBuilder = InfiniFrameBlazorAppBuilder.CreateDefault(args);
 
+            // 2.8 日志落盘：logs/client-yyyyMMdd.log 滚动文件（保留 14 天），崩溃/错误可离线定位。
+            // 路径放在应用目录下，避免写入保护目录；异步写入避免阻塞 UI。
+            // 必须在此**显式创建并赋值静态 Log.Logger**：AddSerilog(Action) 重载会把 logger 创建
+            // 推迟到 Build() 解析 ILoggerFactory 时，静态 Log.Logger 那时才被赋值，导致 Build 之前
+            // （插件发现、环境检测等启动最早期）的 Log.* 全部写入 Serilog 默认静默 logger 而丢失
+            // （实测：插件发现阶段的「已加载 / 目录不存在」诊断行完全查不到，只剩 Build 之后的）。
+            var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Async(c => c.Console())
+                .WriteTo.Async(c => c.File(
+                    Path.Combine(logDir, "client-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 14,
+                    shared: true,
+                    flushToDiskInterval: TimeSpan.FromSeconds(1)))
+                .CreateLogger();
+
             appBuilder.Services.AddLogging(config =>
             {
                 config.ClearProviders();
                 config.AddSerilog();
             });
 
-            appBuilder.Services.AddSerilog(config =>
-            {
-                // 2.8 日志落盘：logs/client-yyyyMMdd.log 滚动文件（保留 14 天），崩溃/错误可离线定位。
-                // 路径放在应用目录下，避免写入保护目录；异步写入避免阻塞 UI。
-                var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
-                config.WriteTo.Async(c => c.Console())
-                    .WriteTo.Async(c => c.File(
-                        Path.Combine(logDir, "client-.log"),
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 14,
-                        shared: true,
-                        flushToDiskInterval: TimeSpan.FromSeconds(1)))
-                    .MinimumLevel.Debug();
-            });
+            // 复用同一实例，避免重复创建 logger/sink（dispose:false：进程生命周期内由静态持有）
+            appBuilder.Services.AddSerilog(Log.Logger, dispose: false);
 
             // M5 日志清理：connection.log 无限追加，超限归档重开；logs 下超 14 天日志兜底清除
             // （须在 Logger.Initialize 之前执行，避免文件句柄冲突）
@@ -78,6 +85,14 @@ namespace BlazorCncnetClient
             // DirectoryNotFoundException 使整个地图加载中断、快照不发布 → 发布版地图列表为空。
             // （bin\Debug 因历史残留有该目录而正常，发布目录无此目录故必现）
             Directory.CreateDirectory(ProgramConstants.ClientUserFilesPath);
+
+            // ── 插件机制（F4，docs/plugin-plan.md）阶段一：发现 + 加载 ─────────
+            // 扫游戏根 Plugins/（由 Resources/ClientDefinitions.ini [Plugins] 启用），
+            // 校验契约版本后 Assembly.LoadFrom 到**默认 ALC**（与宿主共享程序集）。
+            // 必须在 Build 前完成；任何插件异常仅禁用该插件并记日志，不阻断启动。
+            var pluginCatalog = new PluginCatalog();
+            pluginCatalog.Discover(ProgramConstants.GamePath);
+            appBuilder.Services.AddSingleton(pluginCatalog);
 
             // 按持久化语言（默认 zh-CN）设置 CurrentUICulture，保证首帧 Resx 即正确语言。
             try
@@ -137,7 +152,26 @@ namespace BlazorCncnetClient
             // 启动闪屏（M5 2.3 LoadingScreen）：ClientDefinitions.ini [LoadingScreen] 配置 +
             // 进程内本地内容服务器（独立文件 URL 加载游戏目录媒体，视频支持 Range，不打包 base64）
             appBuilder.Services.AddScoped<LoadingScreenService>();
-            appBuilder.Services.AddSingleton<GameContentServer>();
+            // 内容伺服：按实例注册并在 Build 前启动（幂等），使插件上下文 ContentUrl 在
+            // RegisterServices 阶段即可生成可用 URL（启动闪屏/主题注入同一实例时 IsRunning 短路）。
+            // 注：Start 内部对空 root 会抛（Path.GetFullPath），故此处守卫；失败不影响启动。
+            var contentServer = new GameContentServer();
+            if (!string.IsNullOrWhiteSpace(ProgramConstants.GamePath))
+            {
+                try
+                {
+                    contentServer.Start(ProgramConstants.GamePath);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "内容伺服启动失败，插件/闪屏资源将不可用");
+                }
+            }
+            appBuilder.Services.AddSingleton(contentServer);
+            pluginCatalog.ContentUrlProvider = relative => contentServer.MapUrl(relative);
+
+            // F4 插件资源注入：把插件声明的 style/script 注入 WebView（MainLayout 首帧）
+            appBuilder.Services.AddScoped<PluginAssetInjector>();
 
             // 全局异常兜底（M2.8）：Serilog 落盘定位崩溃 + 迁移 DisplayErrorAction 语义（MessageBox 呈现错误、exit 时退出）
             appBuilder.Services.AddScoped<GlobalExceptionHandler>();
@@ -280,7 +314,13 @@ namespace BlazorCncnetClient
                     ;
             });
 
+            // ── 插件机制阶段二：插件注册自有服务（必须在 Build 前，Build 后服务集合不可变）──
+            pluginCatalog.RegisterServices(appBuilder.Services);
+
             app = appBuilder.Build();
+
+            // ── 插件机制阶段三：Build 后初始化（此处可解析全部宿主服务，如 CnCNetManager）──
+            pluginCatalog.InitializeAll(app.ServiceProvider);
             }
             catch (Exception ex)
             {
