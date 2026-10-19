@@ -322,6 +322,19 @@ namespace BlazorCncnetClient
 
             // ── 插件机制阶段三：Build 后初始化（此处可解析全部宿主服务，如 CnCNetManager）──
             pluginCatalog.InitializeAll(app.ServiceProvider);
+
+            // M4.2 游戏翻译表预加载：SkirmishService / GameRoomService / LanGameRoomService
+            // 在字段初始化时就调用 GameOptionsIniLoader.Load，后者依赖已加载的 Translation.Instance。
+            // ITranslationService 是 scoped，必须在窗口/页面创建前主动构造一次，才能设置静态 Translation.Instance。
+            try
+            {
+                using var translationScope = app.ServiceProvider.CreateScope();
+                _ = translationScope.ServiceProvider.GetRequiredService<ITranslationService>();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "启动时预加载游戏翻译失败，游戏选项/内容将显示默认语言");
+            }
             }
             catch (Exception ex)
             {

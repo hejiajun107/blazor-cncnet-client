@@ -353,7 +353,13 @@ namespace CnCNetClient.Core
 
         public string TranslationIniName => clientDefinitionsIni.GetStringValue(TRANSLATIONS, nameof(TranslationIniName), "Translation.ini");
 
+        /// <summary>
+        /// 翻译文件目录。旧版客户端 executable 位于游戏根目录，INI 中 <c>TranslationsFolder=Resources\Translations</c>
+        /// 即相对游戏根目录；本版 executable 在 <c>ClientApp\</c> 子目录，必须基于 <see cref="ProgramConstants.GamePath"/>
+        /// 解析，否则中文翻译目录会被错判为 <c>ClientApp\Resources\Translations</c> 而加载失败。
+        /// </summary>
         public string TranslationsFolderPath => SafePath.CombineDirectoryPath(
+            ProgramConstants.GamePath,
             clientDefinitionsIni.GetStringValue(TRANSLATIONS, "TranslationsFolder",
                 SafePath.CombineDirectoryPath("Resources", "Translations")));
 

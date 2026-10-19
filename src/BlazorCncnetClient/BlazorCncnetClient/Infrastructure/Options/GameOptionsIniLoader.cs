@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using CnCNetClient.Core;
+using CnCNetClient.Core.I18N;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Tools;
 
@@ -128,6 +129,7 @@ public static class GameOptionsIniLoader
     private static GameSessionCheckBoxOption CreateCheckBox(IniFile ini, string section, string iniPath)
     {
         string text = ini.GetStringValue(section, "Text", string.Empty);
+        text = Translation.Instance.LookUp($"INI:Controls:GameOptionsPanel:{section}:Text", text);
 
         return new GameSessionCheckBoxOption(
             section,
@@ -137,7 +139,7 @@ public static class GameOptionsIniLoader
             reversed: ini.GetBooleanValue(section, "Reversed", false),
             defaultChecked: ini.GetBooleanValue(section, "Checked", false))
         {
-            ToolTip = NullIfEmpty(ini.GetStringValue(section, "ToolTip", string.Empty))
+            ToolTip = TranslateToolTip(section, ini)
         };
     }
 
@@ -154,6 +156,7 @@ public static class GameOptionsIniLoader
         }
 
         string optionName = ini.GetStringValue(section, "OptionName", string.Empty);
+        optionName = Translation.Instance.LookUp($"INI:Controls:GameOptionsPanel:{section}:OptionName", optionName);
 
         return new GameSessionDropDownOption(
             section,
@@ -163,8 +166,16 @@ public static class GameOptionsIniLoader
             spawnIniOption: NullIfEmpty(ini.GetStringValue(section, "SpawnIniOption", string.Empty)),
             writeMode: ParseWriteMode(ini, section, iniPath))
         {
-            ToolTip = NullIfEmpty(ini.GetStringValue(section, "ToolTip", string.Empty))
+            ToolTip = TranslateToolTip(section, ini)
         };
+    }
+
+    /// <summary>按原版 Translation.ini 键格式查找 ToolTip 翻译（INI:Controls:GameOptionsPanel:&lt;section&gt;:ToolTip）。</summary>
+    private static string? TranslateToolTip(string section, IniFile ini)
+    {
+        string tooltip = ini.GetStringValue(section, "ToolTip", string.Empty);
+        tooltip = Translation.Instance.LookUp($"INI:Controls:GameOptionsPanel:{section}:ToolTip", tooltip);
+        return NullIfEmpty(tooltip);
     }
 
     private static GameOptionWriteMode ParseWriteMode(IniFile ini, string section, string iniPath)

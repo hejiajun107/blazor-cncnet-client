@@ -83,22 +83,29 @@ public sealed class TranslationService : ITranslationService
     /// <summary>
     /// 镜像原版 PreStartup 加载游戏内容翻译：优先 <c>[TranslationsFolder]/&lt;locale&gt;/Translation.ini</c>，
     /// 再叠加主题翻译；缺失/异常时回退到空翻译（L10N 走默认值）。
+    /// 额外支持父区域回退：zh-CN 找不到时尝试 zh，以兼容旧版中文翻译目录命名。
     /// </summary>
     private static void LoadGameTranslation(string localeCode)
     {
         try
         {
-            FileInfo translationFile = SafePath.GetFile(
-                UserINISettings.Instance.TranslationFolderPath,
-                ClientConfiguration.Instance.TranslationIniName);
-
-            if (translationFile.Exists)
+            foreach (string candidate in GetLocaleCandidates(localeCode))
             {
+                string translationFolder = SafePath.CombineDirectoryPath(
+                    ClientConfiguration.Instance.TranslationsFolderPath, candidate);
+                FileInfo translationFile = SafePath.GetFile(
+                    translationFolder, ClientConfiguration.Instance.TranslationIniName);
+
+                if (!translationFile.Exists)
+                    continue;
+
                 var translation = new Translation(translationFile.FullName, localeCode);
 
+                string themeFolder = SafePath.CombineDirectoryPath(
+                    ClientConfiguration.Instance.TranslationsFolderPath, candidate,
+                    ClientConfiguration.Instance.GetThemePath(UserINISettings.Instance.ClientTheme.Value));
                 FileInfo themeFile = SafePath.GetFile(
-                    UserINISettings.Instance.TranslationThemeFolderPath,
-                    ClientConfiguration.Instance.TranslationIniName);
+                    themeFolder, ClientConfiguration.Instance.TranslationIniName);
                 if (themeFile.Exists)
                     translation.AppendValuesFromIniFile(themeFile.FullName);
 
@@ -112,6 +119,23 @@ public sealed class TranslationService : ITranslationService
         }
 
         Translation.Instance = new Translation(localeCode);
+    }
+
+    /// <summary>生成区域候选列表：exact → 父区域（zh-CN → zh → ...），以兼容旧翻译目录命名。</summary>
+    private static IEnumerable<string> GetLocaleCandidates(string localeCode)
+    {
+        string current = localeCode;
+        yield return current;
+
+        while (true)
+        {
+            int separator = current.LastIndexOf('-');
+            if (separator <= 0)
+                yield break;
+
+            current = current.Substring(0, separator);
+            yield return current;
+        }
     }
 
     /// <summary>组合可用语言：内置 UI 语言 + 游戏翻译目录（<see cref="Translation.GetTranslations"/>），去重保序。</summary>
