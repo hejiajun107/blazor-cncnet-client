@@ -186,6 +186,11 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 /* 弹窗/面板：scale + fade，微 overshoot（--ease-out-back） */
 .pop-in{animation:popIn var(--t-pop) var(--ease-out-back) backwards}
 @keyframes popIn{0%{opacity:0;transform:scale(.92) translateY(6px)}100%{opacity:1;transform:none}}
+/* 居中固定弹窗专用 pop-in：全程保留定位用 translate(-50%,-50%)。
+   popIn 会整体覆盖 transform，导致 transform 居中的面板（cr-panel/pm-panel/game-detail）
+   动画期间挂在左上角锚点、动画结束才瞬移居中；popInC 从第一帧起就在最终居中位置。 */
+@keyframes popInC{0%{opacity:0;transform:translate(-50%,-50%) translateY(6px) scale(.92)}
+  100%{opacity:1;transform:translate(-50%,-50%)}}
 /* 侧栏/抽屉：translateX 滑入 */
 .slide-in-r{animation:slideInR var(--t-sheet) var(--ease-out)}
 @keyframes slideInR{from{transform:translateX(100%)}to{transform:none}}
@@ -587,6 +592,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 
 /* ── 私聊中心（M3.8 spec §5.3/§5.5：多标签 slide、未读徽章跳动） ── */
 .pm-panel{position:fixed;z-index:41;left:50%;top:44%;transform:translate(-50%,-50%);
+  animation:popInC var(--t-pop) var(--ease-out-back) backwards;
   width:min(480px,92vw);max-height:min(76vh,560px);display:flex;flex-direction:column;
   border:1px solid var(--line);background:rgba(8,22,34,.97);backdrop-filter:blur(14px);
   clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
@@ -657,6 +663,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 
 /* ── 选中房间信息面板（M3.4 spec §6.4：大地图预览 + 房间详情） ── */
 .game-detail{position:fixed;z-index:41;left:50%;top:50%;transform:translate(-50%,-50%);
+  animation:popInC var(--t-pop) var(--ease-out-back) backwards;
   width:min(480px,92vw);max-height:88vh;overflow-y:auto;
   border:1px solid var(--line);background:rgba(8,22,34,.97);backdrop-filter:blur(14px);
   clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
@@ -686,6 +693,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 
 /* ── 创建房间 / 加入密码 对话框（M3.5 spec §5.3，复用 .pop-in 弹窗动效） ── */
 .cr-panel{position:fixed;z-index:41;left:50%;top:44%;transform:translate(-50%,-50%);
+  animation:popInC var(--t-pop) var(--ease-out-back) backwards;
   width:min(460px,92vw);border:1px solid var(--line);background:rgba(8,22,34,.97);
   backdrop-filter:blur(14px);
   clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
@@ -812,7 +820,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 
 /* P1 地图下载：加入者缺图提示条 */
 .map-dl{margin-top:10px;padding:10px 12px;border:1px solid rgba(33,230,255,.35);
-  background:rgba(33,230,255,.05);animation:pop-in var(--t-pop) var(--ease-out-back)}
+  background:rgba(33,230,255,.05);animation:popIn var(--t-pop) var(--ease-out-back)}
 .map-dl.md-busy{border-color:rgba(255,210,63,.5);background:rgba(255,210,63,.06)}
 .map-dl.md-fail{border-color:rgba(255,90,90,.5);background:rgba(255,60,60,.07)}
 .map-dl.md-off{border-color:var(--line);background:rgba(120,130,140,.06);opacity:.9}
