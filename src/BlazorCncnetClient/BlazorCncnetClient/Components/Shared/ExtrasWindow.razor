@@ -4,6 +4,8 @@
 @inject IJSRuntime JS
 @inject ExtrasService Service
 @inject MessageBoxService MessageBox
+@inject UiDefinitionService Defs
+@inject NavigationManager Nav
 
 @if (Service.IsOpen || Service.IsClosing)
 {
@@ -16,36 +18,58 @@
                 <span class="mb-en">EXTRAS MENU</span>
             </div>
             <div class="exw-body">
-                <button type="button" class="exw-btn item-in" style="animation-delay:40ms"
-                        @onclick="() => OnAction(ActionKind.MapEditor)">
-                    <span class="exw-ic">✎</span>
-                    <span class="exw-txt"><span class="cn">地图编辑器</span><br><span class="en">MAP EDITOR</span></span>
-                    <span class="exw-go">›</span>
-                </button>
-                <button type="button" class="exw-btn item-in" style="animation-delay:90ms"
+                @if (ShowExStatistics)
+                {
+                    <button type="button" class="exw-btn item-in" style="animation-delay:40ms"
+                            disabled="@(!EnableExStatistics)"
+                            @onclick="() => OnAction(ActionKind.Statistics)">
+                        <span class="exw-ic">▤</span>
+                        <span class="exw-txt"><span class="cn">统计</span><br><span class="en">STATISTICS</span></span>
+                        <span class="exw-go">›</span>
+                    </button>
+                }
+                @if (ShowExMapEditor)
+                {
+                    <button type="button" class="exw-btn item-in" style="animation-delay:90ms"
+                            disabled="@(!EnableExMapEditor)"
+                            @onclick="() => OnAction(ActionKind.MapEditor)">
+                        <span class="exw-ic">✎</span>
+                        <span class="exw-txt"><span class="cn">地图编辑器</span><br><span class="en">MAP EDITOR</span></span>
+                        <span class="exw-go">›</span>
+                    </button>
+                }
+                <button type="button" class="exw-btn item-in" style="animation-delay:140ms"
                         @onclick="() => OnAction(ActionKind.Changelog)">
                     <span class="exw-ic">↻</span>
                     <span class="exw-txt"><span class="cn">更新日志</span><br><span class="en">CHANGELOG</span></span>
                     <span class="exw-go">›</span>
                 </button>
-                <button type="button" class="exw-btn item-in" style="animation-delay:140ms"
-                        @onclick="() => OnAction(ActionKind.Credits)">
-                    <span class="exw-ic">✦</span>
-                    <span class="exw-txt"><span class="cn">鸣谢</span><br><span class="en">CREDITS</span></span>
-                    <span class="exw-go">›</span>
-                </button>
-                <button type="button" class="exw-btn item-in" style="animation-delay:190ms"
+                @if (ShowExCredits)
+                {
+                    <button type="button" class="exw-btn item-in" style="animation-delay:190ms"
+                            disabled="@(!EnableExCredits)"
+                            @onclick="() => OnAction(ActionKind.Credits)">
+                        <span class="exw-ic">✦</span>
+                        <span class="exw-txt"><span class="cn">鸣谢</span><br><span class="en">CREDITS</span></span>
+                        <span class="exw-go">›</span>
+                    </button>
+                }
+                <button type="button" class="exw-btn item-in" style="animation-delay:240ms"
                         @onclick="() => OnAction(ActionKind.About)">
                     <span class="exw-ic">ⓘ</span>
                     <span class="exw-txt"><span class="cn">关于</span><br><span class="en">ABOUT</span></span>
                     <span class="exw-go">›</span>
                 </button>
-                <button type="button" class="exw-btn cancel item-in" style="animation-delay:240ms"
-                        @onclick="() => OnAction(ActionKind.Cancel)">
-                    <span class="exw-ic">✕</span>
-                    <span class="exw-txt"><span class="cn">取消</span><br><span class="en">CANCEL</span></span>
-                    <span class="exw-go">›</span>
-                </button>
+                @if (ShowExCancel)
+                {
+                    <button type="button" class="exw-btn cancel item-in" style="animation-delay:290ms"
+                            disabled="@(!EnableExCancel)"
+                            @onclick="() => OnAction(ActionKind.Cancel)">
+                        <span class="exw-ic">✕</span>
+                        <span class="exw-txt"><span class="cn">取消</span><br><span class="en">CANCEL</span></span>
+                        <span class="exw-go">›</span>
+                    </button>
+                }
             </div>
         </div>
     </div>
@@ -54,6 +78,7 @@
 @code {
     private enum ActionKind
     {
+        Statistics,
         MapEditor,
         Changelog,
         Credits,
@@ -61,17 +86,46 @@
         Cancel
     }
 
+    // 官方 ExtrasWindow 的控件显隐/可用：ExtrasWindow.ini 优先，否则 GenericWindow.ini 的 [btnEx*]。
+    private bool ShowExStatistics => Defs.IsExtrasControlVisible("btnExStatistics");
+    private bool EnableExStatistics => Defs.IsExtrasControlEnabled("btnExStatistics");
+    private bool ShowExMapEditor => Defs.IsExtrasControlVisible("btnExMapEditor");
+    private bool EnableExMapEditor => Defs.IsExtrasControlEnabled("btnExMapEditor");
+    private bool ShowExCredits => Defs.IsExtrasControlVisible("btnExCredits");
+    private bool EnableExCredits => Defs.IsExtrasControlEnabled("btnExCredits");
+    private bool ShowExCancel => Defs.IsExtrasControlVisible("btnExCancel");
+    private bool EnableExCancel => Defs.IsExtrasControlEnabled("btnExCancel");
+
     protected override void OnInitialized() => Service.Changed += OnChanged;
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private bool IsActionEnabled(ActionKind kind) => kind switch
+    {
+        ActionKind.Statistics => EnableExStatistics,
+        ActionKind.MapEditor => EnableExMapEditor,
+        ActionKind.Credits => EnableExCredits,
+        ActionKind.Cancel => EnableExCancel,
+        _ => true
+    };
 
     private async Task OnAction(ActionKind kind)
     {
         if (!Service.IsOpen || Service.IsClosing)
             return;
 
+        if (!IsActionEnabled(kind))
+            return;
+
         switch (kind)
         {
+            case ActionKind.Statistics:
+                // 原版 ExtrasWindow 的 Statistics 按钮：打开统计窗口（移植版为 /stats 页面）
+                Service.BeginClose();
+                await Task.Delay(120);
+                Service.CompleteClose();
+                Nav.NavigateTo("/stats");
+                break;
             case ActionKind.MapEditor:
             {
                 string? err = Service.LaunchMapEditor();

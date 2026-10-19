@@ -274,6 +274,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .mbtn:hover .go{opacity:1;transform:translateX(0)}
 .mbtn:hover .ic{background:var(--cyan);color:#02141c;box-shadow:0 0 18px var(--cyan)}
 .mbtn:hover::after{transform:translateX(120%)}
+.mbtn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.7)}
+.mbtn:disabled:hover{transform:none;border-color:rgba(33,230,255,.2);box-shadow:none}
+.mbtn:disabled:hover .go{opacity:0;transform:translateX(-8px)}
 .mbtn.primary{background:linear-gradient(100deg,rgba(33,230,255,.22),rgba(10,40,55,.7));border-color:var(--cyan);color:#fff}
 .mbtn.primary .ic{background:var(--cyan);color:#02141c}
 .pf{margin-top:6px;display:flex;justify-content:space-between;font-size:11px;color:var(--dim);letter-spacing:1px;font-family:var(--font-orbitron)}
@@ -370,6 +373,8 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .exw-btn:hover{border-color:var(--cyan);background:rgba(33,230,255,.1);
   box-shadow:0 0 14px rgba(33,230,255,.22);transform:translateX(4px)}
 .exw-btn:active{transform:scale(.98)}
+.exw-btn:disabled{opacity:.45;cursor:not-allowed}
+.exw-btn:disabled:hover{border-color:var(--line);background:rgba(10,30,42,.85);box-shadow:none;transform:none}
 .exw-btn.cancel:hover{border-color:var(--red);background:rgba(255,59,59,.08);
   box-shadow:0 0 14px rgba(255,59,59,.18)}
 .exw-ic{width:30px;height:30px;flex:none;display:grid;place-items:center;font-size:14px;color:var(--cyan);

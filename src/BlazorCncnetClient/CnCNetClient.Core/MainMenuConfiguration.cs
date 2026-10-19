@@ -45,7 +45,23 @@ namespace CnCNetClient.Core
             if (!SectionsByMenuKey.TryGetValue(menuKey, out string? section))
                 return true;
 
-            return mainMenuIni.GetBooleanValue(section, "Visible", true);
+            return WindowIniAttributes.IsVisible(mainMenuIni, section);
+        }
+
+        /// <summary>
+        /// 读取某个内置入口的可用性（<c>[btn*] Enabled</c>）。
+        /// 官方 <c>XNAControl.ParseControlINIAttribute</c> 中 <c>Visible</c> 会同时置 <c>Enabled</c>，
+        /// <c>Enabled</c> 可单独把按钮置灰（仍显示、不可点）；缺省为 <c>true</c>。
+        /// </summary>
+        public static bool IsEnabled(IniFile? mainMenuIni, string menuKey)
+        {
+            if (mainMenuIni is null || string.IsNullOrWhiteSpace(menuKey))
+                return true;
+
+            if (!SectionsByMenuKey.TryGetValue(menuKey, out string? section))
+                return true;
+
+            return WindowIniAttributes.IsEnabled(mainMenuIni, section);
         }
     }
 }

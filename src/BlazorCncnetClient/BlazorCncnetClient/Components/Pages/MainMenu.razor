@@ -49,7 +49,9 @@
             <div class="ro"><div class="k">威胁等级</div><div class="v" style="color:var(--gold);text-shadow:0 0 14px rgba(255,176,59,.5)">▲ 低</div></div>
         </div>
 
-        <!-- r9-1：更新状态链接（原版 lblUpdateStatus：点击检查/查看更新；OUTDATED 跳设置更新页） -->
+        <!-- r9-1：更新状态链接（原版 lblUpdateStatus：点击检查/查看更新；OUTDATED 跳设置更新页）。
+             新客户端把版本/更新状态/在线人数放进了常驻 HUD 与读数区，已脱离旧主菜单列表，
+             暂按新客户端硬编码常显；只有列表项（按钮）跟随 MainMenu.ini。 -->
         <div class="updstrip item-in" style="animation-delay:140ms">
             <span class="us-dot @_updateDot"></span>
             <button type="button" class="us-link" disabled="@_updateBusy" @onclick="OnUpdateStatusClick">@UpdateStatusText</button>
@@ -64,6 +66,7 @@
             var m = VisibleMenuItems[i];
             <button class="mbtn @(m.IsPrimary ? "primary" : "") item-in"
                     style="animation-delay:@((120 + i * 50).ToString())ms"
+                    disabled="@(!m.IsEnabled)"
                     @onclick="() => OnMenuClick(m)">
                 <span class="ic">@m.Icon</span>
                 <span class="txt"><span class="cn">@m.Cn</span><br><span class="en">@m.En</span></span>
@@ -105,7 +108,7 @@
 @code {
     /// <summary>首次运行隐私提示可见性（原版 PrivacyNotification：PrivacyPolicyAccepted 未勾选时显示）。</summary>
     private bool _privacyOpen;
-    private sealed record MenuItem(string Key, string Cn, string En, string Icon, bool IsPrimary = false, string? Route = null);
+    private sealed record MenuItem(string Key, string Cn, string En, string Icon, bool IsPrimary = false, string? Route = null, bool IsEnabled = true);
 
     private static readonly MenuItem[] MenuItems =
     [
@@ -137,6 +140,7 @@
         // Resources\MainMenu.ini [btn*] Visible（官方 XNA 主菜单开关）。
         var builtins = MenuItems
             .Where(m => !UiDefs.HiddenMenus.Contains(m.Key) && UiDefs.IsMainMenuEntryVisible(m.Key))
+            .Select(m => m with { IsEnabled = UiDefs.IsMainMenuEntryEnabled(m.Key) })
             .ToList();
 
         var pluginItems = Plugins.EnabledMenuEntries
@@ -354,6 +358,10 @@
 
     private async Task OnMenuClick(MenuItem item)
     {
+        // MainMenu.ini [btn*] Enabled=false：官方语义为置灰不可点。
+        if (!item.IsEnabled)
+            return;
+
         // F4 插件入口：直接跳转插件声明的路由（不做占位 toast）
         if (item.Route is { Length: > 0 } pluginRoute)
         {

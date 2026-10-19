@@ -62,6 +62,24 @@ public class MainMenuConfigurationTests : IDisposable
     }
 
     [Fact]
+    public void ReadsEnabledFlagIndependentlyFromVisible()
+    {
+        // 官方 XNAControl：Enabled 可单独置灰（仍显示、不可点）。
+        var ini = WriteIni("""
+            [btnNewCampaign]
+            Enabled=false
+
+            [btnExit]
+            Visible=false
+            """);
+
+        Assert.False(MainMenuConfiguration.IsEnabled(ini, "campaign"));
+        // 未写 Enabled 的入口缺省可用（Visible=false 由可见性负责隐藏）
+        Assert.True(MainMenuConfiguration.IsEnabled(ini, "exit"));
+        Assert.True(MainMenuConfiguration.IsEnabled(null, "campaign"));
+    }
+
+    [Fact]
     public void NullIniOrUnknownKeyDefaultsToVisible()
     {
         var ini = WriteIni("[btnMapEditor]\r\nVisible=false\r\n");

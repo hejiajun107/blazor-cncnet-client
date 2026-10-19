@@ -49,6 +49,16 @@ public sealed class UiDefinitionService
         return MainMenuConfiguration.IsVisible(_mainMenuIni, menuKey);
     }
 
+    /// <summary>
+    /// 内置主菜单入口是否可用：遵循 <c>MainMenu.ini</c> 的 <c>[btn*] Enabled</c>
+    /// （官方语义：可见但置灰、不可点击；缺省可用）。
+    /// </summary>
+    public bool IsMainMenuEntryEnabled(string menuKey)
+    {
+        EnsureMainMenuLoaded();
+        return MainMenuConfiguration.IsEnabled(_mainMenuIni, menuKey);
+    }
+
     private void EnsureMainMenuLoaded()
     {
         if (_mainMenuIniLoaded)
@@ -61,6 +71,55 @@ public sealed class UiDefinitionService
         string path = SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), MainMenuConfiguration.FILE_NAME);
         if (File.Exists(path))
             _mainMenuIni = new IniFile(path);
+    }
+
+    /// <summary>
+    /// 主菜单窗口内具名控件（标签等）是否可见：保留给将来可能的非列表元素接入。
+    /// 目前主菜单的版本/更新/在线人数属于新客户端常驻 HUD 与读数区，不跟旧列表走，未使用本方法。
+    /// </summary>
+    public bool IsMainMenuControlVisible(string controlName)
+    {
+        EnsureMainMenuLoaded();
+        return WindowIniAttributes.IsVisible(_mainMenuIni, controlName);
+    }
+
+    private IniFile? _extrasIni;
+    private bool _extrasIniLoaded;
+
+    /// <summary>
+    /// 附加功能窗控件是否可见：官方 <c>ExtrasWindow</c> 先找 <c>Resources\ExtrasWindow.ini</c>，
+    /// 不存在则回退 <c>Resources\GenericWindow.ini</c>；读 <c>[btnEx*] Visible</c>（缺省可见）。
+    /// </summary>
+    public bool IsExtrasControlVisible(string controlName)
+    {
+        EnsureExtrasLoaded();
+        return WindowIniAttributes.IsVisible(_extrasIni, controlName);
+    }
+
+    /// <summary>附加功能窗控件是否可用（<c>[btnEx*] Enabled</c>，缺省可用）。</summary>
+    public bool IsExtrasControlEnabled(string controlName)
+    {
+        EnsureExtrasLoaded();
+        return WindowIniAttributes.IsEnabled(_extrasIni, controlName);
+    }
+
+    private void EnsureExtrasLoaded()
+    {
+        if (_extrasIniLoaded)
+            return;
+        _extrasIniLoaded = true;
+
+        if (!_env.IsReady || _env.GamePath is null)
+            return;
+
+        string resourceDir = ProgramConstants.GetBaseResourcePath();
+        string extrasPath = SafePath.CombineFilePath(resourceDir, "ExtrasWindow.ini");
+        string genericPath = SafePath.CombineFilePath(resourceDir, "GenericWindow.ini");
+
+        if (File.Exists(extrasPath))
+            _extrasIni = new IniFile(extrasPath);
+        else if (File.Exists(genericPath))
+            _extrasIni = new IniFile(genericPath);
     }
 
     /// <summary>读取 [UI] 节任意键的字符串值（组件可注入使用）。</summary>
