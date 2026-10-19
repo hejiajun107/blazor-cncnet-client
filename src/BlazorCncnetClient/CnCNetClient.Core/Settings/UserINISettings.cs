@@ -495,35 +495,83 @@ namespace CnCNetClient.Core
 
             // M 设置对齐旧客户端：旧版 UserINISettings 即游戏自身 INI（RA2MD.ini），
             // 全部设置（分辨率/音量/游戏速度/滚屏等）落在游戏 INI 供游戏启动读取。
-            // 移植版隔离到 ClientSettings.ini 后，保存时需把客户端设置全段同步回游戏 INI，
-            // 否则游戏启动读不到这些键、退回到默认值（游戏只读 [Video]/[Audio]/[Options] 等兼容段，
-            // 客户端专有段如 [Multiplayer] 会被游戏忽略，与旧版同文件语义一致）。
-            // 游戏 INI 名取自 ClientDefinitions.ini [Settings] SettingsFile（YR 为 RA2MD.ini）。
+            // 移植版隔离到 ClientSettings.ini 后，只把「游戏启动必需」的键同步回游戏 INI；
+            // 其余客户端专有键（Handle/Theme/PrivacyPolicyAccepted…）不再写入，
+            // 以免覆盖游戏自己的 [MultiPlayer] Handle 等编码值。
+            SyncGameSettingsIni();
+
+            SettingsSaved?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// 把 GUI 里对应的游戏参数写回游戏自身 INI（ClientDefinitions [Settings] SettingsFile）。
+        /// 旧版客户端把 UserINISettings 直接落在游戏 INI 上；移植版隔离到 ClientSettings.ini 后，
+        /// 启动前需要把这些 Setting 的当前值（即 GUI 显示/保存的值）按各自 section/key 传过去：
+        /// 否则游戏读到空文件或旧值——缺 [Video] 分辨率会以 0x0 建屏（GScreenClass::DoBlit 崩溃），
+        /// 音量、滚屏等设置也不会生效。这里不内置游戏骨架，只做「设置 → 游戏 INI」的参数传递；
+        /// 游戏自己的其它节（[Skirmish]、[SerialDefaults] 等）由游戏自行维护。
+        /// </summary>
+        public void SyncGameSettingsIni()
+        {
             try
             {
-                string gameIniPath = SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.SettingsIniName);
+                string settingsIniName = ClientConfiguration.Instance.SettingsIniName;
+                if (string.IsNullOrWhiteSpace(settingsIniName))
+                    return;
+
+                string gameIniPath = SafePath.CombineFilePath(ProgramConstants.GamePath, settingsIniName);
                 if (!File.Exists(gameIniPath))
                     File.WriteAllText(gameIniPath, string.Empty);
 
                 var gameIni = new IniFile(gameIniPath);
-                foreach (string section in SettingsIni.GetSections())
-                {
-                    var sectionIni = SettingsIni.GetSection(section);
-                    if (sectionIni is null)
-                        continue;
 
-                    foreach ((var key, var value) in sectionIni.Keys)
-                        gameIni.SetStringValue(section, key, value);
-                }
+                // 分辨率：≤0 时回退，避免游戏以 0×0 建屏。
+                WriteInt(gameIni, IngameScreenWidth, 1024);
+                WriteInt(gameIni, IngameScreenHeight, 768);
+
+                // 音量/滚屏/游戏选项：与 GUI 的滑条与下拉一致（OptionsClass::LoadSettings 读取的键）。
+                WriteDouble(gameIni, SoundVolume);
+                WriteDouble(gameIni, VoiceVolume);
+                WriteDouble(gameIni, ScoreVolume);
+                WriteBool(gameIni, IsScoreShuffle);
+                WriteInt(gameIni, ScrollRate);
+                WriteInt(gameIni, DetailLevel);
+                WriteInt(gameIni, GameSpeed);
+                WriteInt(gameIni, Difficulty);
+
+                // 启动必需的开关（不是客户端设置项）：游戏播开场/Logo 会在本机 ddraw 环境下崩溃。
+                gameIni.SetStringValue("Intro", "Play", "no");
 
                 gameIni.WriteIniFile();
             }
             catch (Exception ex)
             {
-                Logger.Log("Failed to write in-game resolution to game INI: " + ex);
+                Logger.Log("Failed to sync game settings INI: " + ex);
             }
+        }
 
-            SettingsSaved?.Invoke(this, EventArgs.Empty);
+        /// <summary>把整型设置按它自己的 section/key 写入目标 INI；值 ≤0 时用 fallback。</summary>
+        private static void WriteInt(IniFile target, IntSetting setting, int fallbackIfNonPositive = int.MinValue)
+        {
+            int value = setting.Value;
+            if (value <= 0 && fallbackIfNonPositive != int.MinValue)
+                value = fallbackIfNonPositive;
+
+            target.SetStringValue(setting.IniSectionName, setting.IniKeyName,
+                value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>把浮点设置按它自己的 section/key 写入目标 INI（游戏用 6 位小数）。</summary>
+        private static void WriteDouble(IniFile target, DoubleSetting setting)
+        {
+            target.SetStringValue(setting.IniSectionName, setting.IniKeyName,
+                setting.Value.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>把布尔设置按它自己的 section/key 写入目标 INI（游戏接受 yes/no）。</summary>
+        private static void WriteBool(IniFile target, BoolSetting setting)
+        {
+            target.SetStringValue(setting.IniSectionName, setting.IniKeyName, setting.Value ? "yes" : "no");
         }
 
         public bool IsGameFiltersApplied()

@@ -42,6 +42,10 @@ public static class GameProcessLogic
     {
         Logger.Log("About to launch main game executable.");
 
+        // 启动前先把游戏必需键（分辨率 + [Intro] Play=no）写进游戏 INI：
+        // 游戏以 0x0 建屏或播放开场影片都会在 GScreenClass::DoBlit 崩溃（2026-10-19 实测）。
+        UserINISettings.Instance.SyncGameSettingsIni();
+
         OSVersion osVersion = ClientConfiguration.Instance.GetOperatingSystemVersion();
 
         string gameExecutableName;

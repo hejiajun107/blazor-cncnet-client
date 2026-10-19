@@ -1,4 +1,4 @@
-﻿using CnCNetClient.Tools;
+using CnCNetClient.Tools;
 
 namespace CnCNetClient.Core.Settings
 {
@@ -30,6 +30,12 @@ namespace CnCNetClient.Core.Settings
         protected string IniSection { get; private set; }
         protected string IniKey { get; private set; }
         protected T DefaultValue { get; private set; }
+
+        /// <summary>This setting's INI section name (the same section used in ClientSettings.ini).</summary>
+        public string IniSectionName => IniSection;
+
+        /// <summary>This setting's INI key name.</summary>
+        public string IniKeyName => IniKey;
 
         public T Value
         {
