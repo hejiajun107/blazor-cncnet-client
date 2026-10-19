@@ -58,4 +58,20 @@
   <data name="Client:UI:Settings.Section.Privacy" xml:space="preserve">
     <value>隐私 PRIVACY</value>
   </data>
+  <!-- 启动期资源定位失败提示（中文翻译，不在代码里硬编码） -->
+  <data name="Client:UI:Startup.ResourcesDirectoryNotFound" xml:space="preserve">
+    <value>未找到资源目录 Resources：{0}（目录不存在）。请确认客户端运行在正确的游戏目录中。</value>
+  </data>
+  <data name="Client:UI:Startup.ClientDefinitionsNotFound" xml:space="preserve">
+    <value>未找到 {0}：{1}。请确认客户端运行在正确的游戏目录中。</value>
+  </data>
+  <data name="Client:UI:Startup.FailedTitle" xml:space="preserve">
+    <value>启动失败</value>
+  </data>
+  <data name="Client:UI:Startup.FailedMessage" xml:space="preserve">
+    <value>客户端初始化失败，无法启动。</value>
+  </data>
+  <data name="Client:UI:Startup.FailedLogHint" xml:space="preserve">
+    <value>详细错误已写入日志：logs\client-*.log</value>
+  </data>
 </root>

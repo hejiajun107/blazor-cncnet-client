@@ -58,4 +58,20 @@
   <data name="Client:UI:Settings.Section.Privacy" xml:space="preserve">
     <value>Privacy</value>
   </data>
+  <!-- 启动期资源定位失败提示（沿用上游英文句式，仅把回退路径与缺失对象改对） -->
+  <data name="Client:UI:Startup.ResourcesDirectoryNotFound" xml:space="preserve">
+    <value>Couldn't find the Resources directory at {0} (directory doesn't exist). Please verify that you're running the client from the correct directory.</value>
+  </data>
+  <data name="Client:UI:Startup.ClientDefinitionsNotFound" xml:space="preserve">
+    <value>Couldn't find {0} at {1}. Please verify that you're running the client from the correct directory.</value>
+  </data>
+  <data name="Client:UI:Startup.FailedTitle" xml:space="preserve">
+    <value>Startup Failed</value>
+  </data>
+  <data name="Client:UI:Startup.FailedMessage" xml:space="preserve">
+    <value>The client failed to initialize and cannot start.</value>
+  </data>
+  <data name="Client:UI:Startup.FailedLogHint" xml:space="preserve">
+    <value>Details have been written to the log: logs\client-*.log</value>
+  </data>
 </root>

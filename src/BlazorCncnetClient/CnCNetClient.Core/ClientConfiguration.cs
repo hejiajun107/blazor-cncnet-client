@@ -40,13 +40,34 @@ namespace CnCNetClient.Core
         {
             var baseResourceDirectory = SafePath.GetDirectory(ProgramConstants.GetBaseResourcePath());
 
+            // 资源搜索失败时 GamePath 会回退到启动目录，旧提示据此报成
+            // 「在 <启动目录>\Resources 找不到 ClientDefinitions.ini」，把回退路径当成了正确位置
+            // （2026-10-19 实际误导）。只把「缺什么 / 应在哪」这两处错误改对，句式保持原样；
+            // 中文文案在 UI.zh-CN.resx，不硬编码。
             if (!baseResourceDirectory.Exists)
-                throw new FileNotFoundException($"Couldn't find {CLIENT_DEFS} at {baseResourceDirectory} (directory doesn't exist). Please verify that you're running the client from the correct directory.");
+            {
+                // 搜索失败时提示 Resources 的期望位置；目录存在时仍按原提示报缺失的 ClientDefinitions.ini。
+                if (ProgramConstants.FindGamePath(ProgramConstants.StartupPath) is null)
+                {
+                    throw new FileNotFoundException(string.Format(
+                        "Couldn't find the Resources directory at {0} (directory doesn't exist). Please verify that you're running the client from the correct directory."
+                            .L10N("Client:UI:Startup.ResourcesDirectoryNotFound"),
+                        GetExpectedResourcesPath()));
+                }
+
+                throw new FileNotFoundException(string.Format(
+                    "Couldn't find {0} at {1}. Please verify that you're running the client from the correct directory."
+                        .L10N("Client:UI:Startup.ClientDefinitionsNotFound"),
+                    CLIENT_DEFS, baseResourceDirectory));
+            }
 
             FileInfo clientDefinitionsFile = SafePath.GetFile(baseResourceDirectory.FullName, CLIENT_DEFS);
 
             if (!(clientDefinitionsFile?.Exists ?? false))
-                throw new FileNotFoundException($"Couldn't find {CLIENT_DEFS} at {baseResourceDirectory}. Please verify that you're running the client from the correct directory.");
+                throw new FileNotFoundException(string.Format(
+                    "Couldn't find {0} at {1}. Please verify that you're running the client from the correct directory."
+                        .L10N("Client:UI:Startup.ClientDefinitionsNotFound"),
+                    CLIENT_DEFS, baseResourceDirectory));
 
             clientDefinitionsIni = new IniFile(clientDefinitionsFile.FullName);
 
@@ -72,6 +93,24 @@ namespace CnCNetClient.Core
             maxSkillLevelIndex = Math.Max(0, skillLevelOptions.Length - 1);
             if (maxSkillLevelIndex == 0)
                 throw new ClientConfigurationException("No skill level options defined in ClientDefinitions.ini.");
+        }
+
+        /// <summary>
+        /// 推断 Resources 的「正确位置」，仅用于资源缺失时的提示。
+        /// 客户端由外壳启动器放在 <c>ClientApp\</c> 内，此时安装根是启动目录的上一级
+        /// （Resources 与 Launcher.exe 同级）；否则视启动目录本身为安装根。
+        /// </summary>
+        private static string GetExpectedResourcesPath()
+        {
+            string startup = ProgramConstants.StartupPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string? parent = Path.GetDirectoryName(startup);
+
+            bool insideClientApp =
+                string.Equals(Path.GetFileName(startup), "ClientApp", StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(parent) && File.Exists(Path.Combine(parent, "Launcher.exe")));
+
+            string installRoot = insideClientApp && !string.IsNullOrEmpty(parent) ? parent : startup;
+            return Path.Combine(installRoot, ProgramConstants.BASE_RESOURCE_PATH);
         }
 
         /// <summary>

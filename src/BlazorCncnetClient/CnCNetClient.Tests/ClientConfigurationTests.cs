@@ -39,6 +39,47 @@ public class ClientConfigurationTests : IDisposable
     }
 
     [Fact]
+    public void MissingResourcesDirectory_ReportsResourcesNotFoundNotMissingClientDefinitions()
+    {
+        // 模拟「Resources 被移走/放错位置」：游戏根下完全没有 Resources。
+        // 旧实现会回退到启动目录并报「Couldn't find ClientDefinitions.ini at <启动目录>\Resources」，
+        // 把「没找到 Resources」误报成「某个固定目录缺文件」（2026-10-19 实际误导）。
+        string emptyRoot = Path.Combine(Path.GetTempPath(), "cncnet-no-res-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(emptyRoot);
+
+        var gamePathField = typeof(ProgramConstants).GetField(
+            nameof(ProgramConstants.GamePath),
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)!;
+
+        try
+        {
+            gamePathField.SetValue(null, SafePath.CombineDirectoryPath(emptyRoot));
+            _env.ResetConfigurationInstance();
+
+            // 文案经 UI.resx / UI.zh-CN.resx 本地化，断言固定用英文区域，避免受宿主语言影响。
+            var previousCulture = System.Globalization.CultureInfo.CurrentUICulture;
+            System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en-US");
+            try
+            {
+                var ex = Assert.Throws<FileNotFoundException>(() => TestClientConfiguration.CreateFresh());
+
+                Assert.Contains("Couldn't find the Resources directory", ex.Message);
+                Assert.Contains("correct directory", ex.Message);
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = previousCulture;
+            }
+        }
+        finally
+        {
+            gamePathField.SetValue(null, SafePath.CombineDirectoryPath(_env.GameDir));
+            _env.ResetConfigurationInstance();
+            try { Directory.Delete(emptyRoot, true); } catch { }
+        }
+    }
+
+    [Fact]
     public void GetIRCServers_ParsesSectionValues()
     {
         var config = TestClientConfiguration.CreateFresh();

@@ -10,6 +10,7 @@ using BlazorCncnetClient.Infrastructure;
 using BlazorCncnetClient.Infrastructure.Plugins;
 using BlazorCncnetClient.Infrastructure.Theme;
 using CnCNetClient.Core;
+using CnCNetClient.Core.Extensions;
 using CnCNetClient.Core.I18N;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Domain.Multiplayer.CnCNet;
@@ -328,10 +329,12 @@ namespace BlazorCncnetClient
                 // 落盘 Serilog + 原生 MessageBoxW 提示（WebView 未就绪只能用原生），再非零退出。
                 Log.Fatal(ex, "客户端启动初始化失败（窗口创建前），已终止启动");
                 NativeMessageBox.Show(
-                    "启动失败",
-                    "客户端初始化失败，无法启动。\r\n\r\n" +
+                    "Startup Failed".L10N("Client:UI:Startup.FailedTitle"),
+                    "The client failed to initialize and cannot start.".L10N("Client:UI:Startup.FailedMessage") +
+                    "\r\n\r\n" +
                     ex.Message +
-                    "\r\n\r\n详细错误已写入日志：logs\\client-*.log",
+                    "\r\n\r\n" +
+                    @"Details have been written to the log: logs\client-*.log".L10N("Client:UI:Startup.FailedLogHint"),
                     error: true);
                 Environment.Exit(1);
                 return;
