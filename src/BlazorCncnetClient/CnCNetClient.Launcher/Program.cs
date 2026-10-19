@@ -21,7 +21,9 @@ namespace CnCNetClient.Launcher;
 /// </summary>
 public static class Program
 {
-    /// <summary>客户端位于本启动器目录下的子目录名（避开官方/游戏用户数据目录 Client\）。</summary>
+    /// <summary>客户端位于本启动器目录下的子目录名（避开官方/游戏用户数据目录 Client\）。
+    /// 须与 CnCNetClient.Core.ProgramConstants.CLIENT_APP_DIRECTORY_NAME 保持一致；
+    /// 本工程是独立 NativeAOT 外壳，不引用 Core。</summary>
     private const string ClientDir = "ClientApp";
 
     /// <summary>客户端主程序文件名。</summary>

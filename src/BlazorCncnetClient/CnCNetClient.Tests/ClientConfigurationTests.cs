@@ -1,4 +1,6 @@
+using System.Globalization;
 using CnCNetClient.Core;
+using CnCNetClient.Core.I18N;
 using CnCNetClient.Tools;
 using Xunit;
 
@@ -56,19 +58,35 @@ public class ClientConfigurationTests : IDisposable
             gamePathField.SetValue(null, SafePath.CombineDirectoryPath(emptyRoot));
             _env.ResetConfigurationInstance();
 
-            // 文案经 UI.resx / UI.zh-CN.resx 本地化，断言固定用英文区域，避免受宿主语言影响。
-            var previousCulture = System.Globalization.CultureInfo.CurrentUICulture;
-            System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en-US");
+            // 断言值从 resx 解析结果推导，不在 .cs 里写死译文：
+            // 1) 同一键在 zh-CN 与 en 下都必须命中且两个值不同 → 证明 UI.zh-CN.resx 卫星真被加载，
+            //    而不是只走了代码兜底英文；
+            // 2) 异常消息等于用 zh-CN 模板格式化出的期望文本（同时校验 {0} 路径载荷）。
+            var previousCulture = CultureInfo.CurrentUICulture;
             try
             {
+                const string key = "Client:UI:Startup.ResourcesDirectoryNotFound";
+                const string missingSentinel = "__resx_missing__";
+
+                CultureInfo.CurrentUICulture = new CultureInfo("zh-CN");
+                string zhTemplate = UIStrings.Lookup(key, missingSentinel);
+
+                CultureInfo.CurrentUICulture = new CultureInfo("en-US");
+                string enTemplate = UIStrings.Lookup(key, missingSentinel);
+
+                Assert.NotEqual(missingSentinel, zhTemplate);
+                Assert.NotEqual(missingSentinel, enTemplate);
+                Assert.NotEqual(enTemplate, zhTemplate);
+
+                CultureInfo.CurrentUICulture = new CultureInfo("zh-CN");
                 var ex = Assert.Throws<FileNotFoundException>(() => TestClientConfiguration.CreateFresh());
 
-                Assert.Contains("Couldn't find the Resources directory", ex.Message);
-                Assert.Contains("correct directory", ex.Message);
+                string expectedPath = ProgramConstants.GetExpectedResourcesPath(ProgramConstants.StartupPath);
+                Assert.Equal(string.Format(zhTemplate, expectedPath), ex.Message);
             }
             finally
             {
-                System.Globalization.CultureInfo.CurrentUICulture = previousCulture;
+                CultureInfo.CurrentUICulture = previousCulture;
             }
         }
         finally

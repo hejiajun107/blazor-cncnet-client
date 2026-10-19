@@ -88,6 +88,12 @@ namespace CnCNetClient.Core
         public static string BASE_RESOURCE_PATH = "Resources";
         public static string RESOURCES_DIR = BASE_RESOURCE_PATH;
 
+        /// <summary>外壳启动器约定：客户端程序目录名（与 CnCNetClient.Launcher 的 ClientDir 一致）。</summary>
+        public const string CLIENT_APP_DIRECTORY_NAME = "ClientApp";
+
+        /// <summary>外壳启动器文件名（安装根下的自更新重启入口）。</summary>
+        public const string LAUNCHER_EXECUTABLE_NAME = "Launcher.exe";
+
         public static int LOG_LEVEL = 1;
 
         public static bool IsInGame { get; set; }
@@ -151,6 +157,27 @@ namespace CnCNetClient.Core
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// 推断 Resources 的「正确位置」（仅用于资源缺失提示）。
+        /// 客户端由外壳启动器放在 <c>ClientApp\</c> 内时，安装根是启动目录的上一级
+        /// （Resources 与 Launcher.exe 同级）；否则视启动目录本身为安装根。
+        /// 用 <see cref="DirectoryInfo.Parent"/> 而非 <c>Path.GetDirectoryName</c>，
+        /// 避免盘符根（如 <c>C:\</c>）拼出 <c>C:Resources</c> 这类驱动器相对路径。
+        /// </summary>
+        /// <param name="startupPath">启动目录（可执行文件所在目录）。</param>
+        public static string GetExpectedResourcesPath(string startupPath)
+        {
+            var startupDirectory = new DirectoryInfo(startupPath);
+            string? parent = startupDirectory.Parent?.FullName;
+
+            bool insideClientApp =
+                string.Equals(startupDirectory.Name, CLIENT_APP_DIRECTORY_NAME, StringComparison.OrdinalIgnoreCase) ||
+                (parent is not null && File.Exists(Path.Combine(parent, LAUNCHER_EXECUTABLE_NAME)));
+
+            string installRoot = insideClientApp && parent is not null ? parent : startupDirectory.FullName;
+            return Path.Combine(installRoot, BASE_RESOURCE_PATH);
         }
 
         private static string GetGamePath(string startupPath)

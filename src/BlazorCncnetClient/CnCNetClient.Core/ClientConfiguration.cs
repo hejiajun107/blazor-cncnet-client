@@ -42,31 +42,26 @@ namespace CnCNetClient.Core
 
             // 资源搜索失败时 GamePath 会回退到启动目录，旧提示据此报成
             // 「在 <启动目录>\Resources 找不到 ClientDefinitions.ini」，把回退路径当成了正确位置
-            // （2026-10-19 实际误导）。只把「缺什么 / 应在哪」这两处错误改对，句式保持原样；
-            // 中文文案在 UI.zh-CN.resx，不硬编码。
+            // （2026-10-19 实际误导）。GamePath 由 FindGamePath 命中时 Resources 必然存在，
+            // 所以这里只有「没找到」一种成因：直接报 Resources 目录缺失，并指向期望位置。
             if (!baseResourceDirectory.Exists)
             {
-                // 搜索失败时提示 Resources 的期望位置；目录存在时仍按原提示报缺失的 ClientDefinitions.ini。
-                if (ProgramConstants.FindGamePath(ProgramConstants.StartupPath) is null)
-                {
-                    throw new FileNotFoundException(string.Format(
-                        "Couldn't find the Resources directory at {0} (directory doesn't exist). Please verify that you're running the client from the correct directory."
-                            .L10N("Client:UI:Startup.ResourcesDirectoryNotFound"),
-                        GetExpectedResourcesPath()));
-                }
+                string reportedPath = ProgramConstants.FindGamePath(ProgramConstants.StartupPath) is null
+                    ? ProgramConstants.GetExpectedResourcesPath(ProgramConstants.StartupPath)
+                    : baseResourceDirectory.FullName;
 
-                throw new FileNotFoundException(string.Format(
-                    "Couldn't find {0} at {1}. Please verify that you're running the client from the correct directory."
-                        .L10N("Client:UI:Startup.ClientDefinitionsNotFound"),
-                    CLIENT_DEFS, baseResourceDirectory));
+                throw new FileNotFoundException(LocalizedFormat(
+                    "Couldn't find the Resources directory at {0} (directory doesn't exist). Please verify that you're running the client from the correct directory.",
+                    "Client:UI:Startup.ResourcesDirectoryNotFound",
+                    reportedPath));
             }
 
             FileInfo clientDefinitionsFile = SafePath.GetFile(baseResourceDirectory.FullName, CLIENT_DEFS);
 
             if (!(clientDefinitionsFile?.Exists ?? false))
-                throw new FileNotFoundException(string.Format(
-                    "Couldn't find {0} at {1}. Please verify that you're running the client from the correct directory."
-                        .L10N("Client:UI:Startup.ClientDefinitionsNotFound"),
+                throw new FileNotFoundException(LocalizedFormat(
+                    "Couldn't find {0} at {1}. Please verify that you're running the client from the correct directory.",
+                    "Client:UI:Startup.ClientDefinitionsNotFound",
                     CLIENT_DEFS, baseResourceDirectory));
 
             clientDefinitionsIni = new IniFile(clientDefinitionsFile.FullName);
@@ -96,21 +91,21 @@ namespace CnCNetClient.Core
         }
 
         /// <summary>
-        /// 推断 Resources 的「正确位置」，仅用于资源缺失时的提示。
-        /// 客户端由外壳启动器放在 <c>ClientApp\</c> 内，此时安装根是启动目录的上一级
-        /// （Resources 与 Launcher.exe 同级）；否则视启动目录本身为安装根。
+        /// 取本地化模板并格式化。模板占位符损坏（<see cref="FormatException"/>）时回退英文模板，
+        /// 避免翻译文件的笔误顶掉本该抛出的 <see cref="FileNotFoundException"/>。
         /// </summary>
-        private static string GetExpectedResourcesPath()
+        private static string LocalizedFormat(string defaultTemplate, string key, params object[] args)
         {
-            string startup = ProgramConstants.StartupPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            string? parent = Path.GetDirectoryName(startup);
+            string template = defaultTemplate.L10N(key);
 
-            bool insideClientApp =
-                string.Equals(Path.GetFileName(startup), "ClientApp", StringComparison.OrdinalIgnoreCase) ||
-                (!string.IsNullOrEmpty(parent) && File.Exists(Path.Combine(parent, "Launcher.exe")));
-
-            string installRoot = insideClientApp && !string.IsNullOrEmpty(parent) ? parent : startup;
-            return Path.Combine(installRoot, ProgramConstants.BASE_RESOURCE_PATH);
+            try
+            {
+                return string.Format(template, args);
+            }
+            catch (FormatException)
+            {
+                return string.Format(defaultTemplate, args);
+            }
         }
 
         /// <summary>

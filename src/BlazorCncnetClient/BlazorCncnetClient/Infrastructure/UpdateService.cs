@@ -15,8 +15,8 @@ namespace BlazorCncnetClient.Infrastructure;
 /// </summary>
 public sealed class UpdateService : IDisposable
 {
-    /// <summary>外壳启动器可执行文件名（位于 GamePath 根 / 安装根），自更新后由 SecondStageUpdater 重启。</summary>
-    private const string LauncherExeName = "Launcher.exe";
+    /// <summary>外壳启动器可执行文件名（安装根；与 ProgramConstants.LAUNCHER_EXECUTABLE_NAME 共用定义）。</summary>
+    private const string LauncherExeName = ProgramConstants.LAUNCHER_EXECUTABLE_NAME;
 
     private readonly EnvironmentCheck _env;
     private readonly AppExitNotifier _exitNotifier;
