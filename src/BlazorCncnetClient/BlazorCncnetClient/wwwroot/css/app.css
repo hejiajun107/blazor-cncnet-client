@@ -151,7 +151,11 @@ a,.btn-link{color:var(--cyan)}
 @keyframes blink{50%{opacity:.25}}
 
 /* ── 悬浮顶栏菜单（原版 TopBar 按钮：主菜单/设置/登出） ─────────── */
-.hud-menu{display:flex;gap:8px;align-items:center}
+/* 绝对定位居中：按钮组位置与两侧 .sys 内容宽度解耦。
+   此前依赖 space-between 居中，右侧 FPS 读数/在线人数、左侧状态文本
+   宽度一变，中间按钮组就会被挤得整体左右漂移且不恢复。 */
+.hud-menu{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  display:flex;gap:8px;align-items:center}
 .hud .hm{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:88px;
   padding:4px 12px;background:rgba(4,12,20,.6);border:1px solid var(--line);color:var(--cyan-soft);
   font-family:var(--font-cn);font-size:13px;letter-spacing:1px;cursor:pointer;
