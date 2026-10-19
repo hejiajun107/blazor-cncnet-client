@@ -778,6 +778,11 @@ else
             gmm.Map.SHA1, gmm.GameMode.Name, gmm.IsFavorite);
         _ = JS.InvokeVoidAsync("cncnet.toast", gmm.IsFavorite ? $"已收藏：{gmm.Map.Name}" : $"已取消收藏：{gmm.Map.Name}");
         CloseMapContextMenu();
+
+        // 在“仅显示收藏”模式下取消收藏后，必须重新过滤列表，否则地图仍会留在结果里。
+        // 由地图详情面板星级按钮触发的收藏/取消收藏也走这里，一并刷新。
+        RefreshMaps();
+        StateHasChanged();
     }
 
     /// <summary>复制地图名（原版 CopyMapName：译文名；CopyOriginalMapName：UntranslatedName）。</summary>
