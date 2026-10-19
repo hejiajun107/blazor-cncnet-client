@@ -133,7 +133,11 @@
     /// </summary>
     private MenuItem[] BuildMenu()
     {
-        var builtins = MenuItems.Where(m => !UiDefs.HiddenMenus.Contains(m.Key)).ToList();
+        // 显隐双闸：ClientDefinitions.ini [UI] HiddenMenus（移植版扩展）+
+        // Resources\MainMenu.ini [btn*] Visible（官方 XNA 主菜单开关）。
+        var builtins = MenuItems
+            .Where(m => !UiDefs.HiddenMenus.Contains(m.Key) && UiDefs.IsMainMenuEntryVisible(m.Key))
+            .ToList();
 
         var pluginItems = Plugins.EnabledMenuEntries
             .OrderBy(e => e.Order)

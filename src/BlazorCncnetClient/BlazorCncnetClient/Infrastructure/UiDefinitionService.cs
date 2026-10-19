@@ -35,6 +35,34 @@ public sealed class UiDefinitionService
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+    private IniFile? _mainMenuIni;
+    private bool _mainMenuIniLoaded;
+
+    /// <summary>
+    /// 内置主菜单入口是否可见：遵循 <c>Resources\MainMenu.ini</c> 的 <c>[btn*] Visible</c>
+    /// （与官方 XNA 主菜单同一套开关；文件/节/键缺失时视为可见）。
+    /// 与 <see cref="HiddenMenus"/> 叠加：任一隐藏即不显示。
+    /// </summary>
+    public bool IsMainMenuEntryVisible(string menuKey)
+    {
+        EnsureMainMenuLoaded();
+        return MainMenuConfiguration.IsVisible(_mainMenuIni, menuKey);
+    }
+
+    private void EnsureMainMenuLoaded()
+    {
+        if (_mainMenuIniLoaded)
+            return;
+        _mainMenuIniLoaded = true;
+
+        if (!_env.IsReady || _env.GamePath is null)
+            return;
+
+        string path = SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), MainMenuConfiguration.FILE_NAME);
+        if (File.Exists(path))
+            _mainMenuIni = new IniFile(path);
+    }
+
     /// <summary>读取 [UI] 节任意键的字符串值（组件可注入使用）。</summary>
     public string GetString(string key, string fallback = "")
     {
