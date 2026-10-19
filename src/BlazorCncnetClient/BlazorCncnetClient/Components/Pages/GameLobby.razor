@@ -441,7 +441,7 @@ else
                             <div class="go-grid">
                                 @foreach (var opt in CheckBoxOptions)
                                 {
-                                    <label class="gl-check go-check">
+                                    <label class="gl-check go-check" title="@opt.ToolTip" data-option="@opt.Name">
                                         <input type="checkbox" checked="@opt.Checked" disabled="@(!Room.IsHost)"
                                                @onchange="(e) => OnCheckBoxOptionChange(opt, e)" />
                                         <span>@opt.DisplayName</span>
@@ -450,7 +450,7 @@ else
                             </div>
                             @foreach (var dd in DropDownOptions)
                             {
-                                <div class="go-dd">
+                                <div class="go-dd" title="@dd.ToolTip" data-option="@dd.Name">
                                     <label>@dd.DisplayName</label>
                                     <select class="gl-select" value="@dd.SelectedIndex" disabled="@(!Room.IsHost)"
                                             @onchange="(e) => OnDropDownOptionChange(dd, e)">

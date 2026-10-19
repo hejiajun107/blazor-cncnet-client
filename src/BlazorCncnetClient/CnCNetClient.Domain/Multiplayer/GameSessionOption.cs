@@ -46,6 +46,12 @@ public abstract class GameSessionOption
     public string DisplayName { get; }
 
     /// <summary>
+    /// 悬浮说明（同原版 <c>[chk*]</c> / <c>[cmb*]</c> 的 <c>ToolTip</c> 键；无则 null）。
+    /// 由 <c>GameOptionsIniLoader</c> 从 ini 读入，UI 渲染为 <c>title</c>。
+    /// </summary>
+    public string? ToolTip { get; set; }
+
+    /// <summary>
     /// 是否广播到大厅（同原版 <c>IGameSessionSetting.BroadcastToLobby</c>）。
     /// 仅对影响 spawn.ini 的选项有意义：进入 GetBroadcastableSettings / 打包 BroadcastedGameOptionValues。
     /// 默认 false。
@@ -71,10 +77,11 @@ public abstract class GameSessionOption
     public abstract void SetPersistedValue(string value);
 
     /// <summary>
-    /// 默认游戏选项集合（遭遇战 / 在线房间共用，与原版 GameLobbyBase.ini 一致）：
+    /// 代码内置的默认游戏选项集合，作为<b>结构模板</b>保留（与打包的 <c>GameLobbyBase.ini</c> 一致）：
     /// 12 个复选框（左列 ShortGame..MultiEngineer，右列 IngameAllying..NoSpawnPreview）
-    /// + 2 个可用下拉（cmbCredits / cmbStartingUnits；cmbTechLevel 原版 Enabled=no、cmbGameSpeedCap 无 Items，故不移植）。
-    /// 复选框顺序即 GO 协议位掩码顺序（<c>GetGameOptionsCode</c>），房主与加入者两端口径必须一致。
+    /// + 2 个可用下拉（cmbCredits / cmbStartingUnits）。
+    /// 运行时的选项列表由 <c>GameOptionsIniLoader</c> 从 ini 声明式加载（顺序即 GO 位序），
+    /// 本方法仅用于提供 ini 中缺失的结构语义——当前为<b>广播集</b>（<see cref="BroadcastToLobby"/>，ini 无对应键）。
     /// </summary>
     public static List<GameSessionOption> CreateDefaultGameOptions()
     {
@@ -111,9 +118,8 @@ public abstract class GameSessionOption
                 defaultIndex: 10, spawnIniOption: "UnitCount", writeMode: GameOptionWriteMode.String),
         };
 
-        // 广播到大厅的选项（同原版 GameLobbyBase.ini BroadcaseToLobby=yes 的默认集）：
-        // 左列 6 个直接写 spawn.ini 的复选框 + 2 个下拉框；右列纯地图代码选项不广播。
-        // 顺序即 GO 协议位掩码顺序，房主与加入者两端口径必须一致（见 GetGameOptionsCode）。
+        // 广播到大厅的选项：ini 中不存在 BroadcaseToLobby 键（原版注释引用有误），该语义由代码默认值定义，
+        // 并在 GameOptionsIniLoader 加载后回填。左列 6 个直接写 spawn.ini 的复选框 + 2 个下拉框；右列纯地图代码选项不广播。
         var broadcast = new List<string> { "chkShortGame", "chkRedeplMCV", "chkSuperWeapons", "chkCrates", "chkBuildOffAlly", "chkMultiEngineer", "cmbCredits", "cmbStartingUnits" };
         foreach (GameSessionOption option in options)
             option.BroadcastToLobby = broadcast.Contains(option.Name);

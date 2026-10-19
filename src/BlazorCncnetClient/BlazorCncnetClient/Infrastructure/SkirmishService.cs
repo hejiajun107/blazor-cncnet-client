@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using BlazorCncnetClient.Infrastructure.Options;
 using CnCNetClient.Core;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Domain.Multiplayer.CnCNet;
@@ -85,11 +86,12 @@ namespace BlazorCncnetClient.Infrastructure
         // ── 游戏选项（G7：复选/下拉，[GameOptions] 持久化 + spawn.ini/地图代码应用） ──
 
         /// <summary>
-        /// 遭遇战游戏选项（复选 + 下拉）。定义见 <see cref="GameSessionOption.CreateDefaultGameOptions"/>
-        /// （与原版 GameLobbyBase.ini 一致，与在线房间共用同一集合）。
+        /// 遭遇战游戏选项（复选 + 下拉）。声明式加载自 <c>Resources/SkirmishLobby.ini</c>（<c>BasedOn=GameLobbyBase.ini</c>）
+        /// 的 <c>[GameOptionsPanel]</c> <c>$CC-GO*</c> 控件集合，见 <see cref="GameOptionsIniLoader"/>。
         /// 状态随 SkirmishSettings.ini [GameOptions] 节持久化，并在生成 spawn.ini 时写入 / 应用地图代码。
         /// </summary>
-        public IReadOnlyList<GameSessionOption> GameOptions { get; } = GameSessionOption.CreateDefaultGameOptions();
+        public IReadOnlyList<GameSessionOption> GameOptions { get; } =
+            GameOptionsIniLoader.Load(GameOptionsIniLoader.SKIRMISH_INI);
 
         /// <summary>设置复选框游戏选项状态（仅接受 GameOptions 中的选项，避免外部对象）。</summary>
         public void SetCheckBoxOption(GameSessionCheckBoxOption option, bool isChecked)

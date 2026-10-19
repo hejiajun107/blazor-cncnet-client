@@ -5,6 +5,7 @@
 @using CnCNetClient.Domain
 @using CnCNetClient.Tools
 @using CnCNetClient.Updater
+@using BlazorCncnetClient.Infrastructure.Options
 @using BlazorCncnetClient.Infrastructure.Theme
 @using Microsoft.Extensions.Logging
 @inject SettingsService SettingsSvc
@@ -346,6 +347,168 @@
             SetDraft("clientRes", res);
     }
 
+    /* ── 设置页 ini 驱动（对齐原版 OptionsWindow.ini：ExtraControls 注册 + 属性覆盖 + 值绑定） ── */
+
+    /// <summary>
+    /// 移植版内置控件（草稿键）→ 原版 <c>OptionsWindow.ini</c> 控件名。
+    /// 仅名称对应的内置控件可被 ini 覆盖文案 / 显隐；移植版特有控件（语言 / 主题 / 音量等）在原版 ini 中无对应节，不接受覆盖。
+    /// </summary>
+    private static readonly Dictionary<string, string> BuiltInIniNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["clientRes"] = "ddClientResolution",
+        ["playerName"] = "tbPlayerName",
+        ["skipConnectDialog"] = "chkSkipLoginWindow",
+        ["persistentMode"] = "chkPersistentMode",
+        ["autoConnect"] = "chkConnectOnStartup",
+        ["discord"] = "chkDiscordIntegration",
+        ["steam"] = "chkSteamIntegration",
+    };
+
+    private static OptionsWindowConfig OptionsIni => OptionsWindowIni.Current;
+
+    /// <summary>
+    /// RA 环境下若干设置键落在 <c>[Options]</c> 而非 <c>[Video]</c>/<c>[Audio]</c>（同 <c>UserINISettings</c> 构造逻辑），
+    /// 故 <c>data-setting</c>（=<c>Section:Key</c>）需按游戏类型解析，避免暴露错误的身份钩子。
+    /// </summary>
+    private static bool IsRA =>
+        ClientConfiguration.Instance.ClientGameType == CnCNetClient.Core.Enums.ClientType.RA;
+
+    /// <summary>内置控件文案：ini <c>Text</c> 优先，缺失时回退代码文案。</summary>
+    private string IniText(string draftKey, string fallback)
+    {
+        if (BuiltInIniNames.TryGetValue(draftKey, out string? name)
+            && OptionsIni.Attributes(name) is { Text: { Length: > 0 } text })
+            return text;
+
+        return fallback;
+    }
+
+    /// <summary>内置控件行样式：ini <c>Enabled=false</c> 或 <c>Visible=false</c> 时隐藏（对齐 chkWriteInstallPathToRegistry）。</summary>
+    private string IniRowClass(string draftKey)
+    {
+        if (BuiltInIniNames.TryGetValue(draftKey, out string? name)
+            && OptionsIni.Attributes(name) is { } attrs && (!attrs.Enabled || !attrs.Visible))
+            return "ini-hidden";
+
+        return string.Empty;
+    }
+
+    /// <summary>额外控件的草稿键（绑定到 ini 节/键，保存时统一提交）。</summary>
+    private static string ExtraDraftKey(SettingControl control, SettingControlAttributes attrs) =>
+        $"ini:{attrs.SettingSection}:{attrs.SettingKey}";
+
+    /// <summary>额外控件当前勾选值（草稿优先，其次读 ini 节/键，最后回退 ini DefaultValue）。</summary>
+    private bool ExtraChecked(SettingControl control, SettingControlAttributes attrs)
+    {
+        string key = ExtraDraftKey(control, attrs);
+        if (_draft.TryGetValue(key, out var v) && v is bool drafted)
+            return drafted;
+
+        bool fallback = bool.TryParse(attrs.DefaultValue, out bool defaultValue) && defaultValue;
+        return attrs.SettingSection is { } section && attrs.SettingKey is { } settingKey
+            ? SettingsSvc.Ini.GetValue(section, settingKey, fallback)
+            : fallback;
+    }
+
+    /// <summary>额外控件是否被父开关禁用（ParentCheckBoxName + ParentCheckBoxRequiredValue 联动）。</summary>
+    private bool ExtraDisabled(SettingControl control, SettingControlAttributes attrs)
+    {
+        if (attrs.ParentCheckBoxName is not { } parentName)
+            return false;
+
+        bool required = bool.TryParse(attrs.ParentCheckBoxRequiredValue, out bool r) && r;
+        return ParentChecked(parentName) != required;
+    }
+
+    /// <summary>父开关当前值：先在本页注册的额外控件中查找，再回退内置控件别名；本端无对应控件时不阻断。</summary>
+    private bool ParentChecked(string iniName)
+    {
+        foreach (SettingControl candidate in OptionsIni.AllControls)
+        {
+            if (string.Equals(candidate.Name, iniName, StringComparison.OrdinalIgnoreCase)
+                && OptionsIni.Attributes(candidate.Name) is { } attrs)
+                return ExtraChecked(candidate, attrs);
+        }
+
+        return iniName.ToLowerInvariant() switch
+        {
+            "chkskiploginwindow" => GetBool("skipConnectDialog", SettingsSvc.Ini.SkipConnectDialog.Value),
+            "chkpersistentmode" => GetBool("persistentMode", SettingsSvc.Ini.PersistentMode.Value),
+            "chkconnectonstartup" => GetBool("autoConnect", SettingsSvc.Ini.AutomaticCnCNetLogin.Value),
+            "chkdiscordintegration" => GetBool("discord", SettingsSvc.Ini.DiscordIntegration.Value),
+            "chksteamintegration" => GetBool("steam", SettingsSvc.Ini.SteamIntegration.Value),
+            _ => true,
+        };
+    }
+
+    /// <summary>渲染某分区在 ini 中注册的额外控件（<c>[&lt;面板&gt;ExtraControls]</c>）。</summary>
+    private RenderFragment Extras(string section) => __builder =>
+    {
+        foreach (SettingControl control in OptionsIni.ControlsFor(section))
+        {
+            if (OptionsIni.Attributes(control.Name) is not { } attrs)
+                continue;
+
+            string hint = control.Type == SettingControlType.FileSettingCheckBox
+                ? "FILE OPTION · " + control.Name
+                : "CUSTOM OPTION · " + control.Name;
+
+            <div class="set-row" data-setting="@($"{attrs.SettingSection}:{attrs.SettingKey}")">
+                <div class="set-info">
+                    <span class="set-name">@(attrs.Text ?? control.Name)</span>
+                    <span class="set-hint">@hint</span>
+                </div>
+                <div class="set-ctl">
+                    <label class="set-toggle" title="@attrs.ToolTip">
+                        <input type="checkbox" checked="@ExtraChecked(control, attrs)"
+                               disabled="@ExtraDisabled(control, attrs)"
+                               @onchange="@(e => SetDraft(ExtraDraftKey(control, attrs), e.Value is bool b && b))" />
+                        <span class="tk"></span>
+                    </label>
+                </div>
+            </div>
+        }
+    };
+
+    /// <summary>提交额外控件草稿：按 SettingSection / SettingKey 写回 ini；FileSettingCheckBox 勾选时按策略复制文件。</summary>
+    private void CommitExtras()
+    {
+        foreach (SettingControl control in OptionsIni.AllControls)
+        {
+            if (OptionsIni.Attributes(control.Name) is not { SettingSection: { } section, SettingKey: { } settingKey } attrs)
+                continue;
+
+            if (!_draft.TryGetValue(ExtraDraftKey(control, attrs), out var v) || v is not bool isChecked)
+                continue;
+
+            SettingsSvc.Ini.SetValue(section, settingKey, isChecked);
+
+            if (control.Type == SettingControlType.FileSettingCheckBox && isChecked)
+                ApplyEnabledFiles(control.Name, attrs.EnabledFiles);
+        }
+    }
+
+    /// <summary>按 EnabledFile 策略复制文件（源 / 目标均相对游戏目录）。</summary>
+    private void ApplyEnabledFiles(string controlName, IReadOnlyList<EnabledFileEntry> entries)
+    {
+        foreach (EnabledFileEntry entry in entries)
+        {
+            try
+            {
+                if (EnabledFileApplier.Apply(entry) == EnabledFileResult.SourceMissing)
+                {
+                    Logger.LogWarning("设置项 {Name} 的 EnabledFile 源文件不存在，未执行：{Source} → {Target}",
+                        controlName, entry.Source, entry.Target);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "设置项 {Name} 的 EnabledFile 执行失败：{Source} → {Target}",
+                    controlName, entry.Source, entry.Target);
+            }
+        }
+    }
+
     /* ── 保存 / 取消（原版 OptionsWindow.BtnSave_LeftClick / BtnBack_LeftClick） ── */
 
     /// <summary>保存草稿：全部写回 UserINISettings + 渲染器应用 + 落盘；涉及重启项时 toast 提示。</summary>
@@ -466,6 +629,9 @@
         Bool("discord", v => SettingsSvc.Ini.DiscordIntegration.Value = v);
         Bool("steam", v => SettingsSvc.Ini.SteamIntegration.Value = v);
 
+        // ini 注册的额外控件（OptionsWindow.ini [<面板>ExtraControls] + SettingSection/SettingKey 值绑定）
+        CommitExtras();
+
         SettingsSvc.Save();
 
         // 需要重启客户端才生效的项：客户端分辨率 / 无边框窗口 / 渲染器（下次启动游戏应用）
@@ -494,7 +660,7 @@
     private RenderFragment RenderDisplay() => __builder =>
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:Translation">
             <div class="set-info"><span class="set-name">@Ui("Settings.Language", "语言")</span><span class="set-hint">LANGUAGE · 即切即用</span></div>
             <div class="set-ctl">
                 <select class="set-select" value="@TranslationSvc.Current" @onchange="OnLanguageChange">
@@ -505,7 +671,7 @@
                 </select>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="MultiPlayer:Theme">
             <div class="set-info"><span class="set-name">界面主题</span><span class="set-hint">THEME · 全局换肤</span></div>
             <div class="set-ctl">
                 <select class="set-select" value="@ThemeProvider.Current.Key" @onchange="OnThemeChange">
@@ -517,7 +683,7 @@
             </div>
         </div>
         @* 游戏分辨率（原版 ddIngameResolution；保存时写回游戏 INI ScreenWidth/ScreenHeight） *@
-        <div class="set-row">
+        <div class="set-row" data-setting="@(IsRA ? "Options:Width" : "Video:ScreenWidth")">
             <div class="set-info"><span class="set-name">游戏分辨率</span><span class="set-hint">IN-GAME RESOLUTION · 下次启动游戏生效</span></div>
             <div class="set-ctl">
                 <select class="set-select" value="@CurrentIngameRes" @onchange="OnIngameResChange">
@@ -529,8 +695,8 @@
             </div>
         </div>
         @* 客户端窗口分辨率（原版 ddClientResolution；重启客户端生效） *@
-        <div class="set-row">
-            <div class="set-info"><span class="set-name">客户端窗口分辨率</span><span class="set-hint">CLIENT RESOLUTION · 重启客户端生效</span></div>
+        <div class="set-row @(IniRowClass("clientRes"))" data-setting="Video:ClientResolutionX">
+            <div class="set-info"><span class="set-name">@IniText("clientRes", "客户端窗口分辨率")</span><span class="set-hint">CLIENT RESOLUTION · 重启客户端生效</span></div>
             <div class="set-ctl">
                 <select class="set-select" value="@CurrentClientRes" @onchange="OnClientResChange">
                     @foreach (var r in EnsureInList(ClientResolutions, $"{SettingsSvc.Ini.ClientResolutionX.Value}x{SettingsSvc.Ini.ClientResolutionY.Value}"))
@@ -540,7 +706,7 @@
                 </select>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="@($"Video:{ClientConfiguration.Instance.WindowedModeKey}")">
             <div class="set-info"><span class="set-name">窗口化运行</span><span class="set-hint">WINDOWED MODE</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -550,7 +716,7 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Video:NoWindowFrame">
             <div class="set-info"><span class="set-name">无边框窗口</span><span class="set-hint">BORDERLESS WINDOW · 需开启窗口化</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -560,7 +726,7 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Video:ClientFPS">
             <div class="set-info"><span class="set-name">客户端帧率</span><span class="set-hint">CLIENT FPS</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="30" max="240" step="15"
@@ -569,7 +735,7 @@
                 <span class="set-val">@GetInt("clientFps", SettingsSvc.Ini.ClientFPS.Value)</span>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:MinimizeWindowsOnGameStart">
             <div class="set-info"><span class="set-name">启动游戏时最小化窗口</span><span class="set-hint">MINIMIZE ON GAME START</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -579,7 +745,7 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Video:ForceLowestDetailLevel">
             <div class="set-info"><span class="set-name">强制最低画质</span><span class="set-hint">FORCE LOW DETAIL</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -591,7 +757,7 @@
         </div>
         @* 游戏渲染器选择（原版 Display 选项卡 render options：按 OS 兼容列表选 ddraw 渲染器，
             保存时经 DirectDrawWrapperManager.Save 应用配置。资源未就绪时下拉禁用并提示）。 *@
-        <div class="set-row">
+        <div class="set-row" data-setting="Compatibility:Renderer">
             <div class="set-info"><span class="set-name">游戏渲染器</span><span class="set-hint">GAME RENDERER · 兼容性选择</span></div>
             <div class="set-ctl">
                 <select class="set-select" disabled="@(_rendererList.Count == 0)"
@@ -610,12 +776,13 @@
                 </select>
             </div>
         </div>
+        @Extras("display")
     };
 
     private RenderFragment RenderAudio() => __builder =>
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
-        <div class="set-row">
+        <div class="set-row" data-setting="@(IsRA ? "Options:Volume" : "Audio:SoundVolume")">
             <div class="set-info"><span class="set-name">主音量</span><span class="set-hint">MASTER VOLUME</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="0" max="1" step="0.05"
@@ -624,7 +791,7 @@
                 <span class="set-val">@((int)(GetDouble("soundVolume", SettingsSvc.Ini.SoundVolume.Value) * 100))%</span>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="@(IsRA ? "Options:ScoreVolume" : "Audio:ScoreVolume")">
             <div class="set-info"><span class="set-name">背景音乐音量</span><span class="set-hint">SCORE VOLUME</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="0" max="1" step="0.05"
@@ -633,7 +800,7 @@
                 <span class="set-val">@((int)(GetDouble("scoreVolume", SettingsSvc.Ini.ScoreVolume.Value) * 100))%</span>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Audio:VoiceVolume">
             <div class="set-info"><span class="set-name">语音音量</span><span class="set-hint">VOICE VOLUME</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="0" max="1" step="0.05"
@@ -642,7 +809,7 @@
                 <span class="set-val">@((int)(GetDouble("voiceVolume", SettingsSvc.Ini.VoiceVolume.Value) * 100))%</span>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Audio:PlayMainMenuMusic">
             <div class="set-info"><span class="set-name">主菜单音乐</span><span class="set-hint">MAIN MENU MUSIC</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -652,7 +819,7 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Audio:ChatMessageSound">
             <div class="set-info"><span class="set-name">聊天消息音效</span><span class="set-hint">MESSAGE SOUND</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -662,12 +829,13 @@
                 </label>
             </div>
         </div>
+        @Extras("audio")
     };
 
     private RenderFragment RenderGame() => __builder =>
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:ScrollRate">
             <div class="set-info"><span class="set-name">滚动速度</span><span class="set-hint">SCROLL RATE</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="1" max="8" step="1"
@@ -676,7 +844,7 @@
                 <span class="set-val">@GetInt("scrollRate", SettingsSvc.Ini.ScrollRate.Value)</span>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:DoubleTapInterval">
             <div class="set-info"><span class="set-name">双击间隔（毫秒）</span><span class="set-hint">DOUBLE TAP INTERVAL</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="10" max="100" step="5"
@@ -685,7 +853,7 @@
                 <span class="set-val">@GetInt("doubleTapInterval", SettingsSvc.Ini.DoubleTapInterval.Value)</span>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:GameSpeed">
             <div class="set-info"><span class="set-name">游戏速度</span><span class="set-hint">GAME SPEED</span></div>
             <div class="set-ctl">
                 <input class="set-range" type="range" min="0" max="4" step="1"
@@ -694,7 +862,7 @@
                 <span class="set-val">@GetInt("gameSpeed", SettingsSvc.Ini.GameSpeed.Value)</span>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:Difficulty">
             <div class="set-info"><span class="set-name">游戏难度</span><span class="set-hint">DIFFICULTY</span></div>
             <div class="set-ctl">
                 <select class="set-select" value="@(GetInt("difficulty", SettingsSvc.Ini.Difficulty.Value))"
@@ -706,7 +874,7 @@
                 </select>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:AutoRemoveUnderscoresFromName">
             <div class="set-info"><span class="set-name">自动去除昵称下划线</span><span class="set-hint">AUTO TRIM UNDERSCORES</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -716,21 +884,22 @@
                 </label>
             </div>
         </div>
+        @Extras("game")
     };
 
     private RenderFragment RenderNetwork() => __builder =>
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
-        <div class="set-row">
-            <div class="set-info"><span class="set-name">玩家名</span><span class="set-hint">PLAYER NAME · 保存后生效</span></div>
+        <div class="set-row @(IniRowClass("playerName"))" data-setting="MultiPlayer:Handle">
+            <div class="set-info"><span class="set-name">@IniText("playerName", "玩家名")</span><span class="set-hint">PLAYER NAME · 保存后生效</span></div>
             <div class="set-ctl">
                 <input class="set-text" maxlength="30" spellcheck="false" autocomplete="off"
                        value="@(GetStr("playerName", SettingsSvc.Ini.PlayerName.Value))"
                        @onchange="@(e => SetDraft("playerName", (e.Value ?? string.Empty).ToString()!.Trim()))" />
             </div>
         </div>
-        <div class="set-row">
-            <div class="set-info"><span class="set-name">记住我（跳过登录窗口）</span><span class="set-hint">SKIP CONNECT DIALOG</span></div>
+        <div class="set-row @(IniRowClass("skipConnectDialog"))" data-setting="MultiPlayer:SkipConnectDialog">
+            <div class="set-info"><span class="set-name">@IniText("skipConnectDialog", "记住我（跳过登录窗口）")</span><span class="set-hint">SKIP CONNECT DIALOG</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
                     <input type="checkbox" checked="@(GetBool("skipConnectDialog", SettingsSvc.Ini.SkipConnectDialog.Value))"
@@ -739,8 +908,8 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
-            <div class="set-info"><span class="set-name">离开大厅保持连接</span><span class="set-hint">PERSISTENT MODE</span></div>
+        <div class="set-row @(IniRowClass("persistentMode"))" data-setting="MultiPlayer:PersistentMode">
+            <div class="set-info"><span class="set-name">@IniText("persistentMode", "离开大厅保持连接")</span><span class="set-hint">PERSISTENT MODE</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
                     <input type="checkbox" checked="@(GetBool("persistentMode", SettingsSvc.Ini.PersistentMode.Value))"
@@ -749,8 +918,8 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
-            <div class="set-info"><span class="set-name">启动自动连接</span><span class="set-hint">AUTO CONNECT</span></div>
+        <div class="set-row @(IniRowClass("autoConnect"))" data-setting="MultiPlayer:AutomaticCnCNetLogin">
+            <div class="set-info"><span class="set-name">@IniText("autoConnect", "启动自动连接")</span><span class="set-hint">AUTO CONNECT</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
                     <input type="checkbox" checked="@(GetBool("autoConnect", SettingsSvc.Ini.AutomaticCnCNetLogin.Value))"
@@ -759,7 +928,7 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="MultiPlayer:PingCustomTunnels">
             <div class="set-info"><span class="set-name">Ping 自定义隧道</span><span class="set-hint">PING CUSTOM TUNNELS</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -769,7 +938,7 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="MultiPlayer:EnableMapSharing">
             <div class="set-info"><span class="set-name">允许地图分享</span><span class="set-hint">ENABLE MAP SHARING</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -779,7 +948,7 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-setting="MultiPlayer:AlwaysDisplayTunnelList">
             <div class="set-info"><span class="set-name">始终显示隧道列表</span><span class="set-hint">ALWAYS SHOW TUNNEL LIST</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -789,12 +958,13 @@
                 </label>
             </div>
         </div>
+        @Extras("network")
     };
 
     private RenderFragment RenderUpdate() => __builder =>
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:CheckforUpdates">
             <div class="set-info"><span class="set-name">启动时检查更新</span><span class="set-hint">CHECK FOR UPDATES ON START</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -867,6 +1037,7 @@
                 <button class="mb-btn primary" @onclick="OnUpdateCheck">立即检查</button>
             </div>
         }
+        @Extras("update")
     };
 
     private void OnUpdateCheck() => UpdateSvc.CheckForUpdates();
@@ -924,6 +1095,7 @@
                 }
             </div>
         }
+        @Extras("components")
     };
 
     /// <summary>组件是否可下载（未安装或远程标识与本地不一致）。</summary>
@@ -953,7 +1125,7 @@
     private RenderFragment RenderPrivacy() => __builder =>
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
-        <div class="set-row">
+        <div class="set-row" data-setting="Options:PrivacyPolicyAccepted">
             <div class="set-info"><span class="set-name">已接受隐私政策</span><span class="set-hint">PRIVACY POLICY ACCEPTED</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
@@ -963,8 +1135,8 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
-            <div class="set-info"><span class="set-name">Discord 集成</span><span class="set-hint">DISCORD INTEGRATION</span></div>
+        <div class="set-row @(IniRowClass("discord"))" data-setting="MultiPlayer:DiscordIntegration">
+            <div class="set-info"><span class="set-name">@IniText("discord", "Discord 集成")</span><span class="set-hint">DISCORD INTEGRATION</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
                     <input type="checkbox" checked="@(GetBool("discord", SettingsSvc.Ini.DiscordIntegration.Value))"
@@ -973,8 +1145,8 @@
                 </label>
             </div>
         </div>
-        <div class="set-row">
-            <div class="set-info"><span class="set-name">Steam 集成</span><span class="set-hint">STEAM INTEGRATION</span></div>
+        <div class="set-row @(IniRowClass("steam"))" data-setting="MultiPlayer:SteamIntegration">
+            <div class="set-info"><span class="set-name">@IniText("steam", "Steam 集成")</span><span class="set-hint">STEAM INTEGRATION</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
                     <input type="checkbox" checked="@(GetBool("steam", SettingsSvc.Ini.SteamIntegration.Value))"

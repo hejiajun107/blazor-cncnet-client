@@ -67,6 +67,7 @@ namespace BlazorCncnetClient.Infrastructure
 
         private readonly List<LANPlayerInfo> _players = new();
         private readonly List<ChatMessage> _chatMessages = new();
+        private readonly List<GameSessionOption> _gameOptions;
 
         private LANServerCommandHandler[] _serverHandlers;
         private LANClientCommandHandler[] _clientHandlers;
@@ -102,6 +103,12 @@ namespace BlazorCncnetClient.Infrastructure
         public IReadOnlyList<LANPlayerInfo> Players => _players;
         public IReadOnlyList<ChatMessage> ChatMessages => _chatMessages;
 
+        /// <summary>
+        /// LAN 房间游戏选项（复选框 + 下拉框），由 <c>LANGameLobby.ini</c>（BasedOn=MultiplayerGameLobby.ini）
+        /// 的 <c>[GameOptionsPanel]</c> 声明式加载，与在线房间同源。房主修改经 OPTS 广播同步，加入者只读展示。
+        /// </summary>
+        public IReadOnlyList<GameSessionOption> GameOptions => _gameOptions;
+
         /// <summary>房主名（玩家列表首项，GAME 广播首元素亦为主机名）。</summary>
         public string HostName => _players.Count > 0 ? _players[0].Name : string.Empty;
 
@@ -122,6 +129,10 @@ namespace BlazorCncnetClient.Infrastructure
 
             LocalGame = _gameCollection.GameList.Find(g =>
                 string.Equals(g.InternalName, ClientConfiguration.Instance.LocalGame, StringComparison.InvariantCultureIgnoreCase));
+
+            // LAN 房间游戏选项：与在线房间同源（LANGameLobby.ini BasedOn=MultiplayerGameLobby.ini → GameLobbyBase.ini）。
+            // 严格模式：ini 缺失 / [GameOptionsPanel] 无声明即抛 ClientConfigurationException（同遭遇战 / 在线房间）。
+            _gameOptions = Options.GameOptionsIniLoader.Load(Options.GameOptionsIniLoader.LAN_INI);
 
             // 主机侧处理器：接收来自玩家的命令（Server* 传完整消息，需按命令名剥离参数）
             _serverHandlers =
@@ -788,7 +799,10 @@ namespace BlazorCncnetClient.Infrastructure
             GameStartRequested?.Invoke();
         }
 
-        /// <summary>客户端解析 OPTS：末尾字段（seed/mapSHA1/mode/frameSendRate/removeStart），找不到地图则提示。</summary>
+        /// <summary>
+        /// 客户端解析 OPTS：seed/mapSHA1/mode/frameSendRate/removeStart/gameOptionsCode[;下拉索引…]，
+        /// 找不到地图则提示。末尾复选框位掩码与下拉索引与 <see cref="OnGameOptionChanged"/> 对称。
+        /// </summary>
         private void Client_HandleGameOptions(string args)
         {
             if (IsHost)
@@ -801,6 +815,21 @@ namespace BlazorCncnetClient.Infrastructure
             RandomSeed = int.TryParse(parts[0], out int seed) ? seed : RandomSeed;
             string mapHash = parts[1];
             string modeName = parts[2];
+
+            // 应用房主打包的复选框选项（位序与 GameOptions 一致；旧格式缺省时保留当前值）
+            if (parts.Length > 5 && int.TryParse(parts[5], out int optionCode))
+                ApplyGameOptionsCode(optionCode);
+
+            // 下拉框选中索引（房主新格式追加在末尾；旧广播缺省时保留当前值）
+            var dropdowns = _gameOptions.OfType<GameSessionDropDownOption>().ToList();
+            for (int i = 0; i < dropdowns.Count; i++)
+            {
+                int fieldIndex = 6 + i;
+                if (parts.Length > fieldIndex && int.TryParse(parts[fieldIndex], out int index))
+                    dropdowns[i].SelectedIndex = dropdowns[i].Items.Count > 0
+                        ? Math.Clamp(index, 0, dropdowns[i].Items.Count - 1)
+                        : 0;
+            }
 
             var gmm = _mapLoader.GameModeMaps.FirstOrDefault(g =>
                 string.Equals(g.GameMode.Name, modeName, StringComparison.OrdinalIgnoreCase)
@@ -825,7 +854,57 @@ namespace BlazorCncnetClient.Infrastructure
                 p.SendMessage(message);
         }
 
-        /// <summary>广播 OPTS：seed\x01mapSHA1\x01modeName\x01frameSendRate\x01removeStartLocations。</summary>
+        // ── 游戏选项（复选/下拉：房主修改 → OPTS 广播同步；加入者只读展示，同在线房间 GO 语义） ──
+
+        /// <summary>房主设置复选框游戏选项并广播 OPTS（加入者只读展示）。</summary>
+        public void SetCheckBoxOption(GameSessionCheckBoxOption option, bool isChecked)
+        {
+            if (!IsHost || !_gameOptions.Contains(option))
+                return;
+            option.Checked = isChecked;
+            OnGameOptionChanged();
+            NotifyChanged();
+        }
+
+        /// <summary>房主设置下拉游戏选项选中索引并广播 OPTS。</summary>
+        public void SetDropDownOption(GameSessionDropDownOption option, int selectedIndex)
+        {
+            if (!IsHost || !_gameOptions.Contains(option))
+                return;
+            option.SelectedIndex = option.Items.Count > 0 ? Math.Clamp(selectedIndex, 0, option.Items.Count - 1) : 0;
+            OnGameOptionChanged();
+            NotifyChanged();
+        }
+
+        /// <summary>将复选框选项打包为位掩码（原版 GameOptionsToCode；位序 = 复选框在 GameOptions 中的顺序）。</summary>
+        private int GetGameOptionsCode()
+        {
+            int code = 0;
+            int bitIndex = 0;
+            foreach (GameSessionCheckBoxOption checkBox in _gameOptions.OfType<GameSessionCheckBoxOption>())
+            {
+                if (checkBox.Checked)
+                    code |= 1 << bitIndex;
+                bitIndex++;
+            }
+            return code;
+        }
+
+        /// <summary>按位掩码恢复复选框状态（原版 ApplyGameOptionsCode）。</summary>
+        private void ApplyGameOptionsCode(int code)
+        {
+            int bitIndex = 0;
+            foreach (GameSessionCheckBoxOption checkBox in _gameOptions.OfType<GameSessionCheckBoxOption>())
+            {
+                checkBox.Checked = ((code >> bitIndex) & 1) == 1;
+                bitIndex++;
+            }
+        }
+
+        /// <summary>
+        /// 广播 OPTS：seed\x01mapSHA1\x01modeName\x01frameSendRate\x01removeStartLocations\x01gameOptionsCode[;下拉索引…]
+        /// （末尾为房主打包的复选框位掩码 + 各下拉选中索引，与 <see cref="Client_HandleGameOptions"/> 对称解析）。
+        /// </summary>
         private void OnGameOptionChanged()
         {
             if (!IsHost)
@@ -835,7 +914,11 @@ namespace BlazorCncnetClient.Infrastructure
               .Append(ProgramConstants.LAN_DATA_SEPARATOR).Append(SelectedMap?.Map.SHA1 ?? string.Empty)
               .Append(ProgramConstants.LAN_DATA_SEPARATOR).Append(SelectedMap?.GameMode.Name ?? string.Empty)
               .Append(ProgramConstants.LAN_DATA_SEPARATOR).Append('0') // FrameSendRate
-              .Append(ProgramConstants.LAN_DATA_SEPARATOR).Append('0'); // RemoveStartingLocations
+              .Append(ProgramConstants.LAN_DATA_SEPARATOR).Append('0') // RemoveStartingLocations
+              .Append(ProgramConstants.LAN_DATA_SEPARATOR).Append(GetGameOptionsCode()); // 打包复选框选项（原版 GameOptionsToCode）
+            // 下拉框选中索引追加在末尾（OPTS 协议扩展；与 Client_HandleGameOptions 对称解析）
+            foreach (GameSessionDropDownOption dd in _gameOptions.OfType<GameSessionDropDownOption>())
+                sb.Append(ProgramConstants.LAN_DATA_SEPARATOR).Append(dd.SelectedIndex);
             BroadcastMessage(sb.ToString());
         }
 

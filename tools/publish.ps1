@@ -71,6 +71,19 @@ if ($LASTEXITCODE -ne 0) { throw "Launcher 发布失败（exit=$LASTEXITCODE）"
 $launcherPdb = Join-Path $publish "Launcher.pdb"
 if (Test-Path $launcherPdb) { Remove-Item $launcherPdb -Force }
 
+# ── 2b) 许可证随附（GPLv3 §4/§5 + 上游 CnCNet 声明 + 第三方组件声明）──────
+#    放 ClientApp\（程序所在目录，与 exe 同级），保持安装根顶层仍只有 Launcher.exe。
+#    源文件在仓库根；兼容根在 $root 或其上级两种布局。
+$licenseFiles = @("LICENSE", "NOTICE.md", "THIRD-PARTY-NOTICES.md")
+$licenseSrcRoot = @($root, (Split-Path -Parent $root)) |
+    Where-Object { Test-Path (Join-Path $_ "LICENSE") } | Select-Object -First 1
+if (-not $licenseSrcRoot) { throw "找不到仓库根下的 LICENSE（已探测：$root 及其上级）" }
+foreach ($lf in $licenseFiles) {
+    $srcFile = Join-Path $licenseSrcRoot $lf
+    if (-not (Test-Path $srcFile)) { throw "缺少许可证文件：$srcFile" }
+    Copy-Item $srcFile -Destination (Join-Path $clientApp $lf) -Force
+}
+
 # ── 校验报告 ─────────────────────────────────────────
 $report = New-Object System.Collections.Generic.List[string]
 $report.Add("CNCNet Client 打包校验报告 (Launcher + ClientApp 布局)")
@@ -92,7 +105,12 @@ $required = @(
     (Join-Path $wwwroot "css\app.css"),
     (Join-Path $wwwroot "js\app.js"),
     (Join-Path $wwwroot "_framework\blazor.webview.js"),
-    (Join-Path $wwwroot "fonts\Orbitron-400.woff2")
+    (Join-Path $wwwroot "fonts\Orbitron-400.woff2"),
+    # 许可证随附（GPLv3 §4 / §5；上游 CnCNet 声明；第三方组件声明；字体 OFL）
+    (Join-Path $clientApp "LICENSE"),
+    (Join-Path $clientApp "NOTICE.md"),
+    (Join-Path $clientApp "THIRD-PARTY-NOTICES.md"),
+    (Join-Path $wwwroot "fonts\OFL.txt")
 )
 foreach ($f in $required) {
     $ok = Test-Path $f

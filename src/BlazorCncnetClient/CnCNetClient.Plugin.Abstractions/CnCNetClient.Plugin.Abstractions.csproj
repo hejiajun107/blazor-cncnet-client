@@ -11,7 +11,19 @@
     <Version>1.0.0</Version>
     <!-- 契约不做强命名：默认 ALC 下同简单名程序集已加载即复用，强命名只会引入绑定重定向麻烦。 -->
     <SignAssembly>false</SignAssembly>
+
+    <!-- nupkg 许可证（GPLv3，与仓库根 LICENSE 一致；随包分发满足 SPDX/nuget.org 展示要求）。 -->
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Copyright>Copyright (C) 2026 Blazor CNCNet Client contributors; derived from CnCNet/xna-cncnet-client (C) 2013-2025 CnCNet, Rampastring</Copyright>
   </PropertyGroup>
+
+  <!-- nupkg 内随附许可证与声明（源文件取自仓库根：本 csproj 位于 <repo>/blazor-cncnet-client/src/BlazorCncnetClient/<proj>/，上溯 3 级）。 -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\..\LICENSE" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\..\NOTICE.md" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
 
   <!-- 契约只依赖 ASP.NET Core 共享框架（Microsoft.AspNetCore.Components / Extensions.DependencyInjection.Abstractions）。
        不引用宿主实现，避免循环依赖。 -->

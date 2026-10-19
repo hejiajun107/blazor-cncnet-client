@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using BlazorCncnetClient.Infrastructure.Options;
 using CnCNetClient.Core;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Domain.Multiplayer.CnCNet;
@@ -133,10 +134,12 @@ namespace BlazorCncnetClient.Infrastructure
         public IReadOnlyList<PlayerInfo> AIPlayers => _aiPlayers;
 
         /// <summary>
-        /// 房间游戏选项（复选 + 下拉，与原版 GameLobbyBase.ini 一致，与遭遇战共用同一集合）。
+        /// 房间游戏选项（复选 + 下拉，声明式加载自 <c>Resources/MultiplayerGameLobby.ini</c>（<c>BasedOn=GameLobbyBase.ini</c>）
+        /// 的 <c>[GameOptionsPanel]</c> <c>$CC-GO*</c> 控件集合，见 <see cref="GameOptionsIniLoader"/>）。
         /// 房主修改后经 GO 广播同步给加入者；生成 spawn.ini 时写入 [Settings] 并应用地图代码。
         /// </summary>
-        public IReadOnlyList<GameSessionOption> GameOptions { get; } = GameSessionOption.CreateDefaultGameOptions();
+        public IReadOnlyList<GameSessionOption> GameOptions { get; } =
+            GameOptionsIniLoader.Load(GameOptionsIniLoader.MULTIPLAYER_INI);
 
         // ── 第八轮补缺 r8-1：玩家附加选项（原版 PlayerExtraOptionsPanel，PEO 协议广播） ──
 

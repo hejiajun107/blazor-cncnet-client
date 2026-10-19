@@ -205,6 +205,35 @@ else
                             </div>
                         }
 
+                        <div class="cfg-options">
+                            <div class="cfg-self-title">游戏选项 <em>GAME OPTIONS</em>
+                                <span class="self-spec">@(Room.IsHost ? "房主可改，将同步给全员" : "由房主设置，同步显示")</span>
+                            </div>
+                            <div class="go-grid">
+                                @foreach (var opt in CheckBoxOptions)
+                                {
+                                    <label class="gl-check go-check" title="@opt.ToolTip" data-option="@opt.Name">
+                                        <input type="checkbox" checked="@opt.Checked" disabled="@(!Room.IsHost)"
+                                               @onchange="(e) => OnCheckBoxOptionChange(opt, e)" />
+                                        <span>@opt.DisplayName</span>
+                                    </label>
+                                }
+                            </div>
+                            @foreach (var dd in DropDownOptions)
+                            {
+                                <div class="go-dd" title="@dd.ToolTip" data-option="@dd.Name">
+                                    <label>@dd.DisplayName</label>
+                                    <select class="gl-select" value="@dd.SelectedIndex" disabled="@(!Room.IsHost)"
+                                            @onchange="(e) => OnDropDownOptionChange(dd, e)">
+                                        @for (int i = 0; i < dd.Items.Count; i++)
+                                        {
+                                            <option value="@i">@dd.Items[i]</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                        </div>
+
                         <div class="cfg-self">
                             <div class="cfg-self-title">我的配置 <em>SELF</em></div>
                             <div class="cfg-row">
@@ -331,6 +360,30 @@ else
     }
 
     private List<MapOption> _mapOptions = new();
+
+    /// <summary>游戏选项：复选框（按 LANGameLobby.ini 的 [GameOptionsPanel] 声明顺序）。</summary>
+    private List<GameSessionCheckBoxOption> CheckBoxOptions =>
+        Room.GameOptions.OfType<GameSessionCheckBoxOption>().ToList();
+
+    /// <summary>游戏选项：下拉框（cmbCredits / cmbStartingUnits / cmbGameSpeedCapMultiplayer 等）。</summary>
+    private List<GameSessionDropDownOption> DropDownOptions =>
+        Room.GameOptions.OfType<GameSessionDropDownOption>().ToList();
+
+    private void OnCheckBoxOptionChange(GameSessionCheckBoxOption opt, ChangeEventArgs e)
+    {
+        if (!Room.IsHost)
+            return;
+        if (bool.TryParse(e.Value?.ToString(), out bool v))
+            Room.SetCheckBoxOption(opt, v);
+    }
+
+    private void OnDropDownOptionChange(GameSessionDropDownOption dd, ChangeEventArgs e)
+    {
+        if (!Room.IsHost)
+            return;
+        if (int.TryParse(e.Value?.ToString(), out int v))
+            Room.SetDropDownOption(dd, v);
+    }
 
     /// <summary>当前选择的游戏模式（原版 cmbGameMode，按 MapLoader.GameModes 的 INI 顺序）。</summary>
     private string _selectedMode = string.Empty;

@@ -29,6 +29,24 @@
   --font-cn:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
   --font-orbitron:'Orbitron',ui-monospace,monospace;
   --font-rajdhani:'Rajdhani',var(--font-cn);
+
+  /* ── 布局令牌（options-ini-plan §4.4）：结构性布局集中于此。主题 / 插件只需在 :root
+     （或自有 :root[data-theme=...]）覆盖同名令牌即可改布局，无需重编译——外部主题加载时
+     data-theme 会被移除，故覆盖 :root 即生效。原版绝对坐标类几何（Location / $X / $Y /
+     $Width / $Height / DrawMode / 贴图）属豁免项，不在令牌内，由 grid/flex 承接。 ── */
+  --lay-stage-pad:0 4.5vw; --lay-stage-gap:36px;
+  --lay-left-gap:16px; --lay-left-maxw:56%;
+  --lay-panel-w:min(430px,40vw); --lay-panel-pad:26px 22px;
+  --lay-hud-padx:32px; --lay-hud-pady:12px;
+  --lay-foot-padx:32px; --lay-foot-pady:10px;
+  --lay-lobby-pad:64px 24px 52px; --lay-lobby-gap:12px;
+  --lay-lobby-cols:minmax(260px,1.2fr) minmax(320px,1.5fr) minmax(190px,.8fr);
+  --lay-groom-pad:60px 16px 40px; --lay-groom-gap:10px;
+  --lay-groom-cols:minmax(210px,1fr) minmax(0,1.5fr) minmax(320px,1fr);
+  --lay-groom-rows:minmax(0,1.6fr) minmax(0,1fr);
+  --lay-settings-pad:64px 24px 52px; --lay-settings-gap:12px;
+  --lay-settings-cols:200px minmax(0,1fr);
+  --lay-setnav-pad:8px; --lay-setpanel-pad:6px 18px 16px;
 }
 
 /* ── 内页主题：蓝色系指挥台（data-theme="inner"，spec §5.4.2-B） ── */
@@ -116,7 +134,7 @@ a,.btn-link{color:var(--cyan)}
 
 /* ── HUD 顶栏（全局悬浮，原版 TopBar：默认藏在屏幕上方，鼠标移到顶部滑出，失焦 1s 收回） ── */
 .hud{position:fixed;top:0;left:0;right:0;z-index:90;display:flex;justify-content:space-between;
-  padding:12px 32px;font-family:var(--font-orbitron);font-size:12px;letter-spacing:2px;color:var(--dim);
+  padding:var(--lay-hud-pady) var(--lay-hud-padx);font-family:var(--font-orbitron);font-size:12px;letter-spacing:2px;color:var(--dim);
   border-bottom:1px solid var(--line);background:rgba(2,8,14,.92);
   transform:translateY(-130%);opacity:0;pointer-events:none;
   transition:transform .22s var(--ease-out),opacity .22s var(--ease-out)}
@@ -179,9 +197,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
 /* ── 主菜单布局 ───────────────────────────────────────────────── */
-.stage{position:relative;height:100vh;display:flex;align-items:center;justify-content:space-between;padding:0 4.5vw;gap:36px}
+.stage{position:relative;height:100vh;display:flex;align-items:center;justify-content:space-between;padding:var(--lay-stage-pad);gap:var(--lay-stage-gap)}
 
-.left{flex:1;max-width:56%;display:flex;flex-direction:column;gap:16px;min-width:0}
+.left{flex:1;max-width:var(--lay-left-maxw);display:flex;flex-direction:column;gap:var(--lay-left-gap);min-width:0}
 .logobar{display:flex;align-items:center;gap:14px;font-family:var(--font-orbitron);letter-spacing:3px;font-size:13px;color:var(--cyan)}
 .logobar .rec{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);animation:blink 1.4s infinite}
 .logobar .ver{color:var(--dim);letter-spacing:2px;font-family:var(--font-cn);font-size:12px}
@@ -227,8 +245,8 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .updstrip .us-ver{flex:none;color:var(--dim);font-family:var(--font-orbitron)}
 
 /* ── 右：菜单面板 ─────────────────────────────────────────────── */
-.panel{width:min(430px,40vw);background:var(--panel);backdrop-filter:blur(16px);
-  border:1px solid var(--line);padding:26px 22px;position:relative;
+.panel{width:var(--lay-panel-w);background:var(--panel);backdrop-filter:blur(16px);
+  border:1px solid var(--line);padding:var(--lay-panel-pad);position:relative;
   max-height:calc(100vh - 130px);overflow-y:auto;scrollbar-width:none;
   clip-path:polygon(0 18px,18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);
   box-shadow:0 0 60px rgba(33,230,255,.12),inset 0 0 40px rgba(33,230,255,.05)}
@@ -263,7 +281,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 
 /* ── 底栏 ─────────────────────────────────────────────────────── */
 .foot{position:fixed;bottom:0;left:0;right:0;z-index:6;display:flex;justify-content:space-between;
-  padding:10px 32px;font-size:11px;letter-spacing:1px;color:var(--dim);font-family:var(--font-orbitron);
+  padding:var(--lay-foot-pady) var(--lay-foot-padx);font-size:11px;letter-spacing:1px;color:var(--dim);font-family:var(--font-orbitron);
   border-top:1px solid var(--line);background:linear-gradient(0deg,rgba(2,8,14,.9),transparent)}
 .foot .r span{margin-left:20px}
 .foot .foot-status{color:var(--ok);text-shadow:0 0 8px rgba(74,222,128,.35)}
@@ -284,18 +302,6 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 /* ── HUD 顶栏：实时时钟 / 离线灯（TopBar 通用组件，spec §5.3） ── */
 .hud .clock{color:var(--cyan-soft);letter-spacing:1px;font-variant-numeric:tabular-nums}
 .hud .live.off{background:var(--red);box-shadow:0 0 12px var(--red);animation:none}
-
-/* ── Tooltip（通用组件，spec §5.3：淡入+微上移 T120ms，延迟 400ms） ── */
-.tip-wrap{position:relative;display:inline-flex}
-.tip-wrap .tip{position:absolute;left:50%;transform:translate(-50%,8px);z-index:70;
-  padding:4px 10px;font-size:11px;letter-spacing:1px;white-space:nowrap;color:#fff;
-  font-family:var(--font-cn);background:rgba(4,12,20,.96);border:1px solid var(--line);
-  box-shadow:0 0 16px rgba(33,230,255,.25);pointer-events:none;opacity:0;
-  transition:opacity var(--t-fast) var(--ease-out) .4s,transform var(--t-fast) var(--ease-out) .4s;
-  clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
-.tip-wrap.top .tip{bottom:calc(100% + 8px)}
-.tip-wrap.bottom .tip{top:calc(100% + 8px)}
-.tip-wrap:hover .tip,.tip-wrap:focus-visible .tip{opacity:1;transform:translate(-50%,0)}
 
 /* ── MessageBox（通用组件，spec §5.3：打开 pop-in 240ms ease-out-back，关闭 fade 120ms） ── */
 .msgbox-overlay{position:fixed;inset:0;z-index:80;display:grid;place-items:center;
@@ -402,7 +408,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 
 /* ── 在线大厅（M3.2 spec §5.3.2：频道/房间/聊天/玩家 四区布局） ── */
 .lobby{position:relative;z-index:5;height:100vh;display:flex;flex-direction:column;
-  padding:64px 24px 52px;gap:12px}
+  padding:var(--lay-lobby-pad);gap:var(--lay-lobby-gap)}
 .lobby-top{display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:10px 16px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(12px)}
 .lt-left{display:flex;align-items:center;gap:10px;font-family:var(--font-orbitron);font-size:11px;
@@ -424,7 +430,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .lt-conn.off .dot{background:var(--red);box-shadow:0 0 10px var(--red);animation:none}
 
 .lobby-grid{flex:1;min-height:0;display:grid;
-  grid-template-columns:minmax(260px,1.2fr) minmax(320px,1.5fr) minmax(190px,.8fr);gap:12px}
+  grid-template-columns:var(--lay-lobby-cols);gap:var(--lay-lobby-gap)}
 .lb-panel{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);
   background:var(--panel);backdrop-filter:blur(12px)}
 .lb-ph{display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -704,7 +710,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .ge-sub{margin:12px 0 22px;color:var(--text-2);font-size:13px;letter-spacing:1px}
 
 .groom{position:relative;z-index:5;height:100vh;display:flex;flex-direction:column;
-  padding:60px 16px 40px;gap:10px;overflow:hidden}
+  padding:var(--lay-groom-pad);gap:var(--lay-groom-gap);overflow:hidden}
 .groom-top{display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:10px 16px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(10px)}
 .gt-left{display:flex;align-items:center;gap:12px;min-width:0}
@@ -731,9 +737,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
   border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.groom-grid{flex:1;min-height:0;display:grid;gap:10px;
-  grid-template-columns:minmax(210px,1fr) minmax(0,1.5fr) minmax(320px,1fr);
-  grid-template-rows:minmax(0,1.6fr) minmax(0,1fr)}
+.groom-grid{flex:1;min-height:0;display:grid;gap:var(--lay-groom-gap);
+  grid-template-columns:var(--lay-groom-cols);
+  grid-template-rows:var(--lay-groom-rows)}
 /* 遭遇战模块位置（参考原版 GameLobbyBase.ini）：左列=地图列表(跨两行)，
    右上=玩家配置|游戏选项，右下=大地图预览(跨两列) */
 .gl-maplist{grid-row:1 / 3}
@@ -1208,7 +1214,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 
 /* ── 设置中心（M4.1 spec §5.3：/settings，多 Tab，蓝色系内页） ── */
 .settings{position:relative;z-index:5;height:100vh;display:flex;flex-direction:column;
-  padding:64px 24px 52px;gap:12px}
+  padding:var(--lay-settings-pad);gap:var(--lay-settings-gap)}
 .settings-top{display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:10px 16px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(12px)}
 .st-left{display:flex;align-items:center;gap:10px;min-width:0}
@@ -1218,9 +1224,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .st-right{display:flex;align-items:center;gap:12px;min-width:0}
 .st-player{font-family:var(--font-orbitron);font-size:12px;letter-spacing:1px;color:var(--cyan-soft);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.settings-grid{flex:1;min-height:0;display:grid;grid-template-columns:200px minmax(0,1fr);gap:12px}
+.settings-grid{flex:1;min-height:0;display:grid;grid-template-columns:var(--lay-settings-cols);gap:var(--lay-settings-gap)}
 /* 左：分区导航 */
-.set-nav{display:flex;flex-direction:column;gap:4px;padding:8px;border:1px solid var(--line);
+.set-nav{display:flex;flex-direction:column;gap:4px;padding:var(--lay-setnav-pad);border:1px solid var(--line);
   background:var(--panel);backdrop-filter:blur(12px);overflow-y:auto}
 .set-nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;text-align:left;
   background:transparent;border:1px solid transparent;color:var(--text-2);cursor:pointer;
@@ -1238,7 +1244,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
    （顶栏菜单 / 设置侧栏均为 flex 容器，包装层不产生额外盒，避免破坏既有排版） */
 .plugin-slot{display:contents}
 /* 右：分区内容 */
-.set-panel{min-height:0;overflow-y:auto;padding:6px 18px 16px;border:1px solid var(--line);
+.set-panel{min-height:0;overflow-y:auto;padding:var(--lay-setpanel-pad);border:1px solid var(--line);
   background:var(--panel);backdrop-filter:blur(12px)}
 .set-sec-title{display:flex;align-items:center;gap:8px;margin:12px 0 4px;
   font-family:var(--font-orbitron);font-size:12px;font-weight:700;letter-spacing:3px;color:var(--cyan)}
@@ -1246,6 +1252,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .set-row{display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:11px 2px;border-bottom:1px solid rgba(128,200,255,.08)}
 .set-row:last-child{border-bottom:none}
+.set-row.ini-hidden{display:none}
 .set-info{display:flex;flex-direction:column;gap:2px;min-width:0}
 .set-name{font-size:14px;color:var(--text)}
 .set-hint{font-family:var(--font-orbitron);font-size:9px;letter-spacing:2px;color:var(--dim)}
@@ -1359,20 +1366,27 @@ input.set-text{width:210px;cursor:text}
 /* ── 响应式 ───────────────────────────────────────────────────── */
 /* 720p 紧凑模式（1280×720 及类似分辨率；1920×1080 不触发） */
 @media(max-width:1440px) and (max-height:820px){
-  .stage{padding:0 3vw;gap:24px}
-  .left{gap:12px}
+  /* 布局令牌覆盖（options-ini-plan §4.4）：紧凑档，仅覆盖令牌，各选择器自动跟随 */
+  :root{
+    --lay-stage-pad:0 3vw; --lay-stage-gap:24px;
+    --lay-left-gap:12px;
+    --lay-panel-w:min(400px,42vw); --lay-panel-pad:18px 16px;
+    --lay-hud-pady:12px; --lay-foot-pady:8px;
+    --lay-lobby-pad:60px 14px 44px; --lay-lobby-gap:8px;
+    --lay-lobby-cols:minmax(230px,1.15fr) minmax(280px,1.5fr) minmax(160px,.8fr);
+    --lay-groom-pad:54px 10px 32px; --lay-groom-gap:8px;
+    --lay-groom-cols:minmax(180px,1fr) minmax(0,1.5fr) minmax(280px,1fr);
+    --lay-settings-pad:60px 14px 44px; --lay-settings-gap:8px;
+    --lay-settings-cols:180px minmax(0,1fr);
+    --lay-setnav-pad:6px;
+  }
   .viewport{max-height:40vh}
   .logobar{font-size:12px}.logobar .ver{font-size:11px}
   .readout{gap:10px}.ro{padding:9px 12px}.ro .v{font-size:19px}.ro .k{font-size:9px}
-  .panel{width:min(400px,42vw);padding:18px 16px}
   .panel .ph{margin-bottom:12px}
   .mbtn{padding:9px 14px;margin-bottom:7px}
   .mbtn .cn{font-size:15px}.mbtn .ic{width:30px;height:30px;font-size:14px}
-  .hud{padding-top:12px;padding-bottom:12px}
-  .foot{padding-top:8px;padding-bottom:8px}
   /* 大厅紧凑适配 */
-  .lobby{padding:60px 14px 44px;gap:8px}
-  .lobby-grid{gap:8px;grid-template-columns:minmax(230px,1.15fr) minmax(280px,1.5fr) minmax(160px,.8fr)}
   .lobby-top{padding:8px 12px}
   .lt-select{max-width:220px;font-size:11px}
   .lb-ph{padding:7px 10px;font-size:11px}
@@ -1381,9 +1395,6 @@ input.set-text{width:210px;cursor:text}
   .game-card{padding:6px 8px;margin-bottom:5px}
   .chat-input{padding:8px}
   /* 游戏房间紧凑适配 */
-  .groom{padding:54px 10px 32px;gap:8px}
-  .groom-grid{gap:8px;grid-template-columns:minmax(180px,1fr) minmax(0,1.5fr) minmax(280px,1fr);
-    grid-template-rows:minmax(0,1.6fr) minmax(0,1fr)}
   .gt-title{font-size:14px}
   .slot{padding:6px 8px}
   .swatch{width:19px;height:19px}
@@ -1391,10 +1402,7 @@ input.set-text{width:210px;cursor:text}
   .groom-actions{padding:6px 10px}
   .groom-actions .mb-btn{max-width:190px;padding:7px 14px;font-size:12px}
   /* 设置中心紧凑适配 */
-  .settings{padding:60px 14px 44px;gap:8px}
-  .settings-grid{grid-template-columns:180px minmax(0,1fr);gap:8px}
   .settings-top{padding:8px 12px}
-  .set-nav{padding:6px}
   .set-nav-item{padding:7px 8px}
   .set-name{font-size:13px}
   input.set-range{width:140px}
@@ -1426,8 +1434,10 @@ input.set-text{width:210px;cursor:text}
 @media(prefers-reduced-motion:reduce){.splash-bar-fill{animation:none}}
 
 @media(max-width:920px){
-  .stage{flex-direction:column;justify-content:center;padding:80px 6vw 80px}
-  .left{max-width:100%}.panel{width:100%}.viewport{max-height:42vh}
-  .hud,.foot{padding-left:18px;padding-right:18px}
+  /* 窄屏：覆盖令牌（主菜单纵向堆叠） */
+  :root{--lay-stage-pad:80px 6vw;--lay-left-maxw:100%;--lay-panel-w:100%;
+    --lay-hud-padx:18px;--lay-foot-padx:18px}
+  .stage{flex-direction:column;justify-content:center}
+  .viewport{max-height:42vh}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}}
