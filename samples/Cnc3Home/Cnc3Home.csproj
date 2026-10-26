@@ -29,6 +29,7 @@
     <Content Include="plugin.ini" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="plugin.css" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="cnc3-home.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
