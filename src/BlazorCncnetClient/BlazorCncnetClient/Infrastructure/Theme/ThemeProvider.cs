@@ -24,8 +24,8 @@ namespace BlazorCncnetClient.Infrastructure.Theme;
 /// </summary>
 public sealed class ThemeProvider : IThemeProvider
 {
-    private static readonly ThemeInfo Menu = new("menu", "主菜单", "幽能星港 · 青单色 HUD");
-    private static readonly ThemeInfo Inner = new("inner", "内页", "幽能星港 · 蓝色指挥台");
+    private static readonly ThemeInfo Menu = new("menu", "主菜单", "青单色 HUD");
+    private static readonly ThemeInfo Inner = new("inner", "内页", "蓝色指挥台");
     private static readonly ThemeInfo Ra = new("ra", "红警", "经典 Red Alert · 指挥作战");
 
     private readonly IJSRuntime _js;

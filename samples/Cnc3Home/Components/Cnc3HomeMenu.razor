@@ -31,7 +31,7 @@
             <span class="c3-brand-hex" aria-hidden="true"></span>
             <div class="c3-brand-txt">
                 <strong>CNC<span>NET</span></strong>
-                <small>COMMAND INTERFACE · 幽能星港</small>
+                <small>COMMAND INTERFACE</small>
             </div>
         </div>
     </header>
@@ -52,6 +52,10 @@
             <button type="button"
                     class="c3-btn @(ReferenceEquals(entry, _active) ? "active" : "") @(entry.Children is { Length: > 0 } ? "has-sub" : "")"
                     style="--i:@i"
+                    aria-haspopup="@(entry.Children is { Length: > 0 } ? "true" : null)"
+                    aria-expanded="@(ReferenceEquals(entry, _active) ? "true" : null)"
+                    @onmouseenter="() => OnEntryHover(entry)"
+                    @onmouseleave="ScheduleClose"
                     @onclick="() => OnEntryClickAsync(entry)">
                 <span class="c3-btn-en">@entry.En</span>
                 <span class="c3-btn-cn">@entry.Cn</span>
@@ -62,7 +66,10 @@
 
     @if (ActiveChildren.Length > 0)
     {
-        <div class="c3-sub" style="--n:@ActiveChildren.Length;--row:@ActiveIndex">
+        <div class="c3-sub"
+             style="--n:@ActiveChildren.Length;--row:@ActiveIndex"
+             @onmouseenter="CancelClose"
+             @onmouseleave="ScheduleClose">
             <svg class="c3-sub-arc" viewBox="0 0 120 420" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M 6 16 C 100 92, 100 328, 6 404" />
                 <path d="M 44 10 C 122 100, 122 320, 44 410" />
@@ -94,7 +101,8 @@
     private sealed record Entry(string Key, string En, string Cn, string? Action = null, Entry[]? Children = null);
 
     /// <summary>
-    /// 菜单结构：一级项对应客户端实际路由；带 Children 的项点击后展开右侧二级列。
+    /// 菜单结构：一级项对应客户端实际路由；带 Children 的项在鼠标悬浮时展开右侧二级列
+    /// （点击/键盘仍可切换，作为触屏与无鼠标场景的兜底）。
     /// 顺序参考 C&amp;C3 主菜单（战役 / 多人 / 遭遇战 / 统计 / 设置 / 附加 / 退出）。
     /// </summary>
     private static readonly Entry[] Entries =
@@ -128,6 +136,39 @@
 
     private Entry? _active;
     private bool _disposed;
+    private int _closeVersion;
+
+    /// <summary>鼠标移入一级项：带 Children 的项立即展开，叶子项收起二级列（衔接点击/触屏）。</summary>
+    private void OnEntryHover(Entry entry)
+    {
+        CancelClose();
+        _active = entry.Children is { Length: > 0 } ? entry : null;
+    }
+
+    /// <summary>延迟收起：给鼠标跨越一二级列之间空隙留出时间，进入二级列会取消。</summary>
+    private void ScheduleClose()
+    {
+        int version = ++_closeVersion;
+        _ = CloseAfterDelayAsync(version);
+    }
+
+    private void CancelClose() => _closeVersion++;
+
+    private async Task CloseAfterDelayAsync(int version)
+    {
+        await Task.Delay(220);
+        if (_disposed || version != _closeVersion)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            if (version != _closeVersion)
+                return;
+
+            _active = null;
+            StateHasChanged();
+        });
+    }
 
     private Entry[] ActiveChildren => _active?.Children ?? [];
 
