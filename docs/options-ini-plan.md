@@ -1,7 +1,7 @@
 # OptionsWindow / GameLobbyBase ini 驱动改造方案
 
 > 状态：**待评审**（方案文档，尚未改代码）。
-> 上位背景见 [spec.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/spec.md) 与 [mod-customization.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/mod-customization.md)。
+> 上位背景见 [spec.md](./spec.md) 与 [mod-customization.md](./mod-customization.md)。
 > 决策记录见本文 §6「已确认的决策」。
 
 ---

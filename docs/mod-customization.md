@@ -136,7 +136,7 @@ Style=plugin.css
 ```
 
 > 可覆盖的主题变量（design tokens）清单、**内页/红警主题选择器的特异性坑**、
-> 以及"一眼可验证"的最小示例，见 [plugin-dev.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/plugin-dev.md) §2.6；
+> 以及"一眼可验证"的最小示例，见 [plugin-dev.md](./plugin-dev.md) §2.6；
 > 可直接复制的完整样例见 [samples/ThemeDemo/](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/samples/ThemeDemo)（免编译）。
 
 两档用法：
@@ -144,7 +144,7 @@ Style=plugin.css
 | 档位 | 需要编译 | 能力 |
 |---|---|---|
 | **纯资源插件** | 否 | 只放 `plugin.ini` + `plugin.css`（可选 `plugin.js`）→ 换肤/加样式/加脚本 |
-| **程序集插件** | 是 | 追加槽位组件、提供新页面与主菜单项、注册自有服务、访问宿主服务 |
+| **程序集插件** | 是 | 追加槽位组件、替换主菜单主体（`page.mainmenu`）、提供新页面与主菜单项、注册自有服务、访问宿主服务 |
 
 规则与约束：
 
@@ -167,6 +167,7 @@ Style=plugin.css
 
 | 槽位 key | 类型 | 默认组件 | 说明 |
 |---|---|---|---|
+| `page.mainmenu` | 替换 | 内置主菜单 | 主菜单主体整块（含地球/斜切菜单等自定义首页）；仅插件 `ReplaceSlot` 可接管，不支持 `[Components]` |
 | `layout.footer` | 替换 | `FooterBar` | 全局底栏（SYSTEM STATUS / 分辨率等） |
 | `layout.topbar` | 追加 | — | 全局顶栏菜单区（插件按钮/指示器），经 `PluginSlot` 渲染 |
 | `menu.entry` | 追加 | — | 主菜单按钮列表之后、页脚之前（自定义渲染的菜单入口） |
@@ -175,6 +176,10 @@ Style=plugin.css
 
 - **替换型**（`layout.footer`）：宿主用 `<ReplaceableComponent Key="…"/>` 渲染，`Resolve` 只取一个类型，
   来源优先级 = `[Components]` ini → 插件 `ReplaceSlot` → 内置默认。
+- **替换型 · 仅插件**（`page.mainmenu`）：宿主 `MainMenu` 用 `Plugins.TryGetReplacement` 解析，
+  同一 key 后加载的插件胜出；被替换的只是页面主体，自动连接、ESC、更新检查、隐私弹窗仍由宿主执行。
+  整页接管想隐藏全局顶栏/底栏时，用 `body:has(.your-root) .hud, body:has(.your-root) .foot{display:none}`，
+  不要直接改宿主样式文件。示例见 [samples/Cnc3Home](../samples/Cnc3Home)。
 - **追加型**（其余）：宿主用 `<PluginSlot Key="…"/>` 渲染，
   按插件加载顺序渲染**全部** `ContributeSlot` 贡献（无贡献时输出为空，不影响布局）。
   槽位容器 `.plugin-slot` 为 `display:contents`，插件组件根元素直接参与父容器布局。

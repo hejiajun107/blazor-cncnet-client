@@ -22,7 +22,7 @@
 | 前端注入 | `app.js` 已有**运行时注入 `<link>`** 的实现（外部主题用） | [app.js L26-L51](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/wwwroot/js/app.js#L26-L51) |
 | 内容伺服 | `GameContentServer` 进程内 HTTP 伺服游戏根目录相对路径（css/png/svg/视频），**MIME 缺 .js/.woff2/.json** | [GameContentServer.cs L268-L284](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Infrastructure/GameContentServer.cs#L268-L284) |
 
-仓库已有相关文档 [mod-customization.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/mod-customization.md)（F1 主题 / F2 槽位 / F3 UI 配置），其中 L82-83 明确写着：
+仓库已有相关文档 [mod-customization.md](./mod-customization.md)（F1 主题 / F2 槽位 / F3 UI 配置），其中 L82-83 明确写着：
 > 「目前组件须位于主程序集。追加组件（RCL/附加程序集）为规划中的扩展路径——待 `ReplaceableComponentService`
 > 增加外部程序集扫描后即可实现"整组件由 MOD 提供"。」
 

@@ -4,8 +4,8 @@
 > 新增独立页面、追加主菜单项，并可访问客户端的 CnCNet / 游戏服务。
 >
 > 面向读者：插件作者。面向使用者的配置说明见
-> [mod-customization.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/mod-customization.md)；
-> 实施细节见 [plugin-plan.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/plugin-plan.md)。
+> [mod-customization.md](./mod-customization.md)；
+> 实施细节见 [plugin-plan.md](./plugin-plan.md)。
 
 ---
 

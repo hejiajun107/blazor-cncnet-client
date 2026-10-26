@@ -1,6 +1,6 @@
 # 插件机制 · 实施计划（阶段 0 + 阶段 1）
 
-> 依据调研 [plugin-mechanism.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/plugin-mechanism.md)，并结合已确认的决策：
+> 依据调研 [plugin-mechanism.md](./plugin-mechanism.md)，并结合已确认的决策：
 > **① 允许新增独立页面  ② 允许访问 CnCNet/游戏服务  ③ 不要求热插拔  ④ 本地目录即信任**
 > 本阶段交付阶段 0 + 阶段 1；文档与示例插件为阶段 1 收尾项。
 >
@@ -17,7 +17,7 @@
 | 0-A MIME | [GameContentServer.cs](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Infrastructure/GameContentServer.cs)（`.js/.mjs/.json/.woff2/.woff/.ttf`） |
 | 0-B 注入 JS | [app.js](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/wwwroot/js/app.js) `cncnet.injectCss(key,url)` / `cncnet.injectJs(url)`（幂等 + onerror 告警） |
 | 0-C/0.4 装配 | `Infrastructure/Plugins/`：[PluginCatalog.cs](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Infrastructure/Plugins/PluginCatalog.cs)、[LoadedPlugin.cs](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Infrastructure/Plugins/LoadedPlugin.cs)、[PluginContext.cs](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Infrastructure/Plugins/PluginContext.cs)、[PluginAssetInjector.cs](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Infrastructure/Plugins/PluginAssetInjector.cs)；MainLayout 首帧挂载 |
-| 0-D 文档 | [mod-customization.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/mod-customization.md) 增 F4 节与槽位表 |
+| 0-D 文档 | [mod-customization.md](./mod-customization.md) 增 F4 节与槽位表 |
 | 1-A 契约项目 | `src/BlazorCncnetClient/CnCNetClient.Plugin.Abstractions/`（`PluginApi.cs` + `ICncNetPlugin.cs`），已入 `.sln`/`.slnx`，主项目 ProjectReference |
 | 1-B 加载器 | `PluginCatalog.Discover/RegisterServices/InitializeAll` + `AppDomain.AssemblyResolve` 兜底（仅解析插件私有依赖） |
 | 1-C Program 接入 | [Program.cs](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Program.cs)：Discover（内容伺服启动之后）→ RegisterServices（Build 前）→ InitializeAll（Build 后） |
@@ -25,7 +25,7 @@
 | 1-E 路由扩展 | [App.razor](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Components/App.razor) `AdditionalAssemblies`；冲突检测在 `PluginCatalog.DetectRouteConflicts`（**只告警**：Blazor 路由表由 Router 统一构建，摘除单条模板不可行） |
 | 1-F 菜单合并 | [MainMenu.razor](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/src/BlazorCncnetClient/BlazorCncnetClient/Components/Pages/MainMenu.razor) `BuildMenu()`（内置 → 插件项按 Order → 「退出」）+ `OnMenuClick` 顶部路由分流 |
 | 1-G 首批槽位 | `TopBar.razor`（`layout.topbar`，菜单区）、`Settings.razor`（`page.settings.aside`，左侧栏）、`MainMenu.razor`（`menu.entry`，按钮列表之后）、`Lobby.razor`（`page.lobby.aside`，`.lobby-grid` 内） |
-| 1-H 示例 + 文档 | `samples/HelloPlugin/`（RCL：入口 + 4 槽位组件 + 1 页面 + `plugin.css` + `plugin.ini`）；[plugin-dev.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/plugin-dev.md)；[acceptance-f4.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/acceptance-f4.md)（验收单） |
+| 1-H 示例 + 文档 | `samples/HelloPlugin/`（RCL：入口 + 4 槽位组件 + 1 页面 + `plugin.css` + `plugin.ini`）；[plugin-dev.md](./plugin-dev.md)；[acceptance-f4.md](./acceptance-f4.md)（验收单） |
 | 1-I 打包 SDK | `tools/publish.ps1 -PackPluginSdk`（`dotnet pack` → `<OutputDir>/nuget`，位于 `publish/` 之外不影响既有校验） |
 
 **与计划的差异（均为收敛性调整）**：
@@ -45,7 +45,7 @@
 ## 验收结论与顺带修复（2026-10-15）
 
 阶段 0 + 阶段 1 **T0–T8 全部验收通过**（2026-10-15 运行时 T0–T5；2026-10-16 T6 路由冲突 / T7 发布链路 / T8 SDK 编译链路），
-验收单见 [acceptance-f4.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/acceptance-f4.md)
+验收单见 [acceptance-f4.md](./acceptance-f4.md)
 （含日志原文证据与人工确认的 6 项界面表现）。
 
 验收过程发现并修复 3 个问题（2 个为真 bug）：
@@ -181,7 +181,7 @@ my-plugin=Plugins/my-plugin      ; key=插件 id，值=游戏根目录相对目�
 ```
 
 ### 0.5 文档
-更新 [mod-customization.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/mod-customization.md)：新增 `[Plugins]` 与"纯资源插件"章节。
+更新 [mod-customization.md](./mod-customization.md)：新增 `[Plugins]` 与"纯资源插件"章节。
 
 **阶段 0 交付物**：文件级换肤/加样式可用；无 DLL 加载，风险可控。
 

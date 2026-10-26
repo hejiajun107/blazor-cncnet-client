@@ -1,8 +1,8 @@
 # 验收单 · F4 插件机制（阶段 0 + 阶段 1）
 
-> 实施说明见 [plugin-plan.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/plugin-plan.md)；
-> 使用者配置见 [mod-customization.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/mod-customization.md)；
-> 插件作者指南见 [plugin-dev.md](file:///f:/work/PhotinoCLient/blazor-cncnet-client/docs/plugin-dev.md)。
+> 实施说明见 [plugin-plan.md](./plugin-plan.md)；
+> 使用者配置见 [mod-customization.md](./mod-customization.md)；
+> 插件作者指南见 [plugin-dev.md](./plugin-dev.md)。
 >
 > 状态：**已执行（2026-10-15）**。编译 0 错误；运行时验收见下方「验收结果」。
 > 硬约束：任何插件异常都**不得阻断客户端启动**（T0/T5/T6/T7/T8 是这条约束的实证）。
