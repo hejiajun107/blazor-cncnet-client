@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>{{ROOT_NAMESPACE}}</RootNamespace>
+    <AssemblyName>{{ASSEMBLY_NAME}}</AssemblyName>
+    <!-- 插件是类库，由客户端 Assembly.LoadFrom 载入 -->
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 契约引用（二选一）。关键：绝不能复制进插件输出目录。 -->
+    <!-- 方式 A：nupkg（dotnet add package 后自动生成下面这行） -->
+    <PackageReference Include="CnCNetClient.Plugin.Abstractions" Version="1.0.0"
+                      PrivateAssets="all" ExcludeAssets="runtime" />
+
+    <!-- 方式 B：仓库内联调（去掉方式 A 后启用）
+    <ProjectReference Include="..\..\src\BlazorCncnetClient\CnCNetClient.Plugin.Abstractions\CnCNetClient.Plugin.Abstractions.csproj"
+                      Private="false" />
+    -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.ini" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="plugin.css" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

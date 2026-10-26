@@ -1,10 +1,11 @@
 # 插件样例集
 
-两个样例，代表插件的两档能力。**一类必须编译，一类不需要** —— 别混淆。
+三个样例，代表插件的三档能力。**程序集插件必须编译，纯资源插件不需要** —— 别混淆。
 
 | 目录 | 类型 | 需要编译 | 产物 |
 |---|---|---|---|
-| [`HelloPlugin/`](HelloPlugin) | **程序集插件** | **是**（`dotnet build`） | `HelloPlugin.dll`（`plugin.ini` / `plugin.css` 随构建输出） |
+| [`HelloPlugin/`](HelloPlugin) | **程序集插件**（追加槽位） | **是**（`dotnet build`） | `HelloPlugin.dll`（`plugin.ini` / `plugin.css` 随构建输出） |
+| [`Cnc3Home/`](Cnc3Home) | **程序集插件**（替换主菜单 + three.js 地球） | **是**（`dotnet build`） | `Cnc3Home.dll` + `plugin.ini` / `plugin.css` / `cnc3-home.js` / `assets/` |
 | [`ThemeDemo/`](ThemeDemo) | **纯资源插件** | **否** | 无（只有 `plugin.ini` + `plugin.css` 两个文本文件） |
 
 ## 通用部署方式
@@ -34,6 +35,28 @@ dotnet build samples\HelloPlugin\HelloPlugin.csproj -c Debug
 演示内容：4 个**追加槽位**（顶栏 `layout.topbar` / 主菜单 `menu.entry` / 设置侧栏
 `page.settings.aside` / 大厅 `page.lobby.aside`）+ 1 个**自定义页面路由** + 1 个**主菜单项**
 + 1 个**自有 DI 服务** + 插件自带 CSS。
+
+## 样例 1.5 · Cnc3Home（替换主菜单 + 3D 地球）
+
+```powershell
+dotnet build samples\Cnc3Home\Cnc3Home.csproj -c Debug
+```
+
+构建后把 `samples\Cnc3Home\bin\Debug\net10.0\` **整个目录**复制到 `Plugins\cnc3-home\`
+（DLL / `plugin.ini` / CSS / JS / `assets\` 贴图缺一不可），并在 `ClientDefinitions.ini` 追加
+`cnc3-home=Plugins/cnc3-home`。
+
+演示内容：通过 `page.mainmenu` 槽位**替换整个主菜单主体**，左侧为 three.js 昼夜地球
+（日照 / 夜景灯光 / 云层 / 大气辉光 / 轨道环），右侧为 C&C3 式斜切指令列与二级飞出菜单；
+菜单动作全部复用宿主服务（登录弹窗 / 设置 / 附加功能 / 退出确认）。
+WebGL 不可用或 `prefers-reduced-motion` 时自动降级为静态星空画面，菜单不受影响。
+
+> three.js 采用 r149 UMD 版本（非 ESM，MIT 许可，文件头保留 SPDX 声明），贴图走插件本地
+> `assets\textures\`；宿主 `GameContentServer` 已返回 `Access-Control-Allow-Origin: *`，
+> WebGL 纹理读取不会触发跨源限制。
+>
+> 第三方素材：`assets\textures\earth_*.{jpg,png}` 来自 three.js 官方示例（NASA 公有领域地球影像），
+> `assets\bg-city.jpg` 为 AI 生成背景，`assets\three.min.js` 为 MIT 许可。二次分发时请保留以上声明。
 
 ## 样例 2 · ThemeDemo（纯资源插件）
 

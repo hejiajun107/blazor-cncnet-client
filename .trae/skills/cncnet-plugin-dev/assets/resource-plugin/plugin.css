@@ -1,0 +1,22 @@
+/* 三档主题必须一起覆盖，否则设置/大厅等内页不会生效。 */
+:root,
+:root[data-theme="inner"],
+:root[data-theme="ra"]{
+  --cyan:#ffd23f;
+  --cyan-soft:#ffe9a8;
+  --line:rgba(255,210,63,.35);
+}
+
+/* 肉眼可见的生效标记：确认无误后删除。 */
+body::after{
+  content:"{{PLUGIN_ID}} ACTIVE";
+  position:fixed;
+  top:8px;
+  right:8px;
+  z-index:99999;
+  padding:6px 10px;
+  background:#ffd23f;
+  color:#201a06;
+  font:700 12px/1 monospace;
+  border-radius:4px;
+}

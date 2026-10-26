@@ -217,10 +217,13 @@ public sealed class GameContentServer : IDisposable
 
     private static void WriteHead(NetworkStream stream, int status, string statusText, long contentLength, string contentType, string extraHeader = "")
     {
+        // 允许 WebView 页面跨源读取游戏目录资源（three.js 贴图 / ES 模块 / fetch）。
+        // 伺服仅绑定回环地址且只读，无凭据，可安全放开；否则 WebGL 纹理与 module import 会被 CORS 拦截。
         string resp = "HTTP/1.1 " + status + " " + statusText + "\r\n"
             + "Content-Type: " + contentType + "\r\n"
             + "Content-Length: " + contentLength + "\r\n"
             + "Accept-Ranges: bytes\r\n"
+            + "Access-Control-Allow-Origin: *\r\n"
             + "Connection: close\r\n"
             + extraHeader
             + "\r\n";

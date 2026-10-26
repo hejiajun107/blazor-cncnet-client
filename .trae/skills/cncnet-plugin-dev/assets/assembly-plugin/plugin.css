@@ -1,0 +1,5 @@
+/* 插件样式：宿主按插件目录伺服，勿使用 _content/ 路径。 */
+.plugin-badge{
+  color:var(--cyan-soft);
+  letter-spacing:1px;
+}

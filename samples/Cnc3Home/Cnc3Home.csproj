@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Cnc3Home</RootNamespace>
+    <AssemblyName>Cnc3Home</AssemblyName>
+    <!-- 插件是类库（非可执行），运行时由客户端 Assembly.LoadFrom 载入 -->
+    <OutputType>Library</OutputType>
+    <!-- 只产出插件自身程序集 + 自带资源：宿主 DLL/依赖全部由宿主进程提供，禁止复制到插件目录 -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- 插件不通过 static web assets 分发资源（资源由 plugin.ini 的 Style/Script 与 Content 复制），
+         关闭后可避免与宿主 Web 项目引用产生 _framework 资产冲突 -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+    <ScopedCssEnabled>false</ScopedCssEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 插件契约：类型身份必须与宿主同源，故 Private=false 不复制契约 DLL。
+         宿主项目引用仅用于 @inject 宿主服务（LoginService / ExtrasService / ConnectionMonitor 等），
+         运行时同样由默认 ALC 解析到宿主已加载的同一份程序集。 -->
+    <ProjectReference Include="..\..\src\BlazorCncnetClient\BlazorCncnetClient\BlazorCncnetClient.csproj" Private="false" />
+    <ProjectReference Include="..\..\src\BlazorCncnetClient\CnCNetClient.Plugin.Abstractions\CnCNetClient.Plugin.Abstractions.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 自描述 + 样式/脚本/贴图随生成输出，便于直接取 bin 目录内产物部署到 Plugins/cnc3-home/ -->
+    <Content Include="plugin.ini" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="plugin.css" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="cnc3-home.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- 编译期需要宿主程序集来解析 @inject 服务，但插件目录只允许放插件自身产物。
+       ProjectReference 的 Private=false 挡不住宿主传递依赖被复制，故构建后清理：
+       保留 Cnc3Home.dll / pdb 与 plugin.ini / css / js / assets，其余宿主侧程序集与 deps 全部移除。 -->
+  <Target Name="TrimHostAssembliesFromPluginOutput" AfterTargets="Build">
+    <ItemGroup>
+      <_PluginOutputJunk Include="$(OutDir)BlazorCncnetClient.*" />
+      <_PluginOutputJunk Include="$(OutDir)CnCNetClient.*" />
+      <_PluginOutputJunk Include="$(OutDir)Cnc3Home.deps.json" />
+      <_PluginOutputJunk Include="$(OutDir)*\CnCNetClient.*" />
+    </ItemGroup>
+    <Delete Files="@(_PluginOutputJunk)" />
+    <RemoveDir Directories="$(OutDir)zh-CN" Condition="Exists('$(OutDir)zh-CN')" />
+  </Target>
+
+</Project>

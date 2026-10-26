@@ -1,0 +1,304 @@
+@page "/plugin/cnc3-home/menu"
+@implements IAsyncDisposable
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject IServiceProvider Services
+@inject LoginService Login
+@inject MessageBoxService MessageBox
+@inject ExtrasService Extras
+@inject AppExitNotifier ExitNotifier
+@inject ConnectionMonitor Mon
+@inject UpdateService UpdateSvc
+
+@* CNC3 风格主页：由宿主 MainMenu 的 page.mainmenu 槽位渲染，也可经
+   /plugin/cnc3-home/menu 独立访问。宿主的自动连接/ESC/更新检查仍在 MainMenu 中执行。 *@
+<div class="c3-home">
+    <div class="c3-bg" aria-hidden="true"></div>
+    <div class="c3-hex c3-hex-tl" aria-hidden="true"></div>
+    <div class="c3-hex c3-hex-br" aria-hidden="true"></div>
+    <div class="c3-lines" aria-hidden="true"></div>
+    <div class="c3-scan" aria-hidden="true"></div>
+    <div class="c3-vig" aria-hidden="true"></div>
+
+    <header class="c3-top">
+        <div class="c3-sys">
+            <span class="c3-rec"></span>
+            <span>GLOBAL NETWORK // SECTOR-07</span>
+            <em>@Mon.StateCn</em>
+        </div>
+
+        <div class="c3-brand">
+            <span class="c3-brand-hex" aria-hidden="true"></span>
+            <div class="c3-brand-txt">
+                <strong>CNC<span>NET</span></strong>
+                <small>COMMAND INTERFACE · 幽能星港</small>
+            </div>
+        </div>
+    </header>
+
+    <section class="c3-globe" aria-hidden="true">
+        <canvas id="c3-globe-canvas"></canvas>
+        <span class="c3-globe-ring"></span>
+        <div class="c3-globe-hud">
+            <span>EARTH // ORBITAL VIEW</span>
+            <span class="c3-globe-hud-r">ROTATION 0.05 RAD/S</span>
+        </div>
+    </section>
+
+    <nav class="c3-nav" aria-label="主菜单">
+        @for (int i = 0; i < Entries.Length; i++)
+        {
+            var entry = Entries[i];
+            <button type="button"
+                    class="c3-btn @(ReferenceEquals(entry, _active) ? "active" : "") @(entry.Children is { Length: > 0 } ? "has-sub" : "")"
+                    style="--i:@i"
+                    @onclick="() => OnEntryClickAsync(entry)">
+                <span class="c3-btn-en">@entry.En</span>
+                <span class="c3-btn-cn">@entry.Cn</span>
+                <span class="c3-btn-go" aria-hidden="true">›</span>
+            </button>
+        }
+    </nav>
+
+    @if (ActiveChildren.Length > 0)
+    {
+        <div class="c3-sub" style="--n:@ActiveChildren.Length;--row:@ActiveIndex">
+            <svg class="c3-sub-arc" viewBox="0 0 120 420" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M 6 16 C 100 92, 100 328, 6 404" />
+                <path d="M 44 10 C 122 100, 122 320, 44 410" />
+            </svg>
+            @foreach (var child in ActiveChildren)
+            {
+                <button type="button" class="c3-sub-btn" @onclick="() => OnEntryClickAsync(child)">
+                    <span class="c3-sub-en">@child.En</span>
+                    <span class="c3-sub-cn">@child.Cn</span>
+                </button>
+            }
+        </div>
+    }
+
+    <footer class="c3-strip">
+        <div class="c3-ticks" aria-hidden="true"></div>
+        <div class="c3-strip-info">
+            <button type="button" class="c3-link" @onclick="OnLinkClickAsync">
+                LINK <b>@(Mon.IsConnected ? "ONLINE" : "LOGIN")</b>
+            </button>
+            <span>CMD <b>@PlayerName</b></span>
+            <span>BUILD <b>v@(UpdateSvc.GameVersion)</b></span>
+            <span class="c3-strip-right">CNC3-STYLE HOME · PLUGIN</span>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private sealed record Entry(string Key, string En, string Cn, string? Action = null, Entry[]? Children = null);
+
+    /// <summary>
+    /// 菜单结构：一级项对应客户端实际路由；带 Children 的项点击后展开右侧二级列。
+    /// 顺序参考 C&amp;C3 主菜单（战役 / 多人 / 遭遇战 / 统计 / 设置 / 附加 / 退出）。
+    /// </summary>
+    private static readonly Entry[] Entries =
+    [
+        new("campaign", "CAMPAIGN", "战役", Children:
+        [
+            new("campaign.new", "MISSION SELECT", "战役任务", "campaign"),
+            new("campaign.load", "LOAD GAME", "载入存档", "load"),
+        ]),
+        new("multiplayer", "MULTIPLAYER", "多人游戏", Children:
+        [
+            new("multiplayer.online", "ONLINE LOBBY", "在线大厅", "multiplayer"),
+            new("multiplayer.lan", "LAN LOBBY", "局域网", "lan"),
+        ]),
+        new("skirmish", "SKIRMISH", "遭遇战", "skirmish"),
+        new("stats", "STATISTICS", "统计", "stats"),
+        new("options", "OPTIONS", "设置", Children:
+        [
+            new("options.client", "CLIENT SETTINGS", "客户端设置", "settings"),
+            new("options.update", "UPDATES", "检查更新", "settings.update"),
+            new("options.privacy", "PRIVACY", "隐私设置", "settings.privacy"),
+        ]),
+        new("extras", "EXTRAS", "附加功能", Children:
+        [
+            new("extras.mapeditor", "MAP EDITOR", "地图编辑器", "mapeditor"),
+            new("extras.credits", "CREDITS", "鸣谢", "credits"),
+            new("extras.about", "ABOUT", "关于", "extras"),
+        ]),
+        new("quit", "QUIT", "退出", "exit"),
+    ];
+
+    private Entry? _active;
+    private bool _disposed;
+
+    private Entry[] ActiveChildren => _active?.Children ?? [];
+
+    /// <summary>二级列与当前一级项对齐：以行号换算纵向偏移。</summary>
+    private int ActiveIndex => _active is null ? 0 : Array.IndexOf(Entries, _active);
+
+    private string PlayerName
+    {
+        get
+        {
+            string name = ProgramConstants.PLAYERNAME?.Trim() ?? string.Empty;
+            return name.Length == 0 || string.Equals(name, "No name", StringComparison.OrdinalIgnoreCase) ? "NO NAME" : name;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Mon.StateChanged += OnMonStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        // 插件脚本由宿主以 defer 方式注入，可能与首帧渲染存在先后竞争：
+        // 短暂轮询等待 window.cnc3Home 就绪；始终不可用时保留 CSS 降级地球，菜单照常可用。
+        for (int attempt = 0; attempt < 25 && !_disposed; attempt++)
+        {
+            try
+            {
+                if (await JS.InvokeAsync<bool>("cnc3Home.mount", "c3-globe-canvas"))
+                    return;
+
+                // 脚本已就绪但场景无法建立（WebGL/贴图不可用）→ 保留 CSS 降级画面
+                break;
+            }
+            catch (JSException)
+            {
+                await Task.Delay(120);
+            }
+            catch
+            {
+                return;
+            }
+        }
+    }
+
+    private void OnMonStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task OnEntryClickAsync(Entry entry)
+    {
+        if (entry.Children is { Length: > 0 })
+        {
+            _active = ReferenceEquals(_active, entry) ? null : entry;
+            return;
+        }
+
+        await PerformAsync(entry.Action);
+    }
+
+    private async Task PerformAsync(string? action)
+    {
+        switch (action)
+        {
+            case "campaign":
+                Nav.NavigateTo("/campaign");
+                break;
+            case "load":
+                Nav.NavigateTo("/load");
+                break;
+            case "skirmish":
+                Nav.NavigateTo("/skirmish");
+                break;
+            case "lan":
+                Nav.NavigateTo("/lan/lobby");
+                break;
+            case "stats":
+                Nav.NavigateTo("/stats");
+                break;
+            case "settings":
+                Nav.NavigateTo("/settings");
+                break;
+            case "settings.update":
+                Nav.NavigateTo("/settings?tab=update");
+                break;
+            case "settings.privacy":
+                Nav.NavigateTo("/settings?tab=privacy");
+                break;
+            case "multiplayer":
+                await OpenMultiplayerAsync();
+                break;
+            case "extras":
+                await Extras.ShowAsync();
+                break;
+            case "mapeditor":
+                if (Extras.LaunchMapEditor() is { } mapError)
+                    await ToastAsync($"地图编辑器启动失败：{mapError}", "err");
+                break;
+            case "credits":
+                if (Extras.OpenUrl(ClientConfiguration.Instance.CreditsURL) is { } creditsError)
+                    await ToastAsync($"无法打开鸣谢：{creditsError}", "err");
+                break;
+            case "exit":
+                await ConfirmExitAsync();
+                break;
+        }
+    }
+
+    /// <summary>多人游戏：已连接直接进大厅，否则走宿主登录浮窗（与内置主菜单一致）。</summary>
+    private async Task OpenMultiplayerAsync()
+    {
+        var manager = (CnCNetManager?)Services.GetService(typeof(CnCNetManager));
+        if (manager?.IsConnected == true)
+        {
+            Nav.NavigateTo("/online/lobby");
+            return;
+        }
+
+        var result = await Login.ShowAsync();
+        if (result == LoginResult.Connected)
+            Nav.NavigateTo("/online/lobby");
+    }
+
+    /// <summary>底栏 LINK：未连接打开登录浮窗，已连接进入在线大厅。</summary>
+    private async Task OnLinkClickAsync()
+    {
+        if (Mon.IsConnected)
+        {
+            Nav.NavigateTo("/online/lobby");
+            return;
+        }
+
+        var result = await Login.ShowAsync();
+        if (result == LoginResult.Connected)
+            Nav.NavigateTo("/online/lobby");
+    }
+
+    private async Task ConfirmExitAsync()
+    {
+        if (!await MessageBox.ShowAsync("退出客户端", "确定要退出 CNCNet CLIENT 吗？",
+                MessageBoxButtons.YesNo, MessageBoxKind.Confirm))
+            return;
+
+        ExitNotifier.NotifyExiting();
+        Environment.Exit(0);
+    }
+
+    private async Task ToastAsync(string text, string kind)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("cncnet.toast", text, kind);
+        }
+        catch
+        {
+            // Toast 不可用不影响菜单
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        Mon.StateChanged -= OnMonStateChanged;
+        try
+        {
+            await JS.InvokeVoidAsync("cnc3Home.dispose");
+        }
+        catch
+        {
+            // 页面卸载阶段 WebView 可能已在销毁，忽略
+        }
+    }
+}

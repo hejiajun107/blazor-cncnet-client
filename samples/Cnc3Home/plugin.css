@@ -1,0 +1,731 @@
+/* ==========================================================================
+   CNC3 风格主页（插件 cnc3-home）
+   整体为 C&C3 式指挥界面：左侧轨道地球 + 右侧斜切指令列 + 二级飞出列 + 底部刻度带。
+   仅使用本地资源，无 CDN；动画一律遵循 prefers-reduced-motion。
+   ========================================================================== */
+
+/* 接管主菜单时隐藏宿主顶栏/底栏（:has 由 WebView2 Chromium 支持） */
+body:has(.c3-home) .hud,
+body:has(.c3-home) .hud-peek,
+body:has(.c3-home) .foot {
+    display: none !important;
+}
+
+.c3-home {
+    --c3-cyan: #21e6ff;
+    --c3-cyan-dim: #7af3ff;
+    --c3-lime: #b6ff5c;
+    --c3-ink: #02090d;
+    --c3-top-h: 64px;
+    --c3-strip-h: 32px;
+    --c3-nav-left: clamp(620px, 53vw, 1080px);
+    --c3-nav-w: clamp(228px, 14vw, 292px);
+    --c3-btn-h: 46px;
+    --c3-gap: 10px;
+
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    color: #d8f6fb;
+    background: var(--c3-ink);
+    font-family: "Rajdhani", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    z-index: 30;
+    isolation: isolate;
+}
+
+/* 整页禁用文本选择，模拟全屏游戏界面 */
+.c3-home,
+.c3-home * {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ---------- 背景层 ---------- */
+
+.c3-bg {
+    position: absolute;
+    inset: 0;
+    background: #02090d url("assets/bg-city.jpg") right center / cover no-repeat;
+    z-index: 0;
+}
+
+.c3-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(96deg,
+            rgba(2, 9, 13, 0.99) 0%,
+            rgba(2, 9, 13, 0.93) 30%,
+            rgba(2, 9, 13, 0.58) 52%,
+            rgba(2, 9, 13, 0.14) 76%,
+            rgba(2, 9, 13, 0.34) 100%),
+        linear-gradient(180deg,
+            rgba(2, 9, 13, 0.88) 0%,
+            rgba(2, 9, 13, 0.08) 24%,
+            rgba(2, 9, 13, 0.06) 64%,
+            rgba(2, 9, 13, 0.82) 100%);
+}
+
+/* 六边形网格装饰（左上 / 右下） */
+.c3-hex {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='64'><path d='M28 1 L55 17 L55 47 L28 63 L1 47 L1 17 Z' fill='none' stroke='%2321e6ff' stroke-opacity='0.30' stroke-width='1'/></svg>");
+    background-size: 56px 64px;
+    opacity: 0.35;
+}
+
+.c3-hex-tl {
+    top: -60px;
+    left: -60px;
+    width: 420px;
+    height: 340px;
+    -webkit-mask-image: radial-gradient(circle at 22% 24%, #000 0%, rgba(0, 0, 0, 0.55) 46%, transparent 72%);
+    mask-image: radial-gradient(circle at 22% 24%, #000 0%, rgba(0, 0, 0, 0.55) 46%, transparent 72%);
+}
+
+.c3-hex-br {
+    right: -80px;
+    bottom: -70px;
+    width: 460px;
+    height: 360px;
+    -webkit-mask-image: radial-gradient(circle at 78% 80%, #000 0%, rgba(0, 0, 0, 0.5) 48%, transparent 74%);
+    mask-image: radial-gradient(circle at 78% 80%, #000 0%, rgba(0, 0, 0, 0.5) 48%, transparent 74%);
+}
+
+/* 斜向细线 */
+.c3-lines {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(114deg,
+            transparent 0 190px,
+            rgba(33, 230, 255, 0.10) 190px 191px,
+            transparent 191px 380px);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 35%, #000 72%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 35%, #000 72%, transparent 100%);
+    opacity: 0.55;
+}
+
+/* 扫描线 + 暗角 */
+.c3-scan {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(0deg,
+            rgba(0, 0, 0, 0.26) 0 1px,
+            transparent 1px 3px);
+    opacity: 0.32;
+}
+
+.c3-vig {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 30% 46%, transparent 24%, rgba(0, 0, 0, 0.34) 66%, rgba(0, 0, 0, 0.78) 100%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, transparent 12%, transparent 88%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+/* ---------- 顶栏 ---------- */
+
+.c3-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--c3-top-h);
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px 0 26px;
+    pointer-events: none;
+}
+
+.c3-top::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(33, 230, 255, 0.34) 18%,
+            rgba(33, 230, 255, 0.12) 55%,
+            rgba(33, 230, 255, 0.42) 88%,
+            transparent 100%);
+}
+
+.c3-sys {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "Orbitron", "Rajdhani", sans-serif;
+    font-size: 9.5px;
+    letter-spacing: 2.2px;
+    color: rgba(122, 243, 255, 0.55);
+    text-transform: uppercase;
+}
+
+.c3-sys em {
+    font-style: normal;
+    color: var(--c3-lime);
+    text-shadow: 0 0 8px rgba(182, 255, 92, 0.5);
+}
+
+.c3-rec {
+    width: 7px;
+    height: 7px;
+    background: var(--c3-lime);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    animation: c3-pulse 2.4s ease-in-out infinite;
+}
+
+.c3-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.c3-brand-hex {
+    width: 34px;
+    height: 38px;
+    background: linear-gradient(160deg, var(--c3-cyan), #0b7d92);
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    opacity: 0.9;
+    box-shadow: 0 0 22px rgba(33, 230, 255, 0.35);
+}
+
+.c3-brand-txt {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1;
+}
+
+.c3-brand-txt strong {
+    font-family: "Orbitron", "Rajdhani", sans-serif;
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: #eafdff;
+    text-shadow: 0 0 18px rgba(33, 230, 255, 0.55);
+}
+
+.c3-brand-txt strong span {
+    color: var(--c3-cyan);
+}
+
+.c3-brand-txt small {
+    margin-top: 5px;
+    font-size: 9px;
+    letter-spacing: 2.6px;
+    color: rgba(122, 243, 255, 0.5);
+    text-transform: uppercase;
+}
+
+/* ---------- 地球 ---------- */
+
+.c3-globe {
+    position: absolute;
+    top: -8vh;
+    left: -9vw;
+    width: 60vw;
+    height: 116vh;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.c3-globe canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.9s ease;
+}
+
+/* CSS 降级球：JS/WebGL 不可用或贴图未就绪时可见 */
+.c3-globe::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(86vh, 46vw);
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 64% 34%, rgba(96, 235, 255, 0.55) 0%, transparent 42%),
+        radial-gradient(circle at 58% 48%, #10505f 0%, #072a36 52%, #020d12 74%);
+    box-shadow: 0 0 70px rgba(33, 230, 255, 0.28), inset -26px 0 70px rgba(33, 230, 255, 0.22);
+    transition: opacity 0.6s ease;
+}
+
+.c3-globe.is-live::before {
+    opacity: 0;
+}
+
+.c3-globe.is-live canvas {
+    opacity: 1;
+}
+
+/* 轨道环 */
+.c3-globe-ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(92vh, 50vw);
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%) rotate(-18deg);
+    border: 1px solid rgba(33, 230, 255, 0.16);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 26px rgba(33, 230, 255, 0.02);
+}
+
+.c3-globe-ring::before {
+    content: "";
+    position: absolute;
+    inset: 5.5%;
+    border: 1px dashed rgba(33, 230, 255, 0.22);
+    border-radius: 50%;
+}
+
+.c3-globe-hud {
+    position: absolute;
+    left: 20%;
+    right: 14%;
+    bottom: 12%;
+    display: flex;
+    justify-content: space-between;
+    font-family: "Orbitron", "Rajdhani", sans-serif;
+    font-size: 8.5px;
+    letter-spacing: 2px;
+    color: rgba(122, 243, 255, 0.5);
+    text-transform: uppercase;
+    border-top: 1px solid rgba(33, 230, 255, 0.18);
+    padding-top: 8px;
+}
+
+.c3-globe-hud-r {
+    color: rgba(122, 243, 255, 0.3);
+}
+
+/* ---------- 一级菜单 ---------- */
+
+.c3-nav {
+    position: absolute;
+    left: var(--c3-nav-left);
+    top: calc(var(--c3-top-h) + 6vh);
+    width: var(--c3-nav-w);
+    z-index: 9;
+    display: flex;
+    flex-direction: column;
+    gap: var(--c3-gap);
+    padding-left: 14px;
+}
+
+/* 左侧刻度导轨 */
+.c3-nav::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -6px;
+    bottom: -6px;
+    width: 6px;
+    border-left: 1px solid rgba(33, 230, 255, 0.24);
+    background-image: repeating-linear-gradient(180deg,
+            rgba(33, 230, 255, 0.55) 0 1px,
+            transparent 1px 12px);
+    background-size: 6px 12px;
+    background-repeat: repeat-y;
+    opacity: 0.7;
+}
+
+.c3-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    height: var(--c3-btn-h);
+    padding: 0 30px 0 20px;
+    border: 0;
+    outline: none;
+    cursor: pointer;
+    text-align: left;
+    color: #d6f7ff;
+    background:
+        linear-gradient(90deg,
+            rgba(9, 52, 66, 0.94) 0%,
+            rgba(5, 31, 42, 0.82) 52%,
+            rgba(4, 20, 28, 0.62) 100%);
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+    transition: background 0.18s ease, color 0.18s ease, filter 0.18s ease;
+    animation: c3-row-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i) * 0.035s);
+}
+
+.c3-btn::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--c3-cyan);
+    opacity: 0.42;
+}
+
+.c3-btn::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 26px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(33, 230, 255, 0.55));
+    transform: translateY(-50%);
+}
+
+.c3-btn:hover {
+    background:
+        linear-gradient(90deg,
+            rgba(20, 108, 130, 0.96) 0%,
+            rgba(8, 58, 74, 0.88) 55%,
+            rgba(5, 28, 38, 0.7) 100%);
+    color: #ffffff;
+    filter: brightness(1.08);
+}
+
+.c3-btn:hover::before,
+.c3-btn.active::before {
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(33, 230, 255, 0.8);
+}
+
+.c3-btn.active {
+    background:
+        linear-gradient(90deg,
+            rgba(33, 230, 255, 0.34) 0%,
+            rgba(12, 90, 112, 0.9) 46%,
+            rgba(6, 34, 46, 0.72) 100%);
+    color: #ffffff;
+}
+
+.c3-btn.active .c3-btn-en {
+    text-shadow: 0 0 14px rgba(33, 230, 255, 0.75);
+}
+
+.c3-btn-en {
+    font-family: "Orbitron", "Rajdhani", sans-serif;
+    font-size: clamp(13px, 1.05vw, 16px);
+    font-weight: 600;
+    letter-spacing: 2.4px;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.c3-btn-cn {
+    margin-top: 3px;
+    font-size: 11.5px;
+    letter-spacing: 1.8px;
+    color: rgba(122, 243, 255, 0.72);
+}
+
+.c3-btn.active .c3-btn-cn {
+    color: rgba(210, 250, 255, 0.9);
+}
+
+.c3-btn-go {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    line-height: 1;
+    color: rgba(33, 230, 255, 0.55);
+}
+
+.c3-btn.active .c3-btn-go {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(33, 230, 255, 0.9);
+}
+
+/* ---------- 二级飞出列 ---------- */
+
+.c3-sub {
+    position: absolute;
+    left: calc(var(--c3-nav-left) + var(--c3-nav-w) + 18px);
+    /* --row 由组件按当前一级项序号写入，二级列与激活按钮纵向对齐 */
+    top: calc(var(--c3-top-h) + 6vh + (var(--c3-btn-h) + var(--c3-gap)) * var(--row, 0));
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 252px;
+    animation: c3-sub-in 0.2s ease-out both;
+}
+
+.c3-sub-arc {
+    position: absolute;
+    left: -26px;
+    top: -66px;
+    width: 92px;
+    height: calc(100% + 84px);
+    overflow: visible;
+    fill: none;
+    stroke: rgba(33, 230, 255, 0.45);
+    stroke-width: 1;
+    pointer-events: none;
+}
+
+.c3-sub-arc path:first-child {
+    opacity: 0.7;
+}
+
+.c3-sub-arc path:last-child {
+    opacity: 0.28;
+    stroke-dasharray: 3 5;
+}
+
+.c3-sub-btn {
+    position: relative;
+    height: 34px;
+    margin-left: 0;
+    padding: 0 18px;
+    border: 0;
+    outline: none;
+    cursor: pointer;
+    text-align: left;
+    color: rgba(214, 247, 255, 0.86);
+    white-space: nowrap;
+    background: linear-gradient(90deg, rgba(6, 44, 58, 0.92), rgba(3, 20, 28, 0.7));
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+    animation: c3-sub-row-in 0.24s ease-out both;
+}
+
+.c3-sub-btn:nth-of-type(1) {
+    margin-left: 0;
+    animation-delay: 0.02s;
+}
+
+.c3-sub-btn:nth-of-type(2) {
+    margin-left: 10px;
+    animation-delay: 0.06s;
+}
+
+.c3-sub-btn:nth-of-type(3) {
+    margin-left: 20px;
+    animation-delay: 0.1s;
+}
+
+.c3-sub-btn:nth-of-type(4) {
+    margin-left: 26px;
+    animation-delay: 0.14s;
+}
+
+.c3-sub-btn::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--c3-cyan);
+    opacity: 0.3;
+}
+
+.c3-sub-btn:hover {
+    color: #ffffff;
+    background: linear-gradient(90deg, rgba(33, 230, 255, 0.32), rgba(6, 40, 52, 0.86));
+    transform: translateX(3px);
+}
+
+.c3-sub-btn:hover::before {
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(33, 230, 255, 0.8);
+}
+
+.c3-sub-en {
+    font-family: "Orbitron", "Rajdhani", sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 1.9px;
+    text-transform: uppercase;
+}
+
+.c3-sub-cn {
+    margin-left: 8px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: rgba(122, 243, 255, 0.55);
+}
+
+/* ---------- 底栏 ---------- */
+
+.c3-strip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--c3-strip-h);
+    z-index: 10;
+    background: linear-gradient(180deg, rgba(2, 12, 17, 0.5), rgba(2, 10, 14, 0.94));
+    border-top: 1px solid rgba(33, 230, 255, 0.16);
+}
+
+.c3-ticks {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -7px;
+    height: 7px;
+    background-image:
+        repeating-linear-gradient(90deg,
+            rgba(33, 230, 255, 0.42) 0 1px,
+            transparent 1px 34px),
+        repeating-linear-gradient(90deg,
+            rgba(33, 230, 255, 0.18) 0 1px,
+            transparent 1px 11px);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
+}
+
+.c3-strip-info {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    height: 100%;
+    padding: 0 26px;
+    font-family: "Orbitron", "Rajdhani", sans-serif;
+    font-size: 8.5px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: rgba(122, 243, 255, 0.4);
+}
+
+.c3-strip-info b {
+    font-weight: 600;
+    color: rgba(210, 250, 255, 0.85);
+}
+
+.c3-strip-right {
+    margin-left: auto;
+    color: rgba(122, 243, 255, 0.26);
+}
+
+.c3-link {
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+}
+
+.c3-link b {
+    color: var(--c3-lime);
+}
+
+.c3-link:hover b {
+    text-shadow: 0 0 10px rgba(182, 255, 92, 0.7);
+}
+
+/* ---------- 动画 ---------- */
+
+@keyframes c3-row-in {
+    from {
+        opacity: 0;
+        transform: translateX(26px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes c3-sub-in {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes c3-sub-row-in {
+    from {
+        opacity: 0;
+        transform: translateX(-14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes c3-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* ---------- 窄屏适配（窗口下限 1280×720） ---------- */
+
+@media (max-width: 1440px) {
+    .c3-home {
+        --c3-nav-left: clamp(600px, 52vw, 760px);
+        --c3-nav-w: clamp(216px, 15vw, 250px);
+    }
+
+    .c3-sub {
+        width: 228px;
+    }
+
+    .c3-globe {
+        width: 60vw;
+    }
+}
+
+@media (max-height: 800px) {
+    .c3-nav {
+        top: calc(var(--c3-top-h) + 4vh);
+    }
+
+    .c3-sub {
+        top: calc(var(--c3-top-h) + 4vh + (var(--c3-btn-h) + var(--c3-gap)) * var(--row, 0));
+    }
+}
+
+/* ---------- 无障碍：尊重系统减弱动态效果 ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .c3-home *,
+    .c3-home *::before,
+    .c3-home *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
