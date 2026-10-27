@@ -73,12 +73,12 @@ namespace BlazorCncnetClient.Infrastructure
 
             ChannelCommands = new List<ChannelCommand>
             {
-                new("KICK", "将玩家踢出频道", RequiresAdmin: true, HandleKick),
-                new("BAN", "封禁玩家（按 host）", RequiresAdmin: true, HandleBan),
-                new("MUTE", "禁言玩家", RequiresAdmin: true, args => HandleVoice(args, muted: true)),
-                new("VOICE", "解除玩家禁言", RequiresAdmin: true, args => HandleVoice(args, muted: false)),
-                new("INVITE", "邀请玩家加入当前游戏", RequiresAdmin: false, HandleInvite),
-                new("HELP", "显示可用频道指令", RequiresAdmin: false, _ => ShowCommandHelp()),
+                new("KICK", UiText.T("LobbySvc.CmdKickDesc", "Kick a player from the channel"), RequiresAdmin: true, HandleKick),
+                new("BAN", UiText.T("LobbySvc.CmdBanDesc", "Ban a player (by host)"), RequiresAdmin: true, HandleBan),
+                new("MUTE", UiText.T("LobbySvc.CmdMuteDesc", "Mute a player"), RequiresAdmin: true, args => HandleVoice(args, muted: true)),
+                new("VOICE", UiText.T("LobbySvc.CmdVoiceDesc", "Unmute a player"), RequiresAdmin: true, args => HandleVoice(args, muted: false)),
+                new("INVITE", UiText.T("LobbySvc.CmdInviteDesc", "Invite a player to the current game"), RequiresAdmin: false, HandleInvite),
+                new("HELP", UiText.T("LobbySvc.CmdHelpDesc", "Show available channel commands"), RequiresAdmin: false, _ => ShowCommandHelp()),
             };
         }
 
@@ -206,7 +206,7 @@ namespace BlazorCncnetClient.Infrastructure
             var channel = _manager.FindChannel(channelName);
             if (channel is null)
             {
-                channel = _manager.CreateChannel(uiName + " 广播", channelName, persistent: true, isChatChannel: false, password: null);
+                channel = _manager.CreateChannel(string.Format(UiText.T("LobbySvc.BroadcastChannelName", "{0} Broadcast"), uiName), channelName, persistent: true, isChatChannel: false, password: null);
                 _manager.AddChannel(channel);
                 channel.CTCPReceived += OnBroadcastCTCP;
                 channel.Join();
@@ -297,13 +297,13 @@ namespace BlazorCncnetClient.Infrastructure
                 string.Equals(c.Command, commandName, StringComparison.OrdinalIgnoreCase));
             if (command is null)
             {
-                AddChannelMessage($"未知指令 /{commandName}，输入 /help 查看可用指令");
+                AddChannelMessage(string.Format(UiText.T("LobbySvc.UnknownCommand", "Unknown command /{0}. Type /help for available commands."), commandName));
                 return;
             }
 
             if (command.RequiresAdmin && !IsCurrentChannelAdmin)
             {
-                AddChannelMessage($"/{command.Command} 需要频道管理员权限");
+                AddChannelMessage(string.Format(UiText.T("LobbySvc.AdminRequired", "/{0} requires channel administrator privileges."), command.Command));
                 return;
             }
 
@@ -323,21 +323,21 @@ namespace BlazorCncnetClient.Infrastructure
             var name = FirstArg(args);
             if (name is null)
             {
-                AddChannelMessage("用法：/kick <玩家昵称>");
+                AddChannelMessage(UiText.T("LobbySvc.KickUsage", "Usage: /kick <player name>"));
                 return;
             }
             if (IsSelf(name))
             {
-                AddChannelMessage("不能对自己执行 /kick");
+                AddChannelMessage(UiText.T("LobbySvc.KickSelf", "You cannot kick yourself."));
                 return;
             }
             if (FindChannelUser(name) is null)
             {
-                AddChannelMessage($"未在当前频道找到玩家 {name}");
+                AddChannelMessage(string.Format(UiText.T("LobbySvc.PlayerNotFound", "Player {0} not found in the current channel."), name));
                 return;
             }
             CurrentChannel!.SendKickMessage(name, 8);
-            AddChannelMessage($"已将 {name} 踢出频道");
+            AddChannelMessage(string.Format(UiText.T("LobbySvc.KickDone", "Kicked {0} from the channel."), name));
         }
 
         private void HandleBan(string args)
@@ -345,25 +345,25 @@ namespace BlazorCncnetClient.Infrastructure
             var name = FirstArg(args);
             if (name is null)
             {
-                AddChannelMessage("用法：/ban <玩家昵称>");
+                AddChannelMessage(UiText.T("LobbySvc.BanUsage", "Usage: /ban <player name>"));
                 return;
             }
             if (IsSelf(name))
             {
-                AddChannelMessage("不能对自己执行 /ban");
+                AddChannelMessage(UiText.T("LobbySvc.BanSelf", "You cannot ban yourself."));
                 return;
             }
             var user = FindChannelUser(name);
             if (user is null)
             {
-                AddChannelMessage($"未在当前频道找到玩家 {name}");
+                AddChannelMessage(string.Format(UiText.T("LobbySvc.PlayerNotFound", "Player {0} not found in the current channel."), name));
                 return;
             }
             // 封禁按 host（缺失时回退昵称），并连带踢出
             var host = string.IsNullOrEmpty(user.IRCUser.Hostname) ? name : user.IRCUser.Hostname;
             CurrentChannel!.SendBanMessage(host, 8);
             CurrentChannel.SendKickMessage(name, 8);
-            AddChannelMessage($"已封禁 {name}");
+            AddChannelMessage(string.Format(UiText.T("LobbySvc.BanDone", "Banned {0}."), name));
         }
 
         private void HandleVoice(string args, bool muted)
@@ -371,23 +371,29 @@ namespace BlazorCncnetClient.Infrastructure
             var name = FirstArg(args);
             if (name is null)
             {
-                AddChannelMessage($"用法：/{(muted ? "mute" : "voice")} <玩家昵称>");
+                AddChannelMessage(muted
+                    ? UiText.T("LobbySvc.MuteUsage", "Usage: /mute <player name>")
+                    : UiText.T("LobbySvc.VoiceUsage", "Usage: /voice <player name>"));
                 return;
             }
             if (IsSelf(name))
             {
-                AddChannelMessage($"不能对自己执行 /{(muted ? "mute" : "voice")}");
+                AddChannelMessage(muted
+                    ? UiText.T("LobbySvc.MuteSelf", "You cannot mute yourself.")
+                    : UiText.T("LobbySvc.VoiceSelf", "You cannot unmute yourself."));
                 return;
             }
             if (FindChannelUser(name) is null)
             {
-                AddChannelMessage($"未在当前频道找到玩家 {name}");
+                AddChannelMessage(string.Format(UiText.T("LobbySvc.PlayerNotFound", "Player {0} not found in the current channel."), name));
                 return;
             }
             _manager.SendCustomMessage(new QueuedMessage(
                 $"MODE {CurrentChannel!.ChannelName} {(muted ? "-" : "+")}v {name}",
                 QueuedMessageType.INSTANT_MESSAGE, 8));
-            AddChannelMessage(muted ? $"已禁言 {name}" : $"已解除 {name} 的禁言");
+            AddChannelMessage(muted
+                ? string.Format(UiText.T("LobbySvc.MuteDone", "Muted {0}."), name)
+                : string.Format(UiText.T("LobbySvc.VoiceDone", "Unmuted {0}."), name));
         }
 
         private void HandleInvite(string args)
@@ -395,22 +401,22 @@ namespace BlazorCncnetClient.Infrastructure
             var name = FirstArg(args);
             if (name is null)
             {
-                AddChannelMessage("用法：/invite <玩家昵称>");
+                AddChannelMessage(UiText.T("LobbySvc.InviteUsage", "Usage: /invite <player name>"));
                 return;
             }
             if (!_room.IsInGameRoom)
             {
-                AddChannelMessage("请先创建或加入游戏房间，再邀请玩家");
+                AddChannelMessage(UiText.T("LobbySvc.InviteNoRoom", "Please create or join a game room before inviting players."));
                 return;
             }
             _room.InvitePlayer(name);
-            AddChannelMessage($"已邀请 {name} 加入游戏");
+            AddChannelMessage(string.Format(UiText.T("LobbySvc.InviteDone", "Invited {0} to the game."), name));
         }
 
         private void ShowCommandHelp()
         {
             var help = string.Join("  ", ChannelCommands.Select(c => $"/{c.Command}"));
-            AddChannelMessage($"可用频道指令：{help}");
+            AddChannelMessage(string.Format(UiText.T("LobbySvc.HelpPrefix", "Available channel commands: {0}"), help));
         }
 
         private static string? FirstArg(string args)
@@ -638,7 +644,7 @@ namespace BlazorCncnetClient.Infrastructure
             if (!_room.IsInGameRoom)
                 return;
             _room.AddRoomWarning(
-                $"{sender} 无法接收你的邀请，对方可能正在游戏中，或仅接受好友邀请。请确认房间未锁定且在大厅可见后再试。");
+                string.Format(UiText.T("LobbySvc.InvitationFailed", "{0} cannot receive your invitation; they may be in a game or only accept invitations from friends. Please make sure the room is not locked and is visible in the lobby, then try again."), sender));
         }
 
         /// <summary>是否接受来自该玩家的邀请：在线且未被屏蔽（原版 CanReceiveInvitationMessagesFrom）。</summary>

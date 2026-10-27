@@ -3,10 +3,11 @@
 @using CnCNetClient.Core
 @inject LoadingScreenService Loading
 @inject GameContentServer ContentServer
+@inject ITranslationService TranslationSvc
 
 @if (_visible)
 {
-    <div class="splash @(_closing ? "closing" : "")" role="status" aria-label="载入中">
+    <div class="splash @(_closing ? "closing" : "")" role="status" aria-label="@T("Splash.Loading", "Loading")">
         @if (HasVideo)
         {
             <video class="splash-media" src="@VideoUrl" autoplay muted loop playsinline></video>
@@ -55,8 +56,11 @@
 
     private string Text => Config.SplashText;
 
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
     protected override void OnInitialized()
     {
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
         Config = Loading.Config;
 
         if (!Config.ShowSplash)
@@ -80,6 +84,8 @@
         _timer = new Timer(_ => _ = Dismiss(), null, TimeSpan.FromSeconds(seconds), Timeout.InfiniteTimeSpan);
     }
 
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
     private async Task Dismiss()
     {
         if (_dismissed)
@@ -102,5 +108,9 @@
         });
     }
 
-    public void Dispose() => _timer?.Dispose();
+    public void Dispose()
+    {
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
+        _timer?.Dispose();
+    }
 }

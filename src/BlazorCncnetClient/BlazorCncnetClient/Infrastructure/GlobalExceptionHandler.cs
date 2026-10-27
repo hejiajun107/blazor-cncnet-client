@@ -56,7 +56,8 @@ public sealed class GlobalExceptionHandler : IDisposable
         _logger.LogCritical(ex, "进程级未处理异常（IsTerminating={IsTerminating}）", e.IsTerminating);
         ClassifyCrossThreadViolation(ex);
         if (e.IsTerminating)
-            DisplayError("客户端发生未处理异常", ex?.ToString() ?? "未知错误", exit: true);
+            DisplayError(UiText.T("Error.UnhandledTitle", "Unhandled exception in client"),
+                ex?.ToString() ?? UiText.T("Error.Unknown", "Unknown error"), exit: true);
     }
 
     private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)

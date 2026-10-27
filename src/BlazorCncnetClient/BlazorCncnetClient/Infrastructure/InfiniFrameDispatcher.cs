@@ -44,14 +44,16 @@ public sealed class InfiniFrameDispatcher : IDispatcher
     public void Post(Action action)
     {
         var ctx = _syncContext ?? throw new InvalidOperationException(
-            "InfiniFrameDispatcher 尚未初始化（请在 UI 线程调用 Initialize）。");
+            UiText.T("Startup.DispatcherNotInitialized",
+                "InfiniFrameDispatcher has not been initialized (call Initialize on the UI thread)."));
         ctx.Post(_ => action(), null);
     }
 
     public Task InvokeAsync(Action action)
     {
         var ctx = _syncContext ?? throw new InvalidOperationException(
-            "InfiniFrameDispatcher 尚未初始化（请在 UI 线程调用 Initialize）。");
+            UiText.T("Startup.DispatcherNotInitialized",
+                "InfiniFrameDispatcher has not been initialized (call Initialize on the UI thread)."));
 
         // InfiniFrameSynchronizationContext 自带 InvokeAsync；退化为 Post + TCS。
         if (ctx is InfiniFrame.BlazorWebView.InfiniFrameSynchronizationContext iffCtx)
@@ -76,7 +78,8 @@ public sealed class InfiniFrameDispatcher : IDispatcher
     public Task<T> InvokeAsync<T>(Func<T> func)
     {
         var ctx = _syncContext ?? throw new InvalidOperationException(
-            "InfiniFrameDispatcher 尚未初始化（请在 UI 线程调用 Initialize）。");
+            UiText.T("Startup.DispatcherNotInitialized",
+                "InfiniFrameDispatcher has not been initialized (call Initialize on the UI thread)."));
 
         if (ctx is InfiniFrame.BlazorWebView.InfiniFrameSynchronizationContext iffCtx)
             return iffCtx.InvokeAsync(func);

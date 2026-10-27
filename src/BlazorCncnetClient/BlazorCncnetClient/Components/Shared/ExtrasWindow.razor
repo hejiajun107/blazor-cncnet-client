@@ -6,15 +6,16 @@
 @inject MessageBoxService MessageBox
 @inject UiDefinitionService Defs
 @inject NavigationManager Nav
+@inject ITranslationService TranslationSvc
 
 @if (Service.IsOpen || Service.IsClosing)
 {
     <div class="msgbox-overlay @(Service.IsClosing ? "closing" : "")" @onclick="OnOverlayClick">
         <div class="msgbox exw @(Service.IsClosing ? "pop-out" : "pop-in")" role="dialog" aria-modal="true"
-             aria-label="附加功能" @onclick:stopPropagation="true">
+             aria-label="@T("Extras.Title", "Extras")" @onclick:stopPropagation="true">
             <div class="mb-head">
                 <span class="mb-ic">▤</span>
-                <span class="mb-title">附加功能</span>
+                <span class="mb-title">@T("Extras.Title", "Extras")</span>
                 <span class="mb-en">EXTRAS MENU</span>
             </div>
             <div class="exw-body">
@@ -24,7 +25,7 @@
                             disabled="@(!EnableExStatistics)"
                             @onclick="() => OnAction(ActionKind.Statistics)">
                         <span class="exw-ic">▤</span>
-                        <span class="exw-txt"><span class="cn">统计</span><br><span class="en">STATISTICS</span></span>
+                        <span class="exw-txt"><span class="cn">@T("Extras.Statistics", "Statistics")</span><br><span class="en">STATISTICS</span></span>
                         <span class="exw-go">›</span>
                     </button>
                 }
@@ -34,14 +35,14 @@
                             disabled="@(!EnableExMapEditor)"
                             @onclick="() => OnAction(ActionKind.MapEditor)">
                         <span class="exw-ic">✎</span>
-                        <span class="exw-txt"><span class="cn">地图编辑器</span><br><span class="en">MAP EDITOR</span></span>
+                        <span class="exw-txt"><span class="cn">@T("Extras.MapEditor", "Map Editor")</span><br><span class="en">MAP EDITOR</span></span>
                         <span class="exw-go">›</span>
                     </button>
                 }
                 <button type="button" class="exw-btn item-in" style="animation-delay:140ms"
                         @onclick="() => OnAction(ActionKind.Changelog)">
                     <span class="exw-ic">↻</span>
-                    <span class="exw-txt"><span class="cn">更新日志</span><br><span class="en">CHANGELOG</span></span>
+                    <span class="exw-txt"><span class="cn">@T("Extras.Changelog", "Changelog")</span><br><span class="en">CHANGELOG</span></span>
                     <span class="exw-go">›</span>
                 </button>
                 @if (ShowExCredits)
@@ -50,14 +51,14 @@
                             disabled="@(!EnableExCredits)"
                             @onclick="() => OnAction(ActionKind.Credits)">
                         <span class="exw-ic">✦</span>
-                        <span class="exw-txt"><span class="cn">鸣谢</span><br><span class="en">CREDITS</span></span>
+                        <span class="exw-txt"><span class="cn">@T("Extras.Credits", "Credits")</span><br><span class="en">CREDITS</span></span>
                         <span class="exw-go">›</span>
                     </button>
                 }
                 <button type="button" class="exw-btn item-in" style="animation-delay:240ms"
                         @onclick="() => OnAction(ActionKind.About)">
                     <span class="exw-ic">ⓘ</span>
-                    <span class="exw-txt"><span class="cn">关于</span><br><span class="en">ABOUT</span></span>
+                    <span class="exw-txt"><span class="cn">@T("Extras.About", "About")</span><br><span class="en">ABOUT</span></span>
                     <span class="exw-go">›</span>
                 </button>
                 @if (ShowExCancel)
@@ -66,7 +67,7 @@
                             disabled="@(!EnableExCancel)"
                             @onclick="() => OnAction(ActionKind.Cancel)">
                         <span class="exw-ic">✕</span>
-                        <span class="exw-txt"><span class="cn">取消</span><br><span class="en">CANCEL</span></span>
+                        <span class="exw-txt"><span class="cn">@T("Common.Cancel", "Cancel")</span><br><span class="en">CANCEL</span></span>
                         <span class="exw-go">›</span>
                     </button>
                 }
@@ -96,9 +97,17 @@
     private bool ShowExCancel => Defs.IsExtrasControlVisible("btnExCancel");
     private bool EnableExCancel => Defs.IsExtrasControlEnabled("btnExCancel");
 
-    protected override void OnInitialized() => Service.Changed += OnChanged;
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    protected override void OnInitialized()
+    {
+        Service.Changed += OnChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
+    }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 
     private bool IsActionEnabled(ActionKind kind) => kind switch
     {
@@ -131,10 +140,10 @@
                 string? err = Service.LaunchMapEditor();
                 if (err is not null)
                 {
-                    await JS.InvokeVoidAsync("cncnet.toast", $"地图编辑器启动失败：{err}", "err");
+                    await JS.InvokeVoidAsync("cncnet.toast", T("Extras.MapEditorFailed", "Failed to launch the Map Editor: ") + err, "err");
                     return; // 失败保持窗口打开，允许重试
                 }
-                await Close("已启动地图编辑器");
+                await Close(T("Extras.MapEditorStarted", "Map Editor started"));
                 break;
             }
             case ActionKind.Changelog:
@@ -142,10 +151,10 @@
                 string? err = Service.OpenUrl(ClientConfiguration.Instance.ChangelogURL);
                 if (err is not null)
                 {
-                    await JS.InvokeVoidAsync("cncnet.toast", $"无法打开更新日志：{err}", "err");
+                    await JS.InvokeVoidAsync("cncnet.toast", T("Extras.ChangelogFailed", "Unable to open the changelog: ") + err, "err");
                     return;
                 }
-                await Close("已在浏览器打开更新日志");
+                await Close(T("Extras.ChangelogOpened", "Opened the changelog in your browser"));
                 break;
             }
             case ActionKind.Credits:
@@ -153,17 +162,17 @@
                 string? err = Service.OpenUrl(ClientConfiguration.Instance.CreditsURL);
                 if (err is not null)
                 {
-                    await JS.InvokeVoidAsync("cncnet.toast", $"无法打开鸣谢：{err}", "err");
+                    await JS.InvokeVoidAsync("cncnet.toast", T("Extras.CreditsFailed", "Unable to open the credits: ") + err, "err");
                     return;
                 }
-                await Close("已在浏览器打开鸣谢");
+                await Close(T("Extras.CreditsOpened", "Opened the credits in your browser"));
                 break;
             }
             case ActionKind.About:
                 Service.BeginClose();
                 await Task.Delay(120);
                 Service.CompleteClose();
-                await MessageBox.ShowAsync("关于", Service.GetAboutText(), MessageBoxButtons.Ok, MessageBoxKind.Info);
+                await MessageBox.ShowAsync(T("Extras.About", "About"), Service.GetAboutText(), MessageBoxButtons.Ok, MessageBoxKind.Info);
                 break;
             default:
                 await Close();
@@ -190,5 +199,9 @@
         return Task.CompletedTask;
     }
 
-    public void Dispose() => Service.Changed -= OnChanged;
+    public void Dispose()
+    {
+        Service.Changed -= OnChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
+    }
 }

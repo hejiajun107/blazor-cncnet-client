@@ -135,8 +135,10 @@ public sealed class LanLobbyService : IDisposable
         {
             LastError = ex.Message;
             IsRunning = false;
-            AddChatMessage("创建 LAN socket 失败：" + ex.Message +
-                "。请检查防火墙设置，并确保没有其他程序占用 UDP 1232-1234 端口。");
+            AddChatMessage(string.Format(
+                UiText.T("LanSvc.SocketCreateFailed",
+                    "Failed to create the LAN socket: {0}. Please check your firewall settings and make sure no other program is using UDP ports 1232-1234."),
+                ex.Message));
             RaiseStateChanged();
             return;
         }
@@ -217,7 +219,8 @@ public sealed class LanLobbyService : IDisposable
         string wrapped = _deduplicator?.WrapMessage(message) ?? message;
         bool ok = _broadcastManager?.SendMessage(wrapped) ?? false;
         if (!ok)
-            AddChatMessage("发送 LAN 广播失败：网络 socket 可能未初始化。");
+            AddChatMessage(UiText.T("LanSvc.BroadcastSendFailed",
+                "Failed to send the LAN broadcast: the network socket may not be initialized."));
     }
 
     /// <summary>

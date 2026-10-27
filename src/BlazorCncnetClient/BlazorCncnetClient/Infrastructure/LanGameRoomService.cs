@@ -166,7 +166,7 @@ namespace BlazorCncnetClient.Infrastructure
         public void CreateGame(string roomName)
         {
             if (IsInGameRoom)
-                throw new InvalidOperationException("已在 LAN 房间中，请先离开当前房间");
+                throw new InvalidOperationException(UiText.T("LanRoom.AlreadyInRoom", "You are already in a LAN room. Please leave it first."));
 
             _leaving = false;
             _sessionId++;
@@ -185,7 +185,9 @@ namespace BlazorCncnetClient.Infrastructure
             catch (Exception ex)
             {
                 _listener = null;
-                throw new InvalidOperationException($"TCP {ProgramConstants.LAN_GAME_LOBBY_PORT} 监听失败：{ex.Message}", ex);
+                throw new InvalidOperationException(string.Format(
+                    UiText.T("LanRoom.TcpListenFailed", "Failed to listen on TCP {0}: {1}"),
+                    ProgramConstants.LAN_GAME_LOBBY_PORT, ex.Message), ex);
             }
 
             var listenerThread = new Thread(ListenForClients) { IsBackground = true };
@@ -201,7 +203,8 @@ namespace BlazorCncnetClient.Infrastructure
             {
                 _listener.Stop();
                 _listener = null;
-                throw new InvalidOperationException("连接本机 LAN 大厅失败：" + ex.Message, ex);
+                throw new InvalidOperationException(string.Format(
+                    UiText.T("LanRoom.LocalLobbyConnectFailed", "Failed to connect to the local LAN lobby: {0}"), ex.Message), ex);
             }
 
             _clientStream = _client.GetStream();
@@ -213,7 +216,7 @@ namespace BlazorCncnetClient.Infrastructure
             StartTickTimer();
 
             AddChatMessage(new ChatMessage(ColorConstants.Cyan,
-                $"已创建 LAN 房间「{RoomName}」，等待其他玩家加入"));
+                string.Format(UiText.T("LanRoom.CreatedChat", "LAN room \"{0}\" created. Waiting for other players to join."), RoomName)));
             NotifyChanged();
         }
 
@@ -221,13 +224,13 @@ namespace BlazorCncnetClient.Infrastructure
         public void JoinGame(HostedLANGame game)
         {
             if (IsInGameRoom)
-                throw new InvalidOperationException("已在 LAN 房间中，请先离开当前房间");
+                throw new InvalidOperationException(UiText.T("LanRoom.AlreadyInRoom", "You are already in a LAN room. Please leave it first."));
 
             if (game.Locked)
-                throw new InvalidOperationException("该房间已锁定，无法加入");
+                throw new InvalidOperationException(UiText.T("LanRoom.RoomLocked", "This room is locked and cannot be joined."));
             if (game.Game is null || !string.Equals(game.Game.InternalName,
                     ClientConfiguration.Instance.LocalGame, StringComparison.InvariantCultureIgnoreCase))
-                throw new InvalidOperationException("该房间的游戏与本机不同，无法加入");
+                throw new InvalidOperationException(UiText.T("LanRoom.RoomGameMismatch", "This room is running a different game and cannot be joined."));
 
             _leaving = false;
             _sessionId++;
@@ -244,7 +247,9 @@ namespace BlazorCncnetClient.Infrastructure
             catch (Exception ex)
             {
                 _client = null;
-                throw new InvalidOperationException("无法连接主机 " + game.EndPoint.Address + "：" + ex.Message, ex);
+                throw new InvalidOperationException(string.Format(
+                    UiText.T("LanRoom.HostConnectFailed", "Cannot connect to host {0}: {1}"),
+                    game.EndPoint.Address, ex.Message), ex);
             }
 
             _clientStream = _client.GetStream();
@@ -254,7 +259,8 @@ namespace BlazorCncnetClient.Infrastructure
             CalculateFileHash();
             StartTickTimer();
 
-            AddChatMessage(new ChatMessage(ColorConstants.Cyan, $"正在加入「{game.RoomName}」..."));
+            AddChatMessage(new ChatMessage(ColorConstants.Cyan,
+                string.Format(UiText.T("LanRoom.JoiningChat", "Joining \"{0}\"..."), game.RoomName)));
             NotifyChanged();
         }
 
@@ -383,11 +389,11 @@ namespace BlazorCncnetClient.Infrastructure
             if (!IsHost || !IsJoined)
                 return;
             if (SelectedMap is null)
-                throw new InvalidOperationException("请先选择地图");
+                throw new InvalidOperationException(UiText.T("LanRoom.SelectMapFirst", "Please select a map first."));
             if (!Locked)
-                throw new InvalidOperationException("请先锁定房间再开始游戏");
+                throw new InvalidOperationException(UiText.T("LanRoom.LockBeforeStart", "Please lock the room before starting the game."));
             if (_players.Any(p => !p.Ready))
-                throw new InvalidOperationException("仍有玩家未就绪");
+                throw new InvalidOperationException(UiText.T("LanRoom.PlayersNotReady", "Some players are not ready yet."));
 
             GenerateGameId();
             BroadcastMessage(LAUNCH_GAME_COMMAND + " " + UniqueGameId);
@@ -566,7 +572,8 @@ namespace BlazorCncnetClient.Infrastructure
             pInfo.ConnectionLost += OnPlayerConnectionLost;
             pInfo.StartReceiveLoop();
 
-            AddChatMessage(new ChatMessage(ColorConstants.Cyan, pInfo.Name + " 加入了房间"));
+            AddChatMessage(new ChatMessage(ColorConstants.Cyan,
+                string.Format(UiText.T("LanRoom.PlayerJoined", "{0} joined the room."), pInfo.Name)));
             OnGameOptionChanged();    // 下发当前地图/规则
             BroadcastPlayerOptions(); // 下发全部玩家配置
             BroadcastGame();          // UDP GAME 刷新房间列表
@@ -589,7 +596,8 @@ namespace BlazorCncnetClient.Infrastructure
             {
                 if (_leaving)
                     return;
-                AddChatMessage(new ChatMessage(ColorConstants.Red, pInfo.Name + " 已断开连接"));
+                AddChatMessage(new ChatMessage(ColorConstants.Red,
+                    string.Format(UiText.T("LanRoom.PlayerDisconnected", "{0} disconnected."), pInfo.Name)));
                 RemovePlayer(pInfo);
             });
         }
@@ -602,7 +610,8 @@ namespace BlazorCncnetClient.Infrastructure
                 return;
             try { pInfo.TcpClient.Close(); } catch { }
 
-            AddChatMessage(new ChatMessage(ColorConstants.Cyan, pInfo.Name + " 离开了房间"));
+            AddChatMessage(new ChatMessage(ColorConstants.Cyan,
+                string.Format(UiText.T("LanRoom.PlayerLeft", "{0} left the room."), pInfo.Name)));
             ClearReadyStatuses();
             BroadcastPlayerOptions();
             BroadcastGame();
@@ -685,7 +694,7 @@ namespace BlazorCncnetClient.Infrastructure
                 && !string.Equals(args, _localFileHash, StringComparison.OrdinalIgnoreCase))
             {
                 AddChatMessage(new ChatMessage(ColorConstants.Red,
-                    pInfo.Name + " 的文件与你的不一致，可能存在作弊！"));
+                    string.Format(UiText.T("LanRoom.FileHashMismatch", "{0}'s files differ from yours. Possible cheating!"), pInfo.Name)));
             }
             pInfo.HashReceived = true;
             NotifyChanged();
@@ -721,7 +730,8 @@ namespace BlazorCncnetClient.Infrastructure
 
         private void Client_HandleGetReady()
         {
-            AddChatMessage(new ChatMessage(ColorConstants.Yellow, "主机正在等待你准备就绪！"));
+            AddChatMessage(new ChatMessage(ColorConstants.Yellow,
+                UiText.T("LanRoom.HostWaitingReady", "The host is waiting for you to get ready!")));
             NotifyChanged();
         }
 
@@ -729,7 +739,8 @@ namespace BlazorCncnetClient.Infrastructure
         {
             if (IsHost || _leaving)
                 return;
-            AddChatMessage(new ChatMessage(ColorConstants.Red, "主机已关闭房间"));
+            AddChatMessage(new ChatMessage(ColorConstants.Red,
+                UiText.T("LanRoom.HostClosedRoom", "The host has closed the room.")));
             LeaveGame();
         }
 
@@ -739,7 +750,8 @@ namespace BlazorCncnetClient.Infrastructure
             var p = _players.FirstOrDefault(x => string.Equals(x.Name, args, StringComparison.OrdinalIgnoreCase));
             if (p is not null)
                 p.IsInGame = false;
-            AddChatMessage(new ChatMessage(ColorConstants.Cyan, args + " 已返回房间"));
+            AddChatMessage(new ChatMessage(ColorConstants.Cyan,
+                string.Format(UiText.T("LanRoom.PlayerReturned", "{0} has returned to the room."), args)));
             NotifyChanged();
         }
 
@@ -795,7 +807,8 @@ namespace BlazorCncnetClient.Infrastructure
                 UniqueGameId = id;
             foreach (var p in _players)
                 p.IsInGame = true;
-            AddChatMessage(new ChatMessage(ColorConstants.Cyan, "主机已开始游戏"));
+            AddChatMessage(new ChatMessage(ColorConstants.Cyan,
+                UiText.T("LanRoom.HostStartedGame", "The host has started the game.")));
             GameStartRequested?.Invoke();
         }
 
@@ -839,7 +852,7 @@ namespace BlazorCncnetClient.Infrastructure
             if (gmm is null && !string.IsNullOrEmpty(mapHash))
             {
                 AddChatMessage(new ChatMessage(ColorConstants.Yellow,
-                    "主机选择了本机未安装的地图（SHA1: " + mapHash + "）"));
+                    string.Format(UiText.T("LanRoom.MapNotInstalled", "The host selected a map that is not installed (SHA1: {0})"), mapHash)));
             }
             NotifyChanged();
         }
@@ -1015,7 +1028,8 @@ namespace BlazorCncnetClient.Infrastructure
                 {
                     _dispatcher.Post(() =>
                     {
-                        AddChatMessage(new ChatMessage(ColorConstants.Red, "连接超时，正在离开房间"));
+                        AddChatMessage(new ChatMessage(ColorConstants.Red,
+                            UiText.T("LanRoom.ConnectionTimeout", "Connection timed out. Leaving the room.")));
                         LeaveGame();
                     });
                 }
@@ -1068,7 +1082,8 @@ namespace BlazorCncnetClient.Infrastructure
             {
                 if (_leaving)
                     return;
-                AddChatMessage(new ChatMessage(ColorConstants.Red, "与主机的连接已断开"));
+                AddChatMessage(new ChatMessage(ColorConstants.Red,
+                    UiText.T("LanRoom.HostConnectionLost", "The connection to the host was lost.")));
                 LeaveGame();
             });
         }

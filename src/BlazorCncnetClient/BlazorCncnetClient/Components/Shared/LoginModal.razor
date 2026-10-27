@@ -7,42 +7,43 @@
 @inject SettingsService Settings
 @inject IJSRuntime JS
 @inject IServiceProvider Services
+@inject ITranslationService TranslationSvc
 
 @if (Service.IsOpen || Service.IsClosing)
 {
     <div class="msgbox-overlay login-overlay @(Service.IsClosing ? "closing" : "")" @onclick="OnOverlayClick">
         <div class="msgbox login @(Service.IsClosing ? "pop-out" : "pop-in")" role="dialog" aria-modal="true"
-             aria-label="连接 CnCNet" @onclick:stopPropagation="true">
+             aria-label="@T("Login.Title", "Connect to CnCNet")" @onclick:stopPropagation="true">
             <div class="mb-head kind-info">
                 <span class="mb-ic">⬡</span>
-                <span class="mb-title">连接 CnCNet</span>
+                <span class="mb-title">@T("Login.Title", "Connect to CnCNet")</span>
                 <span class="mb-en">CONNECT TO CNCNET</span>
             </div>
             <div class="lg-body">
                 <label class="lg-field" for="lg-name">
-                    <span class="lg-k">玩家名 <em>PLAYER NAME</em></span>
+                    <span class="lg-k">@T("Login.PlayerName", "Player name") <em>PLAYER NAME</em></span>
                     <input id="lg-name" class="lg-input @(Service.Error is not null ? "err" : "")"
                            maxlength="30" spellcheck="false" autocomplete="off"
                            value="@Service.PlayerName" disabled="@Service.IsConnecting"
-                           placeholder="昵称（字母/数字/-_，首字符非数字）"
+                           placeholder="@T("Login.NamePlaceholder", "Nickname (letters/digits/-_, must not start with a digit)")"
                            @oninput="OnNameInput" @onkeydown="OnNameKeyDown" />
                 </label>
 
                 <label class="lg-check">
                     <input type="checkbox" checked="@Service.RememberMe" disabled="@Service.IsConnecting"
                            @onchange="e => SetPref(x => x.RememberMe = e.Value is bool b && b)" />
-                    <span class="c"><span class="cn">记住我</span><em>REMEMBER ME · 下次跳过本页</em></span>
+                    <span class="c"><span class="cn">@T("Login.RememberMe", "Remember me")</span><em>@T("Login.RememberMeHint", "REMEMBER ME · Skip this screen next time")</em></span>
                 </label>
                 <label class="lg-check">
                     <input type="checkbox" checked="@Service.PersistentMode" disabled="@Service.IsConnecting"
                            @onchange="e => SetPref(x => x.PersistentMode = e.Value is bool b && b)" />
-                    <span class="c"><span class="cn">离开大厅保持连接</span><em>STAY CONNECTED</em></span>
+                    <span class="c"><span class="cn">@T("Login.PersistentMode", "Stay connected when leaving the lobby")</span><em>STAY CONNECTED</em></span>
                 </label>
                 <label class="lg-check">
                     <input type="checkbox" checked="@Service.AutoConnect"
                            disabled="@(Service.IsConnecting || !(Service.RememberMe && Service.PersistentMode))"
                            @onchange="e => SetPref(x => x.AutoConnect = e.Value is bool b && b)" />
-                    <span class="c"><span class="cn">启动自动连接</span><em>AUTO CONNECT</em></span>
+                    <span class="c"><span class="cn">@T("Login.AutoConnect", "Connect automatically on startup")</span><em>AUTO CONNECT</em></span>
                 </label>
 
                 @if (!string.IsNullOrEmpty(Service.Error))
@@ -51,9 +52,9 @@
                 }
             </div>
             <div class="mb-actions">
-                <button class="mb-btn item-in" @onclick="OnCancel" disabled="@Service.IsConnecting">取消</button>
+                <button class="mb-btn item-in" @onclick="OnCancel" disabled="@Service.IsConnecting">@T("Common.Cancel", "Cancel")</button>
                 <button class="mb-btn primary item-in" @onclick="OnConnect" disabled="@Service.IsConnecting">
-                    @(Service.IsConnecting ? "连接中…" : "连接")
+                    @(Service.IsConnecting ? T("Login.Connecting", "Connecting…") : T("Login.Connect", "Connect"))
                 </button>
             </div>
         </div>
@@ -64,9 +65,17 @@
     private CnCNetManager? _manager;
     private bool _wired;
 
-    protected override void OnInitialized() => Service.Changed += OnChanged;
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    protected override void OnInitialized()
+    {
+        Service.Changed += OnChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
+    }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 
     /* ── 输入 ── */
     private void OnNameInput(ChangeEventArgs e) => Service.PlayerName = e.Value?.ToString() ?? string.Empty;
@@ -97,7 +106,7 @@
         var error = NameValidator.IsNameValid(Service.PlayerName, out var msg);
         if (error != NameValidationError.None)
         {
-            Service.Error = msg ?? "昵称不合法。";
+            Service.Error = msg ?? T("Login.NameInvalid", "Invalid nickname.");
             Service.NotifyChanged();
             return;
         }
@@ -119,7 +128,7 @@
         {
             // 连接初始化异常不得让浮窗无限停留在「连接中」：复位并展示原因。
             Service.IsConnecting = false;
-            Service.Error = $"连接初始化失败：{ex.Message}";
+            Service.Error = T("Login.InitFailed", "Connection initialization failed: ") + ex.Message;
             Service.NotifyChanged();
         }
     }
@@ -145,7 +154,7 @@
             return;
         Service.IsConnecting = false;
         Service.Error = null;
-        _ = JS.InvokeVoidAsync("cncnet.toast", $"已连接 CnCNet：{ProgramConstants.PLAYERNAME}");
+        _ = JS.InvokeVoidAsync("cncnet.toast", T("Login.Connected", "Connected to CnCNet: ") + ProgramConstants.PLAYERNAME);
         _ = CloseAsync(LoginResult.Connected);
     }
 
@@ -154,7 +163,7 @@
         if (!Service.IsOpen)
             return;
         Service.IsConnecting = false;
-        Service.Error = "无法连接 CnCNet 服务器，请检查网络后重试。";
+        Service.Error = T("Login.ServerUnreachable", "Unable to connect to the CnCNet server. Check your network and try again.");
         Service.NotifyChanged();
     }
 
@@ -198,6 +207,7 @@
     public void Dispose()
     {
         Service.Changed -= OnChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         if (_wired && _manager is not null)
         {
             _manager.Connected -= OnConnected;

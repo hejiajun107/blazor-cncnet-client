@@ -1,6 +1,7 @@
 @namespace BlazorCncnetClient.Components.Shared
 @implements IDisposable
 @inject MessageBoxService Service
+@inject ITranslationService TranslationSvc
 
 @if (Service.IsOpen || Service.IsClosing)
 {
@@ -17,15 +18,15 @@
                 @switch (Service.Buttons)
                 {
                     case MessageBoxButtons.Ok:
-                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">确定</button>
+                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">@T("Common.OK", "OK")</button>
                         break;
                     case MessageBoxButtons.OkCancel:
-                        <button class="mb-btn item-in" @onclick="() => Close(false)">取消</button>
-                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">确定</button>
+                        <button class="mb-btn item-in" @onclick="() => Close(false)">@T("Common.Cancel", "Cancel")</button>
+                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">@T("Common.OK", "OK")</button>
                         break;
                     case MessageBoxButtons.YesNo:
-                        <button class="mb-btn item-in" @onclick="() => Close(false)">否</button>
-                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">是</button>
+                        <button class="mb-btn item-in" @onclick="() => Close(false)">@T("Common.No", "No")</button>
+                        <button class="mb-btn primary item-in" @onclick="() => Close(true)">@T("Common.Yes", "Yes")</button>
                         break;
                 }
             </div>
@@ -50,9 +51,17 @@
         _ => "INFO"
     };
 
-    protected override void OnInitialized() => Service.Changed += OnChanged;
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    protected override void OnInitialized()
+    {
+        Service.Changed += OnChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
+    }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 
     private async Task Close(bool result)
     {
@@ -72,5 +81,9 @@
         await Close(false);
     }
 
-    public void Dispose() => Service.Changed -= OnChanged;
+    public void Dispose()
+    {
+        Service.Changed -= OnChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
+    }
 }

@@ -1,17 +1,19 @@
 @page "/"
+@implements IDisposable
 @inject EnvironmentCheck Env
 @inject GameFileSetupService GameFiles
 @inject ILogger<Index> Logger
 @inject NavigationManager Nav
+@inject ITranslationService TranslationSvc
 
 <div class="env-check">
-    <h1>CNCNet 客户端</h1>
-    <p class="subtitle">启动环境检测</p>
+    <h1>@T("Index.Title", "CNCNet Client")</h1>
+    <p class="subtitle">@T("Index.Subtitle", "Startup environment check")</p>
 
-    <div class="env-row"><span>启动目录</span><code>@Env.StartupPath</code></div>
-    <div class="env-row"><span>游戏目录</span><code>@(Env.GamePath ?? "未找到")</code></div>
-    <div class="env-row"><span>ClientDefinitions.ini</span><code>@(Env.ClientDefinitionsFound ? "已找到" : "缺失")</code></div>
-    <div class="env-row"><span>客户端配置</span><code>@(Env.ConfigurationReady ? "已初始化" : "未初始化")</code></div>
+    <div class="env-row"><span>@T("Index.StartupDirectory", "Startup directory")</span><code>@Env.StartupPath</code></div>
+    <div class="env-row"><span>@T("Index.GameDirectory", "Game directory")</span><code>@(Env.GamePath ?? T("Index.NotFound", "Not found"))</code></div>
+    <div class="env-row"><span>ClientDefinitions.ini</span><code>@(Env.ClientDefinitionsFound ? T("Index.Found", "Found") : T("Index.Missing", "Missing"))</code></div>
+    <div class="env-row"><span>@T("Index.ClientConfig", "Client configuration")</span><code>@(Env.ConfigurationReady ? T("Index.Initialized", "Initialized") : T("Index.NotInitialized", "Not initialized"))</code></div>
 
     <div class="msg @(Env.IsReady ? "ok" : "warn")">@Env.Message</div>
 
@@ -20,9 +22,9 @@
     @if (GameFiles.MissingFiles.Length > 0)
     {
         <div class="msg warn">
-            <strong>缺少游戏运行文件（@GameFiles.MissingFiles.Length 个）</strong><br />
-            请选择完整的「尤里的复仇」安装目录，客户端将自动提取缺失文件：
-            <span class="missing">@string.Join("、", GameFiles.MissingFiles)</span>
+            <strong>@F("Index.MissingFilesTitle", "Missing game files ({0})", GameFiles.MissingFiles.Length)</strong><br />
+            @T("Index.MissingFilesHint", "Select a complete Yuri's Revenge installation directory; the client will extract the missing files automatically:")
+            <span class="missing">@string.Join(T("Index.ListSeparator", ", "), GameFiles.MissingFiles)</span>
             @if (!string.IsNullOrEmpty(GameFiles.LastMessage))
             {
                 <br /><span class="detail">@GameFiles.LastMessage</span>
@@ -30,11 +32,11 @@
         </div>
         <div class="actions">
             <button class="btn primary" disabled="@_busy" @onclick="ExtractGameFiles">
-                @(_busy ? "正在提取…" : "选择尤里的复仇目录并提取")
+                @(_busy ? T("Index.Extracting", "Extracting…") : T("Index.PickDirectory", "Select Yuri's Revenge directory and extract"))
             </button>
             @if (GameFiles.IsGameReady)
             {
-                <button class="btn" @onclick="GoMainMenu">进入主菜单</button>
+                <button class="btn" @onclick="GoMainMenu">@T("Index.EnterMainMenu", "Enter main menu")</button>
             }
         </div>
     }
@@ -43,18 +45,25 @@
         <div class="actions">
             @if (Env.IsReady)
             {
-                <button class="btn primary" @onclick="GoMainMenu">进入主菜单</button>
+                <button class="btn primary" @onclick="GoMainMenu">@T("Index.EnterMainMenu", "Enter main menu")</button>
             }
             else
             {
-                <button class="btn" @onclick="ReDetect">重新检测</button>
+                <button class="btn" @onclick="ReDetect">@T("Index.ReDetect", "Check again")</button>
             }
-            <button class="btn" @onclick="PreviewMainMenu">预览主菜单（开发）</button>
+            <button class="btn" @onclick="PreviewMainMenu">@T("Index.PreviewMenu", "Preview main menu (dev)")</button>
         </div>
     }
 </div>
 
 @code {
+    /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    /// <summary>带参数的文案（占位符 {0}…）。</summary>
+    private static string F(string key, string fallback, params object[] args)
+        => string.Format(UiText.T(key, fallback), args);
+
     private bool _busy;
 
     protected override void OnInitialized()
@@ -65,6 +74,8 @@
 
         // 游戏运行文件检测（启动时即提示缺失，引导提取）。
         GameFiles.Detect();
+
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
 
     private async Task ExtractGameFiles()
@@ -95,4 +106,8 @@
 
     // 开发期预览入口：无需游戏资源即可查看主菜单 UI。
     private void PreviewMainMenu() => Nav.NavigateTo("/menu");
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => TranslationSvc.LanguageChanged -= OnLanguageChanged;
 }

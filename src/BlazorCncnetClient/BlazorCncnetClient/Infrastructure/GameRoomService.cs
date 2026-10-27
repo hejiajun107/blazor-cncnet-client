@@ -361,7 +361,7 @@ namespace BlazorCncnetClient.Infrastructure
         public void CreateGame(string roomName, int maxPlayers, string password = "")
         {
             if (IsInGameRoom)
-                throw new InvalidOperationException("已在游戏房间中，请先离开当前房间");
+                throw new InvalidOperationException(UiText.T("Room.AlreadyInRoom", "Already in a game room. Please leave the current room first."));
 
             string channelName = RandomizeChannelName();
 
@@ -400,7 +400,7 @@ namespace BlazorCncnetClient.Infrastructure
             BroadcastGame();
 
             _manager.MainChannel.AddMessage(new ChatMessage(ColorConstants.Cyan,
-                $"正在创建房间「{roomName}」..."));
+                string.Format(UiText.T("Room.CreatingRoom", "Creating room \"{0}\"..."), roomName)));
             StartHostInactiveCheck();
             NotifyChanged();
         }
@@ -409,19 +409,19 @@ namespace BlazorCncnetClient.Infrastructure
         public void JoinGame(LobbyGameItem game, string? password)
         {
             if (IsInGameRoom)
-                throw new InvalidOperationException("已在游戏房间中，请先离开当前房间");
+                throw new InvalidOperationException(UiText.T("Room.AlreadyInRoom", "Already in a game room. Please leave the current room first."));
 
             if (string.IsNullOrEmpty(game.ChannelName))
-                throw new InvalidOperationException("该房间缺少频道信息，无法加入");
+                throw new InvalidOperationException(UiText.T("Room.MissingChannelInfo", "This room is missing channel information and cannot be joined."));
 
             if (game.IsFull)
-                throw new InvalidOperationException("该房间已满员，无法加入");
+                throw new InvalidOperationException(UiText.T("Room.RoomFull", "This room is full and cannot be joined."));
 
             string joinPassword;
             if (game.Passworded)
             {
                 if (string.IsNullOrEmpty(password))
-                    throw new InvalidOperationException("该房间需要密码才能加入");
+                    throw new InvalidOperationException(UiText.T("Room.PasswordRequired", "This room requires a password to join."));
                 joinPassword = password;
             }
             else
@@ -455,7 +455,7 @@ namespace BlazorCncnetClient.Infrastructure
             channel.Join();
 
             _manager.MainChannel.AddMessage(new ChatMessage(ColorConstants.Cyan,
-                $"正在加入房间「{game.RoomName}」..."));
+                string.Format(UiText.T("Room.JoiningRoom", "Joining room \"{0}\"..."), game.RoomName)));
             NotifyChanged();
         }
 
@@ -520,7 +520,7 @@ namespace BlazorCncnetClient.Infrastructure
         private string RandomizeChannelName()
         {
             if (LocalGame is null || string.IsNullOrEmpty(LocalGame.InternalName))
-                throw new InvalidOperationException("未选择本地游戏，无法创建房间");
+                throw new InvalidOperationException(UiText.T("Room.NoLocalGame", "No local game selected; cannot create a room."));
 
             const int maxTries = 10000;
             for (int i = 0; i < maxTries; i++)
@@ -530,7 +530,7 @@ namespace BlazorCncnetClient.Infrastructure
                 if (_manager.FindChannel(channelName) is null)
                     return channelName;
             }
-            throw new Exception($"尝试 {maxTries} 次仍未找到可用频道名");
+            throw new Exception(string.Format(UiText.T("Room.ChannelNameRetries", "Failed to find a free channel name after {0} attempts."), maxTries));
         }
 
         // ── 房间内交互 ──
@@ -568,10 +568,10 @@ namespace BlazorCncnetClient.Infrastructure
                 case "tunnelinfo": PrintTunnelInfo(); break;
                 case "downloadmap": DownloadMapById(args); break;
                 case "help":
-                    AddRoomMessage("可用房间指令：/roll <骰子数>d<面数> 掷骰子 · /tunnelinfo 查看隧道 · /downloadmap <SHA1> [地图名] 下载地图 · /help 帮助");
+                    AddRoomMessage(UiText.T("Room.CommandHelp", "Available room commands: /roll <count>d<sides> to roll dice · /tunnelinfo to view tunnel · /downloadmap <SHA1> [map name] to download a map · /help for help"));
                     break;
                 default:
-                    AddRoomMessage($"未知指令 /{command}，输入 /help 查看可用指令");
+                    AddRoomMessage(string.Format(UiText.T("Room.UnknownCommand", "Unknown command /{0}. Type /help for available commands."), command));
                     break;
             }
         }
@@ -589,7 +589,7 @@ namespace BlazorCncnetClient.Infrastructure
                 {
                     if (!int.TryParse(parts[0], out dieCount) || !int.TryParse(parts[1], out dieSides))
                     {
-                        AddRoomMessage("骰子格式无效，应为 /roll <骰子数>d<面数>，例：/roll 3d6");
+                        AddRoomMessage(UiText.T("Room.DiceInvalidFormat", "Invalid dice format. Use /roll <count>d<sides>, e.g. /roll 3d6"));
                         return;
                     }
                 }
@@ -597,12 +597,12 @@ namespace BlazorCncnetClient.Infrastructure
 
             if (dieCount > MAX_DICE || dieCount < 1)
             {
-                AddRoomMessage("一次只能掷 1 到 10 个骰子");
+                AddRoomMessage(UiText.T("Room.DiceCountRange", "You can only roll 1 to 10 dice at a time."));
                 return;
             }
             if (dieSides > MAX_DIE_SIDES || dieSides < 2)
             {
-                AddRoomMessage("骰子面数只能为 2 到 100");
+                AddRoomMessage(UiText.T("Room.DiceSidesRange", "Dice sides must be between 2 and 100."));
                 return;
             }
 
@@ -639,7 +639,7 @@ namespace BlazorCncnetClient.Infrastructure
 
         private void PrintDiceRollResult(string senderName, int dieSides, int[] results)
         {
-            AddRoomMessage($"{senderName} 掷了 {results.Length}d{dieSides}，结果为 {string.Join(", ", results)}");
+            AddRoomMessage(string.Format(UiText.T("Room.DiceRollResult", "{0} rolled {1}d{2}: {3}"), senderName, results.Length, dieSides, string.Join(", ", results)));
         }
 
         /// <summary>查看当前隧道服务器信息（原版 PrintTunnelServerInformation）。</summary>
@@ -647,12 +647,14 @@ namespace BlazorCncnetClient.Infrastructure
         {
             if (CurrentTunnel is null)
             {
-                AddRoomMessage("隧道服务器不可用");
+                AddRoomMessage(UiText.T("Room.TunnelUnavailable", "Tunnel server is unavailable."));
                 return;
             }
             var t = CurrentTunnel;
-            AddRoomMessage(
-                $"当前隧道服务器：{t.Name} {t.CountryCode}（负载 {t.Clients}/{t.MaxClients}）（官方：{(t.Official ? "是" : "否")}）");
+            AddRoomMessage(string.Format(UiText.T("Room.TunnelInfo",
+                "Current tunnel server: {0} {1} (load {2}/{3}) (official: {4})"),
+                t.Name, t.CountryCode, t.Clients, t.MaxClients,
+                t.Official ? UiText.T("Room.Yes", "Yes") : UiText.T("Room.No", "No")));
         }
 
         /// <summary>按地图 SHA1 从 CnCNet 地图服务器下载地图（原版 DownloadMapByIdCommand：sha1 [可选地图名]）。</summary>
@@ -660,7 +662,7 @@ namespace BlazorCncnetClient.Infrastructure
         {
             if (string.IsNullOrWhiteSpace(parameters))
             {
-                AddRoomMessage("用法：/downloadmap <SHA1> [地图名]，例：/downloadmap ABC123DEF... My Battle Map");
+                AddRoomMessage(UiText.T("Room.DownloadMapUsage", "Usage: /downloadmap <SHA1> [map name], e.g. /downloadmap ABC123DEF... My Battle Map"));
                 return;
             }
             parameters = parameters.Trim();
@@ -674,7 +676,7 @@ namespace BlazorCncnetClient.Infrastructure
 
             if (sha1.Length == 0)
             {
-                AddRoomMessage("地图 ID（SHA1）不能为空");
+                AddRoomMessage(UiText.T("Room.MapIdEmpty", "Map ID (SHA1) must not be empty."));
                 return;
             }
 
@@ -683,8 +685,9 @@ namespace BlazorCncnetClient.Infrastructure
                 string.Equals(gmm.Map.SHA1, sha1, StringComparison.OrdinalIgnoreCase));
             if (existing is not null)
             {
-                AddRoomMessage(
-                    $"地图 ID「{sha1}」已从本地加载（{existing.Map.BaseFilePath}.{ClientConfiguration.Instance.MapFileExtension}），请先删除该文件再试");
+                AddRoomMessage(string.Format(UiText.T("Room.MapAlreadyLoaded",
+                    "Map ID \"{0}\" is already loaded locally ({1}.{2}). Please delete that file and try again."),
+                    sha1, existing.Map.BaseFilePath, ClientConfiguration.Instance.MapFileExtension));
                 return;
             }
 
@@ -693,7 +696,7 @@ namespace BlazorCncnetClient.Infrastructure
             HashSet<char> invalidChars = new(Path.GetInvalidFileNameChars());
             string safeMapName = new string(mapName.Select(c => invalidChars.Contains(c) ? replaceUnsafeCharactersWith : c).ToArray());
 
-            AddRoomMessage($"正在通过聊天指令下载地图：sha1={sha1}, 地图名={mapName}");
+            AddRoomMessage(string.Format(UiText.T("Room.DownloadMapViaChat", "Downloading map via chat command: sha1={0}, map name={1}"), sha1, mapName));
             MapSharer.DownloadMap(sha1, LocalGame?.InternalName ?? string.Empty, safeMapName);
         }
 
@@ -768,7 +771,7 @@ namespace BlazorCncnetClient.Infrastructure
             if (!IsHost || _gameChannel is null || !IsJoined)
                 return;
             if (TotalSlots >= MaxTotalSlots)
-                throw new InvalidOperationException($"房间总槽位已达上限（{MaxTotalSlots}，含 AI）");
+                throw new InvalidOperationException(string.Format(UiText.T("Room.SlotsLimitReached", "Room total slots reached the limit ({0}, including AI)."), MaxTotalSlots));
 
             var ai = new PlayerInfo(ProgramConstants.AI_PLAYER_NAMES[0], 0, 0, 0, 0)
             {
@@ -845,13 +848,13 @@ namespace BlazorCncnetClient.Infrastructure
             if (UserINISettings.Instance.EnableMapSharing.Value)
             {
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Yellow,
-                    "主机选择了本机未安装的地图，点击「下载地图」从 CnCNet 地图库获取。"));
+                    UiText.T("Room.MissingMapPrompt", "The host selected a map not installed locally. Click \"Download Map\" to fetch it from the CnCNet map library.")));
                 DownloadState = MapDownloadState.Prompt;
             }
             else
             {
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                    "主机选择了本机未安装的地图，且已禁用地图共享，无法自动获取；请让主机更换地图。"));
+                    UiText.T("Room.MissingMapDisabled", "The host selected a map not installed locally and map sharing is disabled, so it cannot be fetched automatically. Please ask the host to change the map.")));
                 _gameChannel?.SendCTCPMessage(MAP_SHARING_DISABLED_MESSAGE, QueuedMessageType.SYSTEM_MESSAGE, 9);
                 DownloadState = MapDownloadState.Disabled;
             }
@@ -869,7 +872,7 @@ namespace BlazorCncnetClient.Infrastructure
                 NotifyChanged();
                 return;
             }
-            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan, "正在尝试下载地图…"));
+            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan, UiText.T("Room.DownloadingMap", "Attempting to download the map…")));
             DownloadState = MapDownloadState.Downloading;
             MapSharer.DownloadMap(MissingMapSHA1, LocalGame?.InternalName ?? string.Empty, MissingMapName ?? MissingMapSHA1);
             NotifyChanged();
@@ -898,14 +901,18 @@ namespace BlazorCncnetClient.Infrastructure
             if (map.Official)
             {
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                    $"{sender} 缺少官方地图「{map.Name}」，请更换地图或对方将无法参与对局。"));
+                    string.Format(UiText.T("Room.SenderMissingOfficialMap",
+                        "{0} is missing the official map \"{1}\". Please change the map; otherwise they cannot join the match."),
+                        sender, map.Name)));
                 return;
             }
             if (!IsHost)
                 return;
 
             _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Yellow,
-                $"{sender} 缺少地图「{map.Name}」，正在尝试上传到 CnCNet 地图库。"));
+                string.Format(UiText.T("Room.UploadingMapForSender",
+                    "{0} is missing map \"{1}\"; attempting to upload it to the CnCNet map library."),
+                    sender, map.Name)));
             MapSharer.UploadMap(map, LocalGame?.InternalName ?? string.Empty);
         }
 
@@ -930,12 +937,12 @@ namespace BlazorCncnetClient.Infrastructure
             {
                 _hostUploadedMaps.Add(sha1);
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                    "房主未能将地图上传到 CnCNet 地图库。"));
+                    UiText.T("Room.HostUploadFailed", "The host failed to upload the map to the CnCNet map library.")));
                 if (string.Equals(_lastMapSHA1, sha1, StringComparison.OrdinalIgnoreCase) && SelectedMap is null)
                 {
                     DownloadState = MapDownloadState.Failed;
                     _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                        "请让房主更换地图，否则无法参与对局。"));
+                        UiText.T("Room.AskHostChangeMap", "Please ask the host to change the map; otherwise you cannot join the match.")));
                     NotifyChanged();
                 }
                 return;
@@ -944,9 +951,9 @@ namespace BlazorCncnetClient.Infrastructure
             if (string.Equals(_lastMapSHA1, sha1, StringComparison.OrdinalIgnoreCase))
             {
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                    IsHost
-                        ? $"{sender} 无法从地图库下载该地图，请更换地图或对方将无法参与对局。"
-                        : $"{sender} 无法从地图库下载该地图，请让房主更换地图。"));
+                    string.Format(IsHost
+                        ? UiText.T("Room.SenderDownloadFailedHost", "{0} could not download this map from the map library. Please change the map; otherwise they cannot join the match.")
+                        : UiText.T("Room.SenderDownloadFailedJoiner", "{0} could not download this map from the map library. Please ask the host to change the map."), sender)));
             }
         }
 
@@ -954,7 +961,9 @@ namespace BlazorCncnetClient.Infrastructure
         private void HandleMapSharingBlockedMessage(string sender)
         {
             _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                $"{sender} 缺少当前地图且已禁用地图共享，请更换为非自定义地图或对方将无法参与对局。"));
+                string.Format(UiText.T("Room.SenderMapSharingDisabled",
+                    "{0} is missing the current map and has map sharing disabled. Please switch to a non-custom map; otherwise they cannot join the match."),
+                    sender)));
         }
 
         /// <summary>下载失败（原版 MapSharer_HandleMapDownloadFailed）：已上传失败过则回 MAPFAIL，否则请求房主上传。</summary>
@@ -966,13 +975,13 @@ namespace BlazorCncnetClient.Infrastructure
                 {
                     DownloadState = MapDownloadState.Failed;
                     _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                        "自定义地图下载失败，请让房主更换地图或对方将无法参与对局。"));
+                        UiText.T("Room.CustomMapDownloadFailed", "Custom map download failed. Please ask the host to change the map; otherwise they cannot join the match.")));
                     _gameChannel?.SendCTCPMessage(MAP_SHARING_FAIL_MESSAGE + " " + e.SHA1, QueuedMessageType.SYSTEM_MESSAGE, 9);
                 }
                 else
                 {
                     _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan,
-                        "正在请求房主将地图上传至 CnCNet 地图库…"));
+                        UiText.T("Room.RequestingHostUpload", "Requesting the host to upload the map to the CnCNet map library…")));
                     _gameChannel?.SendCTCPMessage(MAP_SHARING_UPLOAD_REQUEST + " " + e.SHA1, QueuedMessageType.SYSTEM_MESSAGE, 9);
                 }
                 NotifyChanged();
@@ -996,11 +1005,11 @@ namespace BlazorCncnetClient.Infrastructure
             {
                 Map map = e.Map;
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                    $"上传地图「{map.Name}」到 CnCNet 地图库失败。"));
+                    string.Format(UiText.T("Room.UploadMapFailed", "Failed to upload map \"{0}\" to the CnCNet map library."), map.Name)));
                 if (SelectedMap is not null && string.Equals(SelectedMap.Map.SHA1, map.SHA1, StringComparison.OrdinalIgnoreCase))
                 {
                     _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red,
-                        "请更换地图，否则缺少该地图的玩家无法参与对局。"));
+                        UiText.T("Room.ChangeMapMissingPlayers", "Please change the map; otherwise players missing this map cannot join the match.")));
                     _gameChannel?.SendCTCPMessage(MAP_SHARING_FAIL_MESSAGE + " " + map.SHA1, QueuedMessageType.SYSTEM_MESSAGE, 9);
                 }
             });
@@ -1013,7 +1022,7 @@ namespace BlazorCncnetClient.Infrastructure
             {
                 Map map = e.Map;
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan,
-                    $"上传地图「{map.Name}」到 CnCNet 地图库完成。"));
+                    string.Format(UiText.T("Room.UploadMapComplete", "Finished uploading map \"{0}\" to the CnCNet map library."), map.Name)));
                 if (SelectedMap is not null && string.Equals(SelectedMap.Map.SHA1, map.SHA1, StringComparison.OrdinalIgnoreCase))
                     _gameChannel?.SendCTCPMessage(MAP_SHARING_DOWNLOAD_REQUEST + " " + map.SHA1, QueuedMessageType.SYSTEM_MESSAGE, 9);
             });
@@ -1036,7 +1045,8 @@ namespace BlazorCncnetClient.Infrastructure
                 if (gmm is null)
                     return;
                 SelectedMap = gmm;
-                _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan, $"地图「{e.Map.Name}」下载完成并已自动选中。"));
+                _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan,
+                    string.Format(UiText.T("Room.MapDownloadedSelected", "Map \"{0}\" downloaded and selected automatically."), e.Map.Name)));
                 MissingMapSHA1 = null;
                 MissingMapName = null;
                 DownloadState = MapDownloadState.Complete;
@@ -1111,7 +1121,7 @@ namespace BlazorCncnetClient.Infrastructure
                 _manager.SendCustomMessage(new QueuedMessage(
                     $"MODE {_gameChannel.ChannelName} +k {_password}",
                     QueuedMessageType.SYSTEM_MESSAGE, 50));
-                _gameChannel.AddMessage(new ChatMessage(ColorConstants.Yellow, "已设置房间密码。"));
+                _gameChannel.AddMessage(new ChatMessage(ColorConstants.Yellow, UiText.T("Room.RoomPasswordSet", "Room password set.")));
             }
             else if (IsCustomPassword)
             {
@@ -1124,7 +1134,7 @@ namespace BlazorCncnetClient.Infrastructure
                 _manager.SendCustomMessage(new QueuedMessage(
                     $"MODE {_gameChannel.ChannelName} +k {_password}",
                     QueuedMessageType.SYSTEM_MESSAGE, 50));
-                _gameChannel.AddMessage(new ChatMessage(ColorConstants.Yellow, "已移除自定义密码，房间转为公开。"));
+                _gameChannel.AddMessage(new ChatMessage(ColorConstants.Yellow, UiText.T("Room.CustomPasswordRemoved", "Custom password removed; the room is now public.")));
             }
             BroadcastGame();
             NotifyChanged();
@@ -1136,7 +1146,7 @@ namespace BlazorCncnetClient.Infrastructure
             if (!IsHost || _gameChannel is null || !_players.ContainsKey(playerName))
                 return;
             _gameChannel.SendKickMessage(playerName, 8);
-            _gameChannel.AddMessage(new ChatMessage(ColorConstants.Yellow, $"{playerName} 已被移出房间。"));
+            _gameChannel.AddMessage(new ChatMessage(ColorConstants.Yellow, string.Format(UiText.T("Room.PlayerKicked", "{0} has been kicked from the room."), playerName)));
         }
 
         /// <summary>房主封禁玩家（MODE +b，按 ident；缺失时回退昵称）。</summary>
@@ -1145,7 +1155,7 @@ namespace BlazorCncnetClient.Infrastructure
             if (!IsHost || _gameChannel is null || !_players.ContainsKey(playerName))
                 return;
             _gameChannel.SendBanMessage(GetPlayerIdent(playerName), 8);
-            _gameChannel.AddMessage(new ChatMessage(ColorConstants.Yellow, $"{playerName} 已被封禁。"));
+            _gameChannel.AddMessage(new ChatMessage(ColorConstants.Yellow, string.Format(UiText.T("Room.PlayerBanned", "{0} has been banned."), playerName)));
         }
 
         /// <summary>房间玩家 ident（屏蔽/封禁用），缺失时回退昵称。</summary>
@@ -1218,16 +1228,16 @@ namespace BlazorCncnetClient.Infrastructure
             if (!IsHost || _gameChannel is null || !IsJoined)
                 return;
             if (SelectedMap is null)
-                throw new InvalidOperationException("请先选择地图");
+                throw new InvalidOperationException(UiText.T("Room.SelectMapFirst", "Please select a map first."));
 
             // P1 观战校验（同原版 CheckGameValidity）：coop 不可观战；观战者不参与就绪判定；
             // 全部人类均为观战者则无实际玩家，禁止开始。
             if (SelectedMap.IsCoop && _players.Values.Any(p => IsSpectatorSide(p.Side, SideCount)))
-                throw new InvalidOperationException("合作任务不能观战，请选择实际阵营");
+                throw new InvalidOperationException(UiText.T("Room.CoopNoSpectator", "Co-op missions do not support spectators; please choose an actual side."));
             if (_players.Values.All(p => IsSpectatorSide(p.Side, SideCount)))
-                throw new InvalidOperationException("需要至少一名玩家选择实际阵营才能开始");
+                throw new InvalidOperationException(UiText.T("Room.NeedOnePlayerSide", "At least one player must choose an actual side before starting."));
             if (Locked && _players.Values.Count(p => !p.Ready && !IsSpectatorSide(p.Side, SideCount)) > 0)
-                throw new InvalidOperationException("仍有玩家未就绪");
+                throw new InvalidOperationException(UiText.T("Room.PlayersNotReady", "Some players are not ready yet."));
 
             int playerCount = _players.Count;
 
@@ -1237,12 +1247,14 @@ namespace BlazorCncnetClient.Infrastructure
                 EnsureTunnelSelected();
                 var tunnel = _tunnelHandler.CurrentTunnel;
                 if (tunnel is null)
-                    throw new InvalidOperationException("无法选择隧道服务器（列表尚未加载），请稍后重试");
+                    throw new InvalidOperationException(UiText.T("Room.TunnelUnavailableRetry", "Unable to select a tunnel server (the list has not loaded yet). Please try again later."));
 
                 List<int> playerPorts = tunnel.GetPlayerPortInfo(playerCount);
                 if (playerPorts.Count < playerCount)
                     throw new InvalidOperationException(
-                        $"隧道服务器「{tunnel.Name}」端口不足（需要 {playerCount} 个，仅分配 {playerPorts.Count} 个），请稍后重试");
+                        string.Format(UiText.T("Room.TunnelPortsInsufficient",
+                            "Tunnel server \"{0}\" has insufficient ports (need {1}, only {2} allocated). Please try again later."),
+                            tunnel.Name, playerCount, playerPorts.Count));
 
                 int index = 0;
                 foreach (var p in _players.Values)
@@ -1314,7 +1326,7 @@ namespace BlazorCncnetClient.Infrastructure
                 StopHostInactiveCheck();
                 _dispatcher.Post(() =>
                 {
-                    AddRoomMessage("房主长时间无操作，房间已自动关闭");
+                    AddRoomMessage(UiText.T("Room.HostInactiveClosed", "The host was inactive for too long; the room has been closed automatically."));
                     LeaveGame();
                 });
             }
@@ -1384,7 +1396,7 @@ namespace BlazorCncnetClient.Infrastructure
             _gameChannel.SendCTCPMessage(
                 $"{CHANGE_TUNNEL_SERVER_MESSAGE} {tunnel.Address}:{tunnel.Port}",
                 QueuedMessageType.SYSTEM_MESSAGE, 10);
-            _gameChannel.AddMessage(new ChatMessage($"已将隧道服务器切换为：{tunnel.Name}"));
+            _gameChannel.AddMessage(new ChatMessage(string.Format(UiText.T("Room.TunnelSwitched", "Tunnel server switched to: {0}"), tunnel.Name)));
             BroadcastGame();
             NotifyChanged();
         }
@@ -1405,14 +1417,14 @@ namespace BlazorCncnetClient.Infrastructure
                 // 房主选择了无效隧道：置错误态并提示，避免加入者误以为可参与本局
                 TunnelErrorMode = true;
                 _gameChannel?.AddMessage(new ChatMessage(
-                    $"房主选择了无效的隧道服务器（{args}），本局游戏无法进行。"));
+                    string.Format(UiText.T("Room.HostInvalidTunnel", "The host selected an invalid tunnel server ({0}); this game cannot proceed."), args)));
                 NotifyChanged();
                 return;
             }
 
             TunnelErrorMode = false;
             _tunnelHandler.CurrentTunnel = tunnel;
-            _gameChannel?.AddMessage(new ChatMessage($"房主已将隧道服务器切换为：{tunnel.Name}"));
+            _gameChannel?.AddMessage(new ChatMessage(string.Format(UiText.T("Room.HostTunnelSwitched", "The host switched the tunnel server to: {0}"), tunnel.Name)));
             NotifyChanged();
         }
 
@@ -1634,21 +1646,21 @@ namespace BlazorCncnetClient.Infrastructure
 
         private void OnInvalidPasswordEntered(object? sender, EventArgs e)
         {
-            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red, "密码错误，无法加入该房间"));
+            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red, UiText.T("Room.IncorrectPassword", "Incorrect password; cannot join this room.")));
             LeaveGame();
             NotifyChanged();
         }
 
         private void OnInviteOnlyError(object? sender, EventArgs e)
         {
-            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red, "房间已锁定，无法加入"));
+            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red, UiText.T("Room.RoomLocked", "The room is locked; cannot join.")));
             LeaveGame();
             NotifyChanged();
         }
 
         private void OnChannelFull(object? sender, EventArgs e)
         {
-            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red, "房间已满员，无法加入"));
+            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red, UiText.T("Room.RoomFullJoinFailed", "The room is full; cannot join.")));
             LeaveGame();
             NotifyChanged();
         }
@@ -1678,7 +1690,7 @@ namespace BlazorCncnetClient.Infrastructure
                 case "GO": HandleGameOptions(e.UserName, args); break;
                 case "GSETTINGS": HandleGameLobbySettings(e.UserName, args); break;
                 case "START": HandleStartMessage(e.UserName, args); break;
-                case "STRTD": _gameChannel?.AddMessage(new ChatMessage("游戏已开始")); break;
+                case "STRTD": _gameChannel?.AddMessage(new ChatMessage(UiText.T("Room.GameStarted", "The game has started"))); break;
                 case DICE_ROLL_MESSAGE: HandleDiceRollResult(e.UserName, args); break;
                 case CHANGE_TUNNEL_SERVER_MESSAGE: HandleTunnelServerChangeMessage(e.UserName, args); break;
                 case "FHSH": break; // 文件哈希校验：M3.6/M3.7 接入 FileHashCalculator
@@ -1816,7 +1828,7 @@ namespace BlazorCncnetClient.Infrastructure
             }
             catch
             {
-                _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red, "收到无效的玩家附加选项数据。"));
+                _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Red, UiText.T("Room.InvalidExtraOptions", "Received invalid player extra options data.")));
                 return;
             }
 
@@ -1867,7 +1879,7 @@ namespace BlazorCncnetClient.Infrastructure
                 _lastMapSHA1 = mapHash;
                 _lastMapName = mapName;
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Yellow,
-                    "主机选择了本机未安装的地图，地图名： " + mapName));
+                    string.Format(UiText.T("Room.HostSelectedMissingMap", "The host selected a map not installed locally, map name: {0}"), mapName)));
                 RequestMissingMap(mapHash, mapName);
             }
             else
@@ -1926,7 +1938,7 @@ namespace BlazorCncnetClient.Infrastructure
                 : (_tunnelHandler.Tunnels.FirstOrDefault(t =>
                     string.Equals(t.Address, tunnelAddress, StringComparison.OrdinalIgnoreCase))?.Port ?? 0);
 
-            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan, "主机已开始游戏"));
+            _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan, UiText.T("Room.HostStartedGame", "The host has started the game")));
             GameStartRequested?.Invoke();
         }
 

@@ -6,44 +6,45 @@
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
+@inject ITranslationService TranslationSvc
 
 <div class="groom stats page-anim">
     <header class="groom-top item-in">
         <div class="gt-left">
-            <span class="gt-badge host">统计<span class="en">STATISTICS</span></span>
+            <span class="gt-badge host">@T("MainMenu.stats", "Statistics")<span class="en">STATISTICS</span></span>
             <div class="gt-tbox">
-                <span class="gt-title">战绩统计</span>
-                <span class="gt-en">SCORE DATABASE · 共 @Svc.Matches.Count 局</span>
+                <span class="gt-title">@T("Statistics.Title", "Match statistics")</span>
+                <span class="gt-en">@F("Statistics.Subtitle", "SCORE DATABASE · {0} matches", Svc.Matches.Count)</span>
             </div>
         </div>
         <div class="gt-right">
             <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
-            <button class="mb-btn" @onclick="BackToMenu">返回主菜单</button>
+            <button class="mb-btn" @onclick="BackToMenu">@T("Common.BackToMenu", "Back to main menu")</button>
         </div>
     </header>
 
     <!-- 选项卡（参考原版 XNAClientTabControl：Game Statistics / Total Statistics） -->
-    <div class="stats-tabs item-in" role="tablist" aria-label="统计视图">
+    <div class="stats-tabs item-in" role="tablist" aria-label="@T("Statistics.TabsLabel", "Statistics views")">
         <button type="button" class="stats-tab @(_tabIndex == 0 ? "on" : "")" @onclick="() => SwitchTab(0)">
-            对局统计<span class="en">GAMES</span>
+            @T("Statistics.GamesTab", "Game statistics")<span class="en">GAMES</span>
         </button>
         <button type="button" class="stats-tab @(_tabIndex == 1 ? "on" : "")" @onclick="() => SwitchTab(1)">
-            总统计<span class="en">TOTAL</span>
+            @T("Statistics.TotalTab", "Total statistics")<span class="en">TOTAL</span>
         </button>
     </div>
 
     <!-- 筛选工具栏（窗口级：两个 Tab 共用，参考原版 cmbGameClassFilter / cmbGameModeFilter / chkIncludeSpectatedGames） -->
     <div class="stats-toolbar item-in" style="animation-delay:50ms">
-        <label>类别 <em class="en-tag">CLASS</em></label>
+        <label>@T("Statistics.Class", "Class") <em class="en-tag">CLASS</em></label>
         <select class="gl-select" value="@((int)Svc.Filter)" @onchange="OnClassFilterChange">
             @for (int i = 0; i < ClassFilterLabels.Length; i++)
             {
                 <option value="@i">@ClassFilterLabels[i]</option>
             }
         </select>
-        <label>模式 <em class="en-tag">MODE</em></label>
+        <label>@T("Statistics.Mode", "Mode") <em class="en-tag">MODE</em></label>
         <select class="gl-select" value="@SelectedGameModeIndex" @onchange="OnGameModeChange">
-            <option value="0">全部模式</option>
+            <option value="0">@T("Statistics.AllModes", "All modes")</option>
             @for (int i = 0; i < Svc.GameModes.Count; i++)
             {
                 <option value="@(i + 1)">@Svc.GameModes[i]</option>
@@ -51,7 +52,7 @@
         </select>
         <label class="gl-check" style="margin-left:8px">
             <input type="checkbox" checked="@Svc.IncludeSpectated" @onchange="OnSpectatedChange" />
-            <span>包含观战局<span class="en">SPECTATED</span></span>
+            <span>@T("Statistics.IncludeSpectated", "Include spectated games")<span class="en">SPECTATED</span></span>
         </label>
     </div>
 
@@ -61,21 +62,21 @@
             <!-- 对局列表（参考原版 lbGameList：日期时间/地图/模式/FPS/时长/完成） -->
             <section class="gl-panel stats-matches item-in" style="animation-delay:100ms">
                 <header class="gl-ph">
-                    <span>对局 <em>GAMES</em></span>
-                    <span class="gl-mapname">@Svc.Matches.Count 局</span>
+                    <span>@T("Statistics.Games", "Games") <em>GAMES</em></span>
+                    <span class="gl-mapname">@F("Statistics.MatchCount", "{0} matches", Svc.Matches.Count)</span>
                 </header>
                 <div class="stats-tr head">
-                    <span>时间 DATE/TIME</span>
-                    <span>地图 MAP</span>
-                    <span>模式 MODE</span>
+                    <span>@T("Statistics.Date", "Time")</span>
+                    <span>@T("Statistics.Map", "Map")</span>
+                    <span>@T("Statistics.Mode", "Mode")</span>
                     <span>FPS</span>
-                    <span>时长 DURATION</span>
-                    <span>完成 COMPLETED</span>
+                    <span>@T("Statistics.Duration", "Duration")</span>
+                    <span>@T("Statistics.Completed", "Completed")</span>
                 </div>
                 <div class="stats-tbl">
                     @if (Svc.Matches.Count == 0)
                     {
-                        <div class="stats-empty">暂无对局记录（dscore.dat 为空或不存在）</div>
+                        <div class="stats-empty">@T("Statistics.NoMatches", "No match records (dscore.dat is empty or missing)")</div>
                     }
                     else
                     {
@@ -100,23 +101,23 @@
             <!-- 玩家明细（参考原版 lbGameStatistics：名称/击杀/损失/经济/得分/获胜/阵营/队伍） -->
             <section class="gl-panel stats-players item-in" style="animation-delay:150ms">
                 <header class="gl-ph">
-                    <span>玩家明细 <em>PLAYER STATISTICS</em></span>
-                    <span class="gl-mapname">按得分排序</span>
+                    <span>@T("Statistics.PlayerDetails", "Player statistics") <em>PLAYER STATISTICS</em></span>
+                    <span class="gl-mapname">@T("Statistics.SortedByScore", "Sorted by score")</span>
                 </header>
                 <div class="stats-tr p head">
-                    <span>玩家 NAME</span>
-                    <span>击杀 KILLS</span>
-                    <span>损失 LOSSES</span>
-                    <span>经济 ECONOMY</span>
-                    <span>得分 SCORE</span>
-                    <span>获胜 WON</span>
-                    <span>阵营 SIDE</span>
-                    <span>队伍 TEAM</span>
+                    <span>@T("Lobby.Player", "Player")</span>
+                    <span>@T("Statistics.Kills", "Kills")</span>
+                    <span>@T("Statistics.Losses", "Losses")</span>
+                    <span>@T("Statistics.Economy", "Economy")</span>
+                    <span>@T("Statistics.Score", "Score")</span>
+                    <span>@T("Statistics.Won", "Won")</span>
+                    <span>@T("Skirmish.Side", "Side")</span>
+                    <span>@T("Skirmish.Team", "Team")</span>
                 </div>
                 <div class="stats-tbl">
                     @if (_selectedRow < 0)
                     {
-                        <div class="stats-empty">从上方对局列表选择一局查看玩家数据</div>
+                        <div class="stats-empty">@T("Statistics.SelectMatchHint", "Select a match from the list above to view player data")</div>
                     }
                     else
                     {
@@ -162,15 +163,27 @@
 
     <!-- 底部操作（参考原版 btnClearStatistics / btnReturnToMenu） -->
     <div class="stats-actions item-in" style="animation-delay:200ms">
-        <button class="mb-btn danger" @onclick="OnClearStatistics">清空统计<span class="en">CLEAR ALL</span></button>
-        <button class="mb-btn primary" @onclick="BackToMenu">返回主菜单<span class="en">MAIN MENU</span></button>
+        <button class="mb-btn danger" @onclick="OnClearStatistics">@T("Statistics.ClearAll", "Clear statistics")<span class="en">CLEAR ALL</span></button>
+        <button class="mb-btn primary" @onclick="BackToMenu">@T("Common.BackToMenu", "Back to main menu")<span class="en">MAIN MENU</span></button>
     </div>
 </div>
 
 @code {
-    private static readonly string[] ClassFilterLabels =
+    /// <summary>UI 文案查表（键省略 <c>Client:UI:</c> 前缀，缺失回退英文默认值）。</summary>
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    /// <summary>带参数的文案（占位符 {0}…）。</summary>
+    private static string F(string key, string fallback, params object[] args)
+        => string.Format(UiText.T(key, fallback), args);
+
+    /// <summary>类别筛选下拉文案（计算属性：语言切换后随重渲染刷新）。</summary>
+    private static string[] ClassFilterLabels =>
     [
-        "全部对局", "在线对局", "在线 PvP", "在线合作", "遭遇战"
+        T("Statistics.Filter.All", "All games"),
+        T("Statistics.Filter.Online", "Online games"),
+        T("Statistics.Filter.OnlinePvp", "Online PvP"),
+        T("Statistics.Filter.OnlineCoop", "Online Co-op"),
+        T("Statistics.Filter.Skirmish", "Skirmish"),
     ];
 
     private int _tabIndex;
@@ -190,28 +203,28 @@
 
     private IEnumerable<(string Label, string Value)> TotalCol1 => new (string, string)[]
     {
-        ("开始对局", Svc.Total.GamesStarted.ToString()),
-        ("完成对局", Svc.Total.GamesFinished.ToString()),
-        ("获胜", Svc.Total.Wins.ToString()),
-        ("失败", Svc.Total.Losses.ToString()),
-        ("胜 / 负比", Svc.Total.WinLossRatio),
-        ("平均对局时长", Svc.Total.AverageGameLength),
-        ("总游戏时间", Svc.Total.TotalTimePlayed),
-        ("平均敌人数量", Svc.Total.AverageEnemyCount),
-        ("平均盟友数量", Svc.Total.AverageAllyCount),
+        (T("Statistics.Total.GamesStarted", "Games started"), Svc.Total.GamesStarted.ToString()),
+        (T("Statistics.Total.GamesFinished", "Games finished"), Svc.Total.GamesFinished.ToString()),
+        (T("Statistics.Total.Wins", "Wins"), Svc.Total.Wins.ToString()),
+        (T("Statistics.Total.Losses", "Losses"), Svc.Total.Losses.ToString()),
+        (T("Statistics.Total.WinLossRatio", "Win / loss ratio"), Svc.Total.WinLossRatio),
+        (T("Statistics.Total.AverageGameLength", "Average match length"), Svc.Total.AverageGameLength),
+        (T("Statistics.Total.TotalTimePlayed", "Total time played"), Svc.Total.TotalTimePlayed),
+        (T("Statistics.Total.AverageEnemyCount", "Average enemy count"), Svc.Total.AverageEnemyCount),
+        (T("Statistics.Total.AverageAllyCount", "Average ally count"), Svc.Total.AverageAllyCount),
     };
 
     private IEnumerable<(string Label, string Value)> TotalCol2 => new (string, string)[]
     {
-        ("总击杀", Svc.Total.TotalKills),
-        ("每局击杀", Svc.Total.KillsPerGame),
-        ("总损失", Svc.Total.TotalLosses),
-        ("每局损失", Svc.Total.LossesPerGame),
-        ("击杀 / 损失比", Svc.Total.KillLossRatio),
-        ("总得分", Svc.Total.TotalScore),
-        ("平均经济", Svc.Total.AverageEconomy),
-        ("常用阵营", Svc.Total.FavouriteSide),
-        ("平均 AI 难度", Svc.Total.AverageAILevel),
+        (T("Statistics.Total.TotalKills", "Total kills"), Svc.Total.TotalKills),
+        (T("Statistics.Total.KillsPerGame", "Kills per game"), Svc.Total.KillsPerGame),
+        (T("Statistics.Total.TotalLosses", "Total losses"), Svc.Total.TotalLosses),
+        (T("Statistics.Total.LossesPerGame", "Losses per game"), Svc.Total.LossesPerGame),
+        (T("Statistics.Total.KillLossRatio", "Kill / loss ratio"), Svc.Total.KillLossRatio),
+        (T("Statistics.Total.TotalScore", "Total score"), Svc.Total.TotalScore),
+        (T("Statistics.Total.AverageEconomy", "Average economy"), Svc.Total.AverageEconomy),
+        (T("Statistics.Total.FavouriteSide", "Favourite side"), Svc.Total.FavouriteSide),
+        (T("Statistics.Total.AverageAILevel", "Average AI difficulty"), Svc.Total.AverageAILevel),
     };
 
     protected override void OnInitialized()
@@ -219,9 +232,12 @@
         if (!Svc.IsLoaded)
             Svc.Load();
         ThemeProvider.ThemeChanged += OnThemeChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
 
     private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 
     private void SwitchTab(int tab)
     {
@@ -272,14 +288,15 @@
 
     private async Task OnClearStatistics()
     {
-        var confirm = await MessageBox.ShowAsync("清空统计",
-            "将清除数据库中的全部统计数据，此操作不可撤销。\n\n确认继续？",
+        var confirm = await MessageBox.ShowAsync(
+            T("Statistics.ClearAll", "Clear statistics"),
+            T("Statistics.ClearConfirm", "This will delete all statistics from the database. This action cannot be undone.\n\nContinue?"),
             MessageBoxButtons.YesNo, MessageBoxKind.Warn);
         if (!confirm)
             return;
         Svc.ClearAll();
         _selectedRow = -1;
-        await JS.InvokeVoidAsync("cncnet.toast", "统计数据已清空");
+        await JS.InvokeVoidAsync("cncnet.toast", T("Statistics.Cleared", "Statistics cleared"));
     }
 
     private void BackToMenu() => Nav.NavigateTo("/menu");
@@ -287,5 +304,6 @@
     public void Dispose()
     {
         ThemeProvider.ThemeChanged -= OnThemeChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
     }
 }

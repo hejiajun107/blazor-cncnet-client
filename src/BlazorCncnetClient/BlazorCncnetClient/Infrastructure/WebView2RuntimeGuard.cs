@@ -51,11 +51,12 @@ public static class WebView2RuntimeGuard
         if (Detect())
             return true;
 
-        const string message =
-            "未检测到 Microsoft Edge WebView2 Runtime。\r\n\r\n" +
-            "CNCNet 客户端的界面由 WebView2 渲染，需要该运行时才能启动。\r\n" +
-            "是否立即打开官方下载页面安装？（Windows 11 一般已预装）";
-        int result = MessageBoxW(IntPtr.Zero, message, "缺少 WebView2 Runtime",
+        string message = UiText.T("Startup.WebView2MissingMessage",
+            "Microsoft Edge WebView2 Runtime was not detected.\r\n\r\n" +
+            "The CNCNet client interface is rendered by WebView2, which is required to start.\r\n" +
+            "Open the official download page to install it now? (Windows 11 usually ships with it)");
+        int result = MessageBoxW(IntPtr.Zero, message,
+            UiText.T("Startup.WebView2MissingTitle", "WebView2 Runtime Missing"),
             MbOkCancel | MbIconWarning | MbTopmost | MbSetForeground);
 
         if (result == IdOk)

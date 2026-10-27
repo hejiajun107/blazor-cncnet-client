@@ -78,7 +78,7 @@ public sealed class LoadGameService : IDisposable
         catch (Exception ex)
         {
             _launchInProgress = false;
-            await _messageBox.ShowAsync("生成游戏配置出错", ex.Message,
+            await _messageBox.ShowAsync(UiText.T("Launch.ConfigErrorTitle", "Failed to generate game configuration"), ex.Message,
                 MessageBoxButtons.Ok, MessageBoxKind.Error);
         }
     }
@@ -87,8 +87,10 @@ public sealed class LoadGameService : IDisposable
     public async Task DeleteAsync(SavedGame saveGame)
     {
         bool confirmed = await _messageBox.ShowAsync(
-            "删除确认",
-            $"以下存档将被永久删除：\n\n文件名：{saveGame.FileName}\n存档名：{saveGame.GUIName}\n日期时间：{saveGame.LastModified:yyyy-MM-dd HH:mm}\n\n确定要继续吗？",
+            UiText.T("LoadGame.DeleteTitle", "Confirm deletion"),
+            string.Format(UiText.T("LoadGame.DeleteBody",
+                    "The following save will be permanently deleted:\n\nFile: {0}\nSave name: {1}\nDate: {2}\n\nContinue?"),
+                saveGame.FileName, saveGame.GUIName, saveGame.LastModified.ToString("yyyy-MM-dd HH:mm")),
             MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
 
         if (!confirmed)

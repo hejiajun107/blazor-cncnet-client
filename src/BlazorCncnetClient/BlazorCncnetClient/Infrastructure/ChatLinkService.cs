@@ -52,8 +52,9 @@ public sealed class ChatLinkService
         }
         else
         {
-            string title = "打开链接确认".L10N(UIStrings.KeyPrefix + "Chat.OpenLinkTitle");
-            string text = "你将打开聊天中分享的链接。\n\n请注意：该链接未经核实，CnCNet 不对其内容负责。\n\n是否在浏览器中打开以下链接？\n\n"
+            string title = UiText.T("Chat.OpenLinkTitle", "Open link confirmation");
+            string text = UiText.T("Chat.OpenLinkBody",
+                    "You are about to open a link shared in chat.\n\nNote: this link has not been verified and CnCNet is not responsible for its content.\n\nOpen the following link in your browser?\n\n")
                 + url;
             proceed = await _messageBox.ShowAsync(title, text, MessageBoxButtons.YesNo, MessageBoxKind.Warn);
         }
@@ -64,7 +65,7 @@ public sealed class ChatLinkService
         if (_extras.OpenUrl(url) is { } err)
         {
             await _messageBox.ShowAsync(
-                "打开链接失败".L10N(UIStrings.KeyPrefix + "Chat.OpenLinkFailedTitle"),
+                UiText.T("Chat.OpenLinkFailedTitle", "Could not open link"),
                 err, MessageBoxButtons.Ok, MessageBoxKind.Error);
         }
     }

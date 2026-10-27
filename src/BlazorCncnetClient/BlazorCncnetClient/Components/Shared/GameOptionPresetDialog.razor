@@ -1,7 +1,9 @@
 @namespace BlazorCncnetClient.Components.Shared
+@implements IDisposable
 @using CnCNetClient.Domain.Multiplayer
 @inject IJSRuntime JS
 @inject MessageBoxService MessageBox
+@inject ITranslationService TranslationSvc
 
 @* 游戏选项预设对话框（原版 LoadOrSaveGameOptionPresetWindow：载入 / 保存 / 删除）。
    遭遇战与在线房间共用；保存时把当前选项集合写入 GameOptionsPresets.ini，
@@ -11,22 +13,22 @@
     <div class="ctx-backdrop" @onclick="OnClose" @oncontextmenu="OnClose" @oncontextmenu:preventDefault="true"></div>
     <div class="cr-panel gop-panel pop-in">
         <div class="cr-head">
-            <span>@(_isLoad ? "载入预设" : "保存预设")</span>
+            <span>@(_isLoad ? T("Preset.LoadTitle", "Load preset") : T("Preset.SaveTitle", "Save preset"))</span>
             <span class="cr-en">GAME OPTION PRESET</span>
-            <button type="button" class="gop-close" @onclick="OnClose" title="关闭">✕</button>
+            <button type="button" class="gop-close" @onclick="OnClose" title="@T("Common.Close", "Close")">✕</button>
         </div>
         <div class="gop-mode">
             <button type="button" class="mb-btn @(_isLoad ? "primary" : "")" @onclick="() => SetMode(true)">
-                载入<span class="en">LOAD</span>
+                @T("Preset.Load", "Load")<span class="en">LOAD</span>
             </button>
             <button type="button" class="mb-btn @(!_isLoad ? "primary" : "")" @onclick="() => SetMode(false)">
-                保存<span class="en">SAVE</span>
+                @T("Preset.Save", "Save")<span class="en">SAVE</span>
             </button>
         </div>
         <div class="cr-field">
-            <span>预设名称</span>
+            <span>@T("Preset.NameLabel", "Preset name")</span>
             <select class="gl-select" value="@_selectedPreset" @onchange="OnPresetChange">
-                <option value="">@(_isLoad ? "[选择预设]" : "[新建预设]")</option>
+                <option value="">@(_isLoad ? T("Preset.SelectPlaceholder", "[Select preset]") : T("Preset.NewPlaceholder", "[New preset]"))</option>
                 @foreach (var name in _presetNames)
                 {
                     <option value="@name">@name</option>
@@ -36,20 +38,20 @@
         @if (!_isLoad)
         {
             <div class="cr-field">
-                <span>新预设名</span>
+                <span>@T("Preset.NewNameLabel", "New preset name")</span>
                 <input class="gl-input" maxlength="40" value="@_newName" @oninput="OnNewNameInput"
-                       placeholder="命名当前选项并保存（可选覆盖已选预设）" />
+                       placeholder="@T("Preset.NewNamePlaceholder", "Name the current options and save (optionally overwrite the selected preset)")" />
             </div>
         }
         <div class="cr-actions">
             <button type="button" class="mb-btn primary" disabled="@(!CanAct)" @onclick="OnAct">
-                @(_isLoad ? "载入" : "保存")<span class="en">@(_isLoad ? "LOAD" : "SAVE")</span>
+                @(_isLoad ? T("Preset.Load", "Load") : T("Preset.Save", "Save"))<span class="en">@(_isLoad ? "LOAD" : "SAVE")</span>
             </button>
             <button type="button" class="mb-btn danger" disabled="@(!CanDelete)" @onclick="OnDelete">
-                删除<span class="en">DELETE</span>
+                @T("Preset.Delete", "Delete")<span class="en">DELETE</span>
             </button>
             <button type="button" class="mb-btn" @onclick="OnClose">
-                取消<span class="en">CANCEL</span>
+                @T("Common.Cancel", "Cancel")<span class="en">CANCEL</span>
             </button>
         </div>
     </div>
@@ -70,6 +72,13 @@
     private string _selectedPreset = string.Empty;
     private string _newName = string.Empty;
     private List<string> _presetNames = new();
+
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+    private static string F(string key, string fallback, params object[] args) => string.Format(UiText.T(key, fallback), args);
+
+    protected override void OnInitialized() => TranslationSvc.LanguageChanged += OnLanguageChanged;
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 
     protected override void OnParametersSet()
     {
@@ -112,10 +121,10 @@
         {
             if (!ApplyPreset(_selectedPreset))
             {
-                await JS.InvokeVoidAsync("cncnet.toast", $"未找到预设：{_selectedPreset}");
+                await JS.InvokeVoidAsync("cncnet.toast", T("Preset.NotFound", "Preset not found: ") + _selectedPreset);
                 return;
             }
-            await JS.InvokeVoidAsync("cncnet.toast", $"已载入预设：{_selectedPreset}");
+            await JS.InvokeVoidAsync("cncnet.toast", T("Preset.Loaded", "Loaded preset: ") + _selectedPreset);
             await OnPresetApplied.InvokeAsync(_selectedPreset);
         }
         else
@@ -127,7 +136,7 @@
                 await JS.InvokeVoidAsync("cncnet.toast", error);
                 return;
             }
-            await JS.InvokeVoidAsync("cncnet.toast", $"已保存预设：{presetName}");
+            await JS.InvokeVoidAsync("cncnet.toast", T("Preset.Saved", "Saved preset: ") + presetName);
         }
         await OnClose.InvokeAsync();
     }
@@ -173,13 +182,15 @@
     private async Task OnDelete()
     {
         var name = _selectedPreset;
-        var confirm = await MessageBox.ShowAsync("删除预设",
-            $"确定删除预设“{name}”吗？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        var confirm = await MessageBox.ShowAsync(T("Preset.DeleteTitle", "Delete preset"),
+            F("Preset.DeleteConfirm", "Delete preset \"{0}\"?", name), MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
         if (!confirm)
             return;
         GameOptionPresets.Instance.DeletePreset(name);
         RefreshPresetNames();
         _selectedPreset = string.Empty;
-        await JS.InvokeVoidAsync("cncnet.toast", $"已删除预设：{name}");
+        await JS.InvokeVoidAsync("cncnet.toast", T("Preset.Deleted", "Deleted preset: ") + name);
     }
+
+    public void Dispose() => TranslationSvc.LanguageChanged -= OnLanguageChanged;
 }

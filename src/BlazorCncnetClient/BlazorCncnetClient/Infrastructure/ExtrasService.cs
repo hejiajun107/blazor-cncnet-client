@@ -95,6 +95,7 @@ public sealed class ExtrasService
     {
         var config = ClientConfiguration.Instance;
         string gameName = string.IsNullOrWhiteSpace(config.LongGameName) ? config.LocalGame : config.LongGameName;
-        return $"CNC NET CLIENT · {gameName}\n游戏版本：{ProgramConstants.GAME_VERSION}\n引擎：Blazor WebView2 · 全息指挥视窗";
+        return string.Format(UiText.T("Extras.AboutText",
+            "CNC NET CLIENT · {0}\nGame version: {1}\nEngine: Blazor WebView2 · Holographic Command View"), gameName, ProgramConstants.GAME_VERSION);
     }
 }

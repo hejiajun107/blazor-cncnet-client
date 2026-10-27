@@ -66,13 +66,13 @@ public sealed class ConnectionMonitor : IDisposable
         _ => "OFFLINE"
     };
 
-    /// <summary>中文状态文本（大厅指示）。</summary>
+    /// <summary>当前语言的状态文本（大厅指示）。</summary>
     public string StateCn => State switch
     {
-        ConnectionState.Online => "在线",
-        ConnectionState.Reconnecting => "重连中",
-        ConnectionState.Connecting => "连接中",
-        _ => "离线"
+        ConnectionState.Online => UiText.T("Connection.Online", "Online"),
+        ConnectionState.Reconnecting => UiText.T("Connection.Reconnecting", "Reconnecting"),
+        ConnectionState.Connecting => UiText.T("Connection.Connecting", "Connecting"),
+        _ => UiText.T("Connection.Offline", "Offline")
     };
 
     /// <summary>状态灯/徽章修饰类：""=在线（青呼吸）、retry=重连（琥珀）、off=离线（红常亮）。</summary>
@@ -101,7 +101,9 @@ public sealed class ConnectionMonitor : IDisposable
         SetState(ConnectionState.Online);
         Raise(new ConnectionNotification(
             wasReconnecting ? ConnectionNotificationKind.Reconnected : ConnectionNotificationKind.Connected,
-            wasReconnecting ? "已重新连接 CnCNet" : "已连接 CnCNet"));
+            wasReconnecting
+                ? UiText.T("Connection.Reconnected", "Reconnected to CnCNet")
+                : UiText.T("Connection.Connected", "Connected to CnCNet")));
     }
 
     private void OnConnectionLost(object? sender, ConnectionLostEventArgs e)
@@ -120,13 +122,15 @@ public sealed class ConnectionMonitor : IDisposable
     {
         LastError = null;
         SetState(ConnectionState.Offline);
-        Raise(new ConnectionNotification(ConnectionNotificationKind.Disconnected, "已与 CnCNet 断开连接"));
+        Raise(new ConnectionNotification(ConnectionNotificationKind.Disconnected,
+            UiText.T("Connection.Disconnected", "Disconnected from CnCNet")));
     }
 
     private void OnConnectAttemptFailed(object? sender, EventArgs e)
     {
         SetState(ConnectionState.Offline);
-        Raise(new ConnectionNotification(ConnectionNotificationKind.Failed, "连接 CnCNet 失败"));
+        Raise(new ConnectionNotification(ConnectionNotificationKind.Failed,
+            UiText.T("Connection.ConnectFailed", "Failed to connect to CnCNet")));
     }
 
     private void SetState(ConnectionState state)

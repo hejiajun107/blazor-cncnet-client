@@ -84,9 +84,13 @@ public static class StringExtensions
         if (string.IsNullOrEmpty(defaultValue))
             return defaultValue;
 
-        // M4.2 双轨桥接（spec §6.8）：UI 键（Client:UI: 前缀）→ Resx；其余 → INI 游戏/内容翻译。
+        // UI 键（Client:UI: 前缀）：原版 Translation.ini 优先，保证第三方翻译包可直接生效；
+        // 未收录时回退内置 Resx（neutral=en / zh-CN 卫星）。其余键仍走 INI 游戏/内容翻译。
         if (key.StartsWith(UIStrings.KeyPrefix, StringComparison.Ordinal))
-            return UIStrings.Lookup(key, defaultValue);
+        {
+            string translated = Translation.Instance.LookUp(key, string.Empty, notify: false);
+            return string.IsNullOrEmpty(translated) ? UIStrings.Lookup(key, defaultValue) : translated;
+        }
 
         return Translation.Instance.LookUp(key, defaultValue, notify);
     }

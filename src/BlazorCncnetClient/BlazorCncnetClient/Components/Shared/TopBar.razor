@@ -9,6 +9,7 @@
 @inject IServiceProvider Services
 @inject CnCNetManager CncNet
 @inject LoginService Login
+@inject ITranslationService TranslationSvc
 
 <!-- 全局悬浮顶栏（原版 TopBar：默认藏在屏幕上方，鼠标移到顶部滑出，失焦后收回）。
      按钮：主菜单 / 设置 / 登出；右侧状态：连接灯、玩家名、在线人数、日期时间。 -->
@@ -23,17 +24,17 @@
     </div>
 
     <nav class="hud-menu">
-        <button type="button" class="hm" @onclick="GoSkirmish">遭遇战大厅<span class="en">SKIRMISH · F2</span></button>
-        <button type="button" class="hm" @onclick="GoOnlineLobby">CnCNet 大厅<span class="en">CNCNET · F3</span></button>
-        <button type="button" class="hm" @onclick="GoPM">私信<span class="en">PM · F4</span></button>
-        <button type="button" class="hm" @onclick="GoSettings">选项<span class="en">OPTIONS · F12</span></button>
+        <button type="button" class="hm" @onclick="GoSkirmish">@UiText.T("TopBar.Skirmish", "Skirmish")<span class="en">SKIRMISH · F2</span></button>
+        <button type="button" class="hm" @onclick="GoOnlineLobby">@UiText.T("TopBar.OnlineLobby", "CnCNet Lobby")<span class="en">CNCNET · F3</span></button>
+        <button type="button" class="hm" @onclick="GoPM">@UiText.T("TopBar.Pm", "Messages")<span class="en">PM · F4</span></button>
+        <button type="button" class="hm" @onclick="GoSettings">@UiText.T("TopBar.Settings", "Options")<span class="en">OPTIONS · F12</span></button>
         @if (_isConnected)
         {
-            <button type="button" class="hm hm-out" @onclick="OnLogout">登出<span class="en">LOGOUT</span></button>
+            <button type="button" class="hm hm-out" @onclick="OnLogout">@UiText.T("TopBar.Logout", "Log out")<span class="en">LOGOUT</span></button>
         }
         else
         {
-            <button type="button" class="hm" @onclick="OnLogin">登录<span class="en">LOGIN</span></button>
+            <button type="button" class="hm" @onclick="OnLogin">@UiText.T("TopBar.Login", "Log in")<span class="en">LOGIN</span></button>
         }
         @* F4 追加型槽位：插件可在顶栏菜单区追加按钮/指示器（.plugin-slot 为 display:contents，不破坏 flex 布局） *@
         <PluginSlot Key="layout.topbar" />
@@ -46,9 +47,9 @@
         }
         @if (!string.IsNullOrEmpty(PlayerName))
         {
-            <span>玩家 <b>@PlayerName</b></span>
+            <span>@UiText.T("TopBar.Player", "Player") <b>@PlayerName</b></span>
         }
-        <span class="online">在线 @(_onlineTotal > 0 ? _onlineTotal.ToString() : "—")</span>
+        <span class="online">@UiText.T("TopBar.Online", "Online") @(_onlineTotal > 0 ? _onlineTotal.ToString() : "—")</span>
         <span class="clock">@DateText · @Clock</span>
     </div>
 </header>
@@ -92,7 +93,11 @@
         _playerCountCts = new CancellationTokenSource();
         CnCNetPlayerCountTask.InitializeService(_playerCountCts);
         CnCNetPlayerCountTask.CnCNetGameCountUpdated += OnPlayerCountUpdated;
+
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
+
+    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -176,7 +181,7 @@
     {
         var result = await Login.ShowAsync();
         if (result == LoginResult.Connected)
-            _ = JS.InvokeVoidAsync("cncnet.toast", "已连接 CnCNet");
+            _ = JS.InvokeVoidAsync("cncnet.toast", UiText.T("TopBar.Connected", "Connected to CnCNet"));
     }
 
     /// <summary>登出（原版 btnLogout）：断开 CnCNet 连接并清除本地昵称，回到主菜单；按钮随即变为「登录」。</summary>
@@ -184,13 +189,14 @@
     {
         CncNet.Disconnect();
         ProgramConstants.PLAYERNAME = "No name";
-        _ = JS.InvokeVoidAsync("cncnet.toast", "已登出 CnCNet");
+        _ = JS.InvokeVoidAsync("cncnet.toast", UiText.T("TopBar.Disconnected", "Signed out of CnCNet"));
         Nav.NavigateTo("/menu");
     }
 
     public void Dispose()
     {
         _timer?.Dispose();
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         CncNet.Connected -= OnConnected;
         CncNet.Disconnected -= OnDisconnected;
         CnCNetPlayerCountTask.CnCNetGameCountUpdated -= OnPlayerCountUpdated;

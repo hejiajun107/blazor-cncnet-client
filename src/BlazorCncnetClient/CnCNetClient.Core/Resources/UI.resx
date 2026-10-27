@@ -74,4 +74,2229 @@
   <data name="Client:UI:Startup.FailedLogHint" xml:space="preserve">
     <value>Details have been written to the log: logs\client-*.log</value>
   </data>
+  <!-- 设置页缺失键（nav/section 由 data 驱动，键名必须与 Settings.razor 的 key 一致） -->
+  <data name="Client:UI:Settings.Nav.Components" xml:space="preserve">
+    <value>Components</value>
+  </data>
+  <data name="Client:UI:Settings.Section.Components" xml:space="preserve">
+    <value>Components</value>
+  </data>
+  <data name="Client:UI:Settings.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Client:UI:Settings.Save" xml:space="preserve">
+    <value>Save Settings</value>
+  </data>
+  <!-- 常驻顶栏 -->
+  <data name="Client:UI:TopBar.Skirmish" xml:space="preserve">
+    <value>Skirmish</value>
+  </data>
+  <data name="Client:UI:TopBar.OnlineLobby" xml:space="preserve">
+    <value>CnCNet Lobby</value>
+  </data>
+  <data name="Client:UI:TopBar.Pm" xml:space="preserve">
+    <value>Messages</value>
+  </data>
+  <data name="Client:UI:TopBar.Settings" xml:space="preserve">
+    <value>Options</value>
+  </data>
+  <data name="Client:UI:TopBar.Logout" xml:space="preserve">
+    <value>Log out</value>
+  </data>
+  <data name="Client:UI:TopBar.Login" xml:space="preserve">
+    <value>Log in</value>
+  </data>
+  <data name="Client:UI:TopBar.Player" xml:space="preserve">
+    <value>Player</value>
+  </data>
+  <data name="Client:UI:TopBar.Online" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <!-- 主菜单（内置菜单项键 = MainMenu.&lt;key&gt;） -->
+  <data name="Client:UI:MainMenu.LogoTag" xml:space="preserve">
+    <value>// COMMAND VIEW</value>
+  </data>
+  <data name="Client:UI:MainMenu.LogoTagRa" xml:space="preserve">
+    <value>// COMMAND &amp; CONQUER</value>
+  </data>
+  <data name="Client:UI:MainMenu.PanelTitle" xml:space="preserve">
+    <value>Command Menu</value>
+  </data>
+  <data name="Client:UI:MainMenu.Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Client:UI:MainMenu.OnlinePlayers" xml:space="preserve">
+    <value>Online players</value>
+  </data>
+  <data name="Client:UI:MainMenu.ActiveRooms" xml:space="preserve">
+    <value>Active rooms</value>
+  </data>
+  <data name="Client:UI:MainMenu.FrameRate" xml:space="preserve">
+    <value>Frame rate</value>
+  </data>
+  <data name="Client:UI:MainMenu.ThreatLevel" xml:space="preserve">
+    <value>Threat level</value>
+  </data>
+  <data name="Client:UI:MainMenu.ThreatLow" xml:space="preserve">
+    <value>Low</value>
+  </data>
+  <data name="Client:UI:MainMenu.campaign" xml:space="preserve">
+    <value>Campaign</value>
+  </data>
+  <data name="Client:UI:MainMenu.multiplayer" xml:space="preserve">
+    <value>Multiplayer</value>
+  </data>
+  <data name="Client:UI:MainMenu.skirmish" xml:space="preserve">
+    <value>Skirmish</value>
+  </data>
+  <data name="Client:UI:MainMenu.lan" xml:space="preserve">
+    <value>LAN</value>
+  </data>
+  <data name="Client:UI:MainMenu.load" xml:space="preserve">
+    <value>Load Game</value>
+  </data>
+  <data name="Client:UI:MainMenu.lore" xml:space="preserve">
+    <value>Codex / Lore</value>
+  </data>
+  <data name="Client:UI:MainMenu.stats" xml:space="preserve">
+    <value>Statistics</value>
+  </data>
+  <data name="Client:UI:MainMenu.settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Client:UI:MainMenu.mapeditor" xml:space="preserve">
+    <value>Map Editor</value>
+  </data>
+  <data name="Client:UI:MainMenu.credits" xml:space="preserve">
+    <value>Credits</value>
+  </data>
+  <data name="Client:UI:MainMenu.extras" xml:space="preserve">
+    <value>Extras</value>
+  </data>
+  <data name="Client:UI:MainMenu.exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <!-- 隐私提示（首次运行） -->
+  <data name="Client:UI:Privacy.Title" xml:space="preserve">
+    <value>Privacy Notice</value>
+  </data>
+  <data name="Client:UI:Privacy.Body" xml:space="preserve">
+    <value>This application uses CnCNet web and tunnel server services and may collect technical and other information necessary for its operation.</value>
+  </data>
+  <data name="Client:UI:Privacy.Terms" xml:space="preserve">
+    <value>Terms &amp; Conditions</value>
+  </data>
+  <data name="Client:UI:Privacy.Policy" xml:space="preserve">
+    <value>Privacy Policy</value>
+  </data>
+  <data name="Client:UI:Privacy.Footer" xml:space="preserve">
+    <value>By using this application you agree to the CnCNet terms and privacy policy. These options can be configured in Settings &gt; Privacy.</value>
+  </data>
+  <data name="Client:UI:Privacy.Accept" xml:space="preserve">
+    <value>Got it</value>
+  </data>
+  <data name="Client:UI:Common.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <!-- 在线大厅 -->
+  <data name="Client:UI:Lobby.Title" xml:space="preserve">
+    <value>CnCNet Online Lobby</value>
+  </data>
+  <data name="Client:UI:Lobby.Channel" xml:space="preserve">
+    <value>Channel</value>
+  </data>
+  <data name="Client:UI:Lobby.Online" xml:space="preserve">
+    <value>online</value>
+  </data>
+  <data name="Client:UI:Lobby.Leave" xml:space="preserve">
+    <value>Leave</value>
+  </data>
+  <data name="Client:UI:Lobby.Rooms" xml:space="preserve">
+    <value>Rooms</value>
+  </data>
+  <data name="Client:UI:Lobby.FilterRooms" xml:space="preserve">
+    <value>Filter rooms…</value>
+  </data>
+  <data name="Client:UI:Lobby.CreateRoom" xml:space="preserve">
+    <value>Create Room</value>
+  </data>
+  <data name="Client:UI:Lobby.FriendsOnly" xml:space="preserve">
+    <value>Friends only</value>
+  </data>
+  <data name="Client:UI:Lobby.FriendsOnlyTip" xml:space="preserve">
+    <value>Only show rooms hosted by friends</value>
+  </data>
+  <data name="Client:UI:Lobby.HideLocked" xml:space="preserve">
+    <value>Hide locked</value>
+  </data>
+  <data name="Client:UI:Lobby.HideLockedTip" xml:space="preserve">
+    <value>Hide locked rooms</value>
+  </data>
+  <data name="Client:UI:Lobby.HidePassworded" xml:space="preserve">
+    <value>Hide passworded</value>
+  </data>
+  <data name="Client:UI:Lobby.HidePasswordedTip" xml:space="preserve">
+    <value>Hide passworded rooms</value>
+  </data>
+  <data name="Client:UI:Lobby.HideIncompatible" xml:space="preserve">
+    <value>Hide incompatible</value>
+  </data>
+  <data name="Client:UI:Lobby.HideIncompatibleTip" xml:space="preserve">
+    <value>Hide rooms with a different version</value>
+  </data>
+  <data name="Client:UI:Lobby.AllPlayers" xml:space="preserve">
+    <value>Any player count</value>
+  </data>
+  <data name="Client:UI:Lobby.NPlayers" xml:space="preserve">
+    <value>{0} players</value>
+  </data>
+  <data name="Client:UI:Lobby.Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Client:UI:Lobby.ResetTip" xml:space="preserve">
+    <value>Reset all filters</value>
+  </data>
+  <data name="Client:UI:Lobby.NoRooms" xml:space="preserve">
+    <value>No public rooms</value>
+  </data>
+  <data name="Client:UI:Lobby.NoMatchingRooms" xml:space="preserve">
+    <value>No matching rooms</value>
+  </data>
+  <data name="Client:UI:Lobby.Ladder" xml:space="preserve">
+    <value>Ladder</value>
+  </data>
+  <data name="Client:UI:Lobby.Tunneled" xml:space="preserve">
+    <value>Tunnel</value>
+  </data>
+  <data name="Client:UI:Lobby.Dynamic" xml:space="preserve">
+    <value>Dynamic</value>
+  </data>
+  <data name="Client:UI:Lobby.ChannelChat" xml:space="preserve">
+    <value>Channel chat</value>
+  </data>
+  <data name="Client:UI:Lobby.Reconnecting" xml:space="preserve">
+    <value>Connection lost, reconnecting automatically…</value>
+  </data>
+  <data name="Client:UI:Lobby.Disconnected" xml:space="preserve">
+    <value>Disconnected from CnCNet</value>
+  </data>
+  <data name="Client:UI:Lobby.NoMessages" xml:space="preserve">
+    <value>No messages yet — say hello!</value>
+  </data>
+  <data name="Client:UI:Lobby.Admin" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="Client:UI:Lobby.ChatPlaceholder" xml:space="preserve">
+    <value>Type a message, Enter to send; start with / for channel commands (/help)</value>
+  </data>
+  <data name="Client:UI:Lobby.Send" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="Client:UI:Lobby.Players" xml:space="preserve">
+    <value>Players</value>
+  </data>
+  <data name="Client:UI:Lobby.NoPlayers" xml:space="preserve">
+    <value>No players in this channel</value>
+  </data>
+  <data name="Client:UI:Lobby.Ignored" xml:space="preserve">
+    <value>Ignored</value>
+  </data>
+  <data name="Client:UI:Lobby.Pm" xml:space="preserve">
+    <value>Private Message</value>
+  </data>
+  <data name="Client:UI:Lobby.Invite" xml:space="preserve">
+    <value>Invite</value>
+  </data>
+  <data name="Client:UI:Lobby.Kick" xml:space="preserve">
+    <value>Kick</value>
+  </data>
+  <data name="Client:UI:Lobby.Ban" xml:space="preserve">
+    <value>Ban</value>
+  </data>
+  <data name="Client:UI:Lobby.Mute" xml:space="preserve">
+    <value>Mute</value>
+  </data>
+  <data name="Client:UI:Lobby.Unmute" xml:space="preserve">
+    <value>Unmute</value>
+  </data>
+  <data name="Client:UI:Lobby.AddFriend" xml:space="preserve">
+    <value>Add friend</value>
+  </data>
+  <data name="Client:UI:Lobby.RemoveFriend" xml:space="preserve">
+    <value>Remove friend</value>
+  </data>
+  <data name="Client:UI:Lobby.Ignore" xml:space="preserve">
+    <value>Ignore</value>
+  </data>
+  <data name="Client:UI:Lobby.Unignore" xml:space="preserve">
+    <value>Unignore</value>
+  </data>
+  <data name="Client:UI:Lobby.PmCenter" xml:space="preserve">
+    <value>Messages</value>
+  </data>
+  <data name="Client:UI:Lobby.RecentPlayers" xml:space="preserve">
+    <value>Recent players</value>
+  </data>
+  <data name="Client:UI:Lobby.NoSessions" xml:space="preserve">
+    <value>No conversations yet</value>
+  </data>
+  <data name="Client:UI:Lobby.CloseSession" xml:space="preserve">
+    <value>Close conversation</value>
+  </data>
+  <data name="Client:UI:Lobby.NoPmMessages" xml:space="preserve">
+    <value>No messages yet — say something!</value>
+  </data>
+  <data name="Client:UI:Lobby.Me" xml:space="preserve">
+    <value>Me</value>
+  </data>
+  <data name="Client:UI:Lobby.PmPlaceholder" xml:space="preserve">
+    <value>Type a message, Enter to send…</value>
+  </data>
+  <data name="Client:UI:Lobby.Player" xml:space="preserve">
+    <value>Player</value>
+  </data>
+  <data name="Client:UI:Lobby.Game" xml:space="preserve">
+    <value>Game</value>
+  </data>
+  <data name="Client:UI:Lobby.Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Client:UI:Lobby.NoRecentPlayers" xml:space="preserve">
+    <value>No recent players yet (recorded after you play a match)</value>
+  </data>
+  <data name="Client:UI:Lobby.Map" xml:space="preserve">
+    <value>Map</value>
+  </data>
+  <data name="Client:UI:Lobby.Host" xml:space="preserve">
+    <value>Host</value>
+  </data>
+  <data name="Client:UI:Lobby.Mode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="Client:UI:Lobby.Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Client:UI:Lobby.Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Client:UI:Lobby.Encrypted" xml:space="preserve">
+    <value>Encrypted</value>
+  </data>
+  <data name="Client:UI:Lobby.JoinGame" xml:space="preserve">
+    <value>Join game</value>
+  </data>
+  <data name="Client:UI:Lobby.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Client:UI:Lobby.RoomName" xml:space="preserve">
+    <value>Room name</value>
+  </data>
+  <data name="Client:UI:Lobby.MaxPlayers" xml:space="preserve">
+    <value>Max players</value>
+  </data>
+  <data name="Client:UI:Lobby.PasswordOptional" xml:space="preserve">
+    <value>Password (optional)</value>
+  </data>
+  <data name="Client:UI:Lobby.PublicRoomHint" xml:space="preserve">
+    <value>Leave empty for a public room</value>
+  </data>
+  <data name="Client:UI:Lobby.Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="Client:UI:Lobby.JoinRoom" xml:space="preserve">
+    <value>Join room</value>
+  </data>
+  <data name="Client:UI:Lobby.RoomPassword" xml:space="preserve">
+    <value>Room password</value>
+  </data>
+  <data name="Client:UI:Lobby.Join" xml:space="preserve">
+    <value>Join</value>
+  </data>
+  <data name="Client:UI:Lobby.RoomNameRequired" xml:space="preserve">
+    <value>Please enter a room name</value>
+  </data>
+  <data name="Client:UI:Lobby.PasswordRequired" xml:space="preserve">
+    <value>Please enter the room password</value>
+  </data>
+  <data name="Client:UI:Lobby.Invited" xml:space="preserve">
+    <value>Invited {0} to the game</value>
+  </data>
+  <data name="Client:UI:Lobby.FriendAdded" xml:space="preserve">
+    <value>Added {0} as a friend</value>
+  </data>
+  <data name="Client:UI:Lobby.FriendRemoved" xml:space="preserve">
+    <value>Removed {0} from friends</value>
+  </data>
+  <data name="Client:UI:Lobby.Unignored" xml:space="preserve">
+    <value>Unignored {0}</value>
+  </data>
+  <data name="Client:UI:Lobby.IgnoredUser" xml:space="preserve">
+    <value>Now ignoring messages from {0}</value>
+  </data>
+  <data name="Client:UI:Lobby.LeaveTitle" xml:space="preserve">
+    <value>Leave lobby</value>
+  </data>
+  <data name="Client:UI:Lobby.LeaveBody" xml:space="preserve">
+    <value>Leave the CnCNet online lobby?</value>
+  </data>
+  <data name="Client:UI:Lobby.Left" xml:space="preserve">
+    <value>Left the lobby</value>
+  </data>
+  <!-- 通用 -->
+  <data name="Client:UI:Common.BackToMenu" xml:space="preserve">
+    <value>Back to main menu</value>
+  </data>
+  <data name="Client:UI:Common.Loading" xml:space="preserve">
+    <value>— Loading —</value>
+  </data>
+  <!-- 遭遇战 -->
+  <data name="Client:UI:Skirmish.Initializing" xml:space="preserve">
+    <value>Setting up skirmish…</value>
+  </data>
+  <data name="Client:UI:Skirmish.LocalSetup" xml:space="preserve">
+    <value>Local match setup</value>
+  </data>
+  <data name="Client:UI:Skirmish.Singleplayer" xml:space="preserve">
+    <value>Single player</value>
+  </data>
+  <data name="Client:UI:Skirmish.Humans" xml:space="preserve">
+    <value>Humans</value>
+  </data>
+  <data name="Client:UI:Skirmish.MapSelection" xml:space="preserve">
+    <value>Map selection</value>
+  </data>
+  <data name="Client:UI:Skirmish.GameMode" xml:space="preserve">
+    <value>Game mode</value>
+  </data>
+  <data name="Client:UI:Skirmish.MapsLoading" xml:space="preserve">
+    <value>— Loading maps —</value>
+  </data>
+  <data name="Client:UI:Skirmish.NoMatchingMaps" xml:space="preserve">
+    <value>— No matching maps —</value>
+  </data>
+  <data name="Client:UI:Skirmish.SearchMaps" xml:space="preserve">
+    <value>Search maps…</value>
+  </data>
+  <data name="Client:UI:Skirmish.FavoritesOnly" xml:space="preserve">
+    <value>Show favorite maps only</value>
+  </data>
+  <data name="Client:UI:Skirmish.SortByName" xml:space="preserve">
+    <value>Sort by name</value>
+  </data>
+  <data name="Client:UI:Skirmish.SortDefault" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="Client:UI:Skirmish.PickRandom" xml:space="preserve">
+    <value>Pick a random map</value>
+  </data>
+  <data name="Client:UI:Skirmish.PlayerSetup" xml:space="preserve">
+    <value>Player setup</value>
+  </data>
+  <data name="Client:UI:Skirmish.Coop" xml:space="preserve">
+    <value>Co-op</value>
+  </data>
+  <data name="Client:UI:Skirmish.Versus" xml:space="preserve">
+    <value>Versus</value>
+  </data>
+  <data name="Client:UI:Skirmish.Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side" xml:space="preserve">
+    <value>Side</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color" xml:space="preserve">
+    <value>Color</value>
+  </data>
+  <data name="Client:UI:Skirmish.Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="Client:UI:Skirmish.Team" xml:space="preserve">
+    <value>Team</value>
+  </data>
+  <data name="Client:UI:Skirmish.Random" xml:space="preserve">
+    <value>Random</value>
+  </data>
+  <data name="Client:UI:Skirmish.Easy" xml:space="preserve">
+    <value>Easy</value>
+  </data>
+  <data name="Client:UI:Skirmish.Medium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="Client:UI:Skirmish.Hard" xml:space="preserve">
+    <value>Hard</value>
+  </data>
+  <data name="Client:UI:Skirmish.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Client:UI:Skirmish.EmptySlot" xml:space="preserve">
+    <value>— Empty —</value>
+  </data>
+  <data name="Client:UI:Skirmish.EasyAI" xml:space="preserve">
+    <value>Easy AI</value>
+  </data>
+  <data name="Client:UI:Skirmish.MediumAI" xml:space="preserve">
+    <value>Medium AI</value>
+  </data>
+  <data name="Client:UI:Skirmish.HardAI" xml:space="preserve">
+    <value>Hard AI</value>
+  </data>
+  <data name="Client:UI:Skirmish.AutoAlly" xml:space="preserve">
+    <value>Auto ally</value>
+  </data>
+  <data name="Client:UI:Skirmish.Custom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="Client:UI:Skirmish.Block" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="Client:UI:Skirmish.NoTeam" xml:space="preserve">
+    <value>No team</value>
+  </data>
+  <data name="Client:UI:Skirmish.GameOptions" xml:space="preserve">
+    <value>Game options</value>
+  </data>
+  <data name="Client:UI:Skirmish.Preset" xml:space="preserve">
+    <value>Preset</value>
+  </data>
+  <data name="Client:UI:Skirmish.MapPreview" xml:space="preserve">
+    <value>Map preview</value>
+  </data>
+  <data name="Client:UI:Skirmish.NoMapSelected" xml:space="preserve">
+    <value>No map selected</value>
+  </data>
+  <data name="Client:UI:Skirmish.SelectMap" xml:space="preserve">
+    <value>Please select a map</value>
+  </data>
+  <data name="Client:UI:Skirmish.SpawnPoint" xml:space="preserve">
+    <value>Spawn {0}</value>
+  </data>
+  <data name="Client:UI:Skirmish.SpawnPointOwner" xml:space="preserve">
+    <value>Spawn {0} · {1}</value>
+  </data>
+  <data name="Client:UI:Skirmish.SpawnPointPos" xml:space="preserve">
+    <value>Spawn {0} · {1}</value>
+  </data>
+  <data name="Client:UI:Skirmish.FreeSlot" xml:space="preserve">
+    <value>Empty</value>
+  </data>
+  <data name="Client:UI:Skirmish.Map" xml:space="preserve">
+    <value>Map</value>
+  </data>
+  <data name="Client:UI:Skirmish.Author" xml:space="preserve">
+    <value>Author</value>
+  </data>
+  <data name="Client:UI:Skirmish.Size" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="Client:UI:Skirmish.Mode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="Client:UI:Skirmish.Players" xml:space="preserve">
+    <value>Players</value>
+  </data>
+  <data name="Client:UI:Skirmish.Rank" xml:space="preserve">
+    <value>Rank</value>
+  </data>
+  <data name="Client:UI:Skirmish.Favorite" xml:space="preserve">
+    <value>Favorite</value>
+  </data>
+  <data name="Client:UI:Skirmish.Favorited" xml:space="preserve">
+    <value>Favorited</value>
+  </data>
+  <data name="Client:UI:Skirmish.AddFavorite" xml:space="preserve">
+    <value>Add to favorites</value>
+  </data>
+  <data name="Client:UI:Skirmish.RemoveFavorite" xml:space="preserve">
+    <value>Remove from favorites</value>
+  </data>
+  <data name="Client:UI:Skirmish.StartGame" xml:space="preserve">
+    <value>Start game</value>
+  </data>
+  <data name="Client:UI:Skirmish.CopyMapName" xml:space="preserve">
+    <value>Copy map name</value>
+  </data>
+  <data name="Client:UI:Skirmish.CopyOriginalName" xml:space="preserve">
+    <value>Copy original name</value>
+  </data>
+  <data name="Client:UI:Skirmish.ShowInFolder" xml:space="preserve">
+    <value>Show in folder</value>
+  </data>
+  <data name="Client:UI:Skirmish.DeleteMap" xml:space="preserve">
+    <value>Delete map</value>
+  </data>
+  <data name="Client:UI:Skirmish.LeaveBody" xml:space="preserve">
+    <value>Returning will discard the current unstarted skirmish setup. Return?</value>
+  </data>
+  <data name="Client:UI:Skirmish.FavoriteAdded" xml:space="preserve">
+    <value>Added to favorites: {0}</value>
+  </data>
+  <data name="Client:UI:Skirmish.FavoriteRemoved" xml:space="preserve">
+    <value>Removed from favorites: {0}</value>
+  </data>
+  <data name="Client:UI:Skirmish.MapNameCopied" xml:space="preserve">
+    <value>Map name copied to clipboard</value>
+  </data>
+  <data name="Client:UI:Skirmish.DeleteBody" xml:space="preserve">
+    <value>Delete custom map "{0}"? The map file will be permanently removed.</value>
+  </data>
+  <data name="Client:UI:Skirmish.Deleted" xml:space="preserve">
+    <value>Deleted: {0}</value>
+  </data>
+  <data name="Client:UI:Skirmish.SpawnOccupied" xml:space="preserve">
+    <value>Spawn {0} is already occupied by {1}</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color.Red" xml:space="preserve">
+    <value>Red</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color.Blue" xml:space="preserve">
+    <value>Blue</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color.Teal" xml:space="preserve">
+    <value>Teal</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color.Green" xml:space="preserve">
+    <value>Green</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color.Yellow" xml:space="preserve">
+    <value>Yellow</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color.Orange" xml:space="preserve">
+    <value>Orange</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color.Purple" xml:space="preserve">
+    <value>Purple</value>
+  </data>
+  <data name="Client:UI:Skirmish.Color.Pink" xml:space="preserve">
+    <value>Pink</value>
+  </data>
+  <!-- 游戏房间 -->
+  <data name="Client:UI:GameLobby.NotInRoom" xml:space="preserve">
+    <value>Not in a game room yet</value>
+  </data>
+  <data name="Client:UI:GameLobby.BackToLobby" xml:space="preserve">
+    <value>Back to lobby</value>
+  </data>
+  <data name="Client:UI:GameLobby.Passworded" xml:space="preserve">
+    <value>Passworded</value>
+  </data>
+  <data name="Client:UI:GameLobby.PublicRoom" xml:space="preserve">
+    <value>Public room</value>
+  </data>
+  <data name="Client:UI:GameLobby.InvitePlayer" xml:space="preserve">
+    <value>Invite player</value>
+  </data>
+  <data name="Client:UI:GameLobby.LeaveRoom" xml:space="preserve">
+    <value>Leave room</value>
+  </data>
+  <data name="Client:UI:GameLobby.Tunnel" xml:space="preserve">
+    <value>Tunnel</value>
+  </data>
+  <data name="Client:UI:GameLobby.AutoSelecting" xml:space="preserve">
+    <value>Auto-selecting…</value>
+  </data>
+  <data name="Client:UI:GameLobby.ChangeTunnel" xml:space="preserve">
+    <value>Change tunnel</value>
+  </data>
+  <data name="Client:UI:GameLobby.TunnelInvalid" xml:space="preserve">
+    <value>⚠ The host selected an invalid tunnel server. This game cannot proceed.</value>
+  </data>
+  <data name="Client:UI:GameLobby.JoiningChannel" xml:space="preserve">
+    <value>Joining room channel…</value>
+  </data>
+  <data name="Client:UI:GameLobby.LockStatusTip" xml:space="preserve">
+    <value>Room lock status</value>
+  </data>
+  <data name="Client:UI:GameLobby.Locked" xml:space="preserve">
+    <value>◉ Locked</value>
+  </data>
+  <data name="Client:UI:GameLobby.Unlocked" xml:space="preserve">
+    <value>○ Public</value>
+  </data>
+  <data name="Client:UI:GameLobby.PlayerMenuTip" xml:space="preserve">
+    <value>Right-click to open the player menu</value>
+  </data>
+  <data name="Client:UI:GameLobby.StartSuffix" xml:space="preserve">
+    <value> · Start {0}</value>
+  </data>
+  <data name="Client:UI:GameLobby.TeamSuffix" xml:space="preserve">
+    <value> · Team {0}</value>
+  </data>
+  <data name="Client:UI:GameLobby.AILevelTip" xml:space="preserve">
+    <value>AI difficulty</value>
+  </data>
+  <data name="Client:UI:GameLobby.AISideTip" xml:space="preserve">
+    <value>AI side</value>
+  </data>
+  <data name="Client:UI:GameLobby.AIStartTip" xml:space="preserve">
+    <value>AI spawn point</value>
+  </data>
+  <data name="Client:UI:GameLobby.AITeamTip" xml:space="preserve">
+    <value>AI team</value>
+  </data>
+  <data name="Client:UI:GameLobby.None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Client:UI:GameLobby.RemoveAI" xml:space="preserve">
+    <value>Remove AI</value>
+  </data>
+  <data name="Client:UI:GameLobby.SlotUnavailable" xml:space="preserve">
+    <value>Exceeds player limit</value>
+  </data>
+  <data name="Client:UI:GameLobby.WaitingForPlayers" xml:space="preserve">
+    <value>Waiting for players…</value>
+  </data>
+  <data name="Client:UI:GameLobby.MapAndRules" xml:space="preserve">
+    <value>Map &amp; rules</value>
+  </data>
+  <data name="Client:UI:GameLobby.WaitingHostMap" xml:space="preserve">
+    <value>Waiting for the host to pick a map…</value>
+  </data>
+  <data name="Client:UI:GameLobby.Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Client:UI:GameLobby.PlayerCount" xml:space="preserve">
+    <value>Players</value>
+  </data>
+  <data name="Client:UI:GameLobby.SkillLevel" xml:space="preserve">
+    <value>Skill level</value>
+  </data>
+  <data name="Client:UI:GameLobby.MissingMapTitle" xml:space="preserve">
+    <value>The host picked a map you don't have</value>
+  </data>
+  <data name="Client:UI:GameLobby.DownloadPrompt" xml:space="preserve">
+    <value>Click "Download map" to fetch this map from the CnCNet map repository.</value>
+  </data>
+  <data name="Client:UI:GameLobby.DownloadBusy" xml:space="preserve">
+    <value>Downloading from the CnCNet map repository, please wait…</value>
+  </data>
+  <data name="Client:UI:GameLobby.DownloadFailed" xml:space="preserve">
+    <value>Download failed. You can retry, or ask the host to pick another map.</value>
+  </data>
+  <data name="Client:UI:GameLobby.DownloadComplete" xml:space="preserve">
+    <value>The map was downloaded and selected automatically.</value>
+  </data>
+  <data name="Client:UI:GameLobby.DownloadDisabled" xml:space="preserve">
+    <value>Map sharing is disabled, so it cannot be fetched automatically; ask the host to pick another map.</value>
+  </data>
+  <data name="Client:UI:GameLobby.DownloadMap" xml:space="preserve">
+    <value>Download map</value>
+  </data>
+  <data name="Client:UI:GameLobby.PasswordPlaceholder" xml:space="preserve">
+    <value>Password set (type a new one to change, clear and press Enter to remove)</value>
+  </data>
+  <data name="Client:UI:GameLobby.PublicRoomPlaceholder" xml:space="preserve">
+    <value>Leave empty = public room</value>
+  </data>
+  <data name="Client:UI:GameLobby.UnlockRoom" xml:space="preserve">
+    <value>Unlock room</value>
+  </data>
+  <data name="Client:UI:GameLobby.LockRoom" xml:space="preserve">
+    <value>Lock room</value>
+  </data>
+  <data name="Client:UI:GameLobby.MyConfig" xml:space="preserve">
+    <value>My setup</value>
+  </data>
+  <data name="Client:UI:GameLobby.Spectating" xml:space="preserve">
+    <value>● Spectating (not playing)</value>
+  </data>
+  <data name="Client:UI:GameLobby.Side" xml:space="preserve">
+    <value>Side</value>
+  </data>
+  <data name="Client:UI:GameLobby.Spectator" xml:space="preserve">
+    <value>Spectate</value>
+  </data>
+  <data name="Client:UI:GameLobby.Start" xml:space="preserve">
+    <value>Spawn</value>
+  </data>
+  <data name="Client:UI:GameLobby.Team" xml:space="preserve">
+    <value>Team</value>
+  </data>
+  <data name="Client:UI:GameLobby.Color" xml:space="preserve">
+    <value>Color</value>
+  </data>
+  <data name="Client:UI:GameLobby.Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Client:UI:GameLobby.SetReady" xml:space="preserve">
+    <value>Set ready</value>
+  </data>
+  <data name="Client:UI:GameLobby.HostCanChange" xml:space="preserve">
+    <value>Host can change; synced to everyone</value>
+  </data>
+  <data name="Client:UI:GameLobby.HostSets" xml:space="preserve">
+    <value>Set by the host; shown to everyone</value>
+  </data>
+  <data name="Client:UI:GameLobby.ExtraOptions" xml:space="preserve">
+    <value>Player extra options</value>
+  </data>
+  <data name="Client:UI:GameLobby.ForceRandomSides" xml:space="preserve">
+    <value>Force random sides</value>
+  </data>
+  <data name="Client:UI:GameLobby.ForceRandomColors" xml:space="preserve">
+    <value>Force random colors</value>
+  </data>
+  <data name="Client:UI:GameLobby.ForceRandomStarts" xml:space="preserve">
+    <value>Force random spawn points</value>
+  </data>
+  <data name="Client:UI:GameLobby.ForceNoTeams" xml:space="preserve">
+    <value>Force no teams</value>
+  </data>
+  <data name="Client:UI:GameLobby.RoomChat" xml:space="preserve">
+    <value>Room chat</value>
+  </data>
+  <data name="Client:UI:GameLobby.NoRoomMessages" xml:space="preserve">
+    <value>No room messages yet</value>
+  </data>
+  <data name="Client:UI:GameLobby.ChatPlaceholder" xml:space="preserve">
+    <value>Room message, Enter to send…</value>
+  </data>
+  <data name="Client:UI:GameLobby.KickRoom" xml:space="preserve">
+    <value>Kick from room</value>
+  </data>
+  <data name="Client:UI:GameLobby.SelectTunnel" xml:space="preserve">
+    <value>Select tunnel server</value>
+  </data>
+  <data name="Client:UI:GameLobby.TunnelLoading" xml:space="preserve">
+    <value>Loading tunnel list, please wait…</value>
+  </data>
+  <data name="Client:UI:GameLobby.OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Client:UI:GameLobby.InviteTitle" xml:space="preserve">
+    <value>Invite players to the game</value>
+  </data>
+  <data name="Client:UI:GameLobby.InviteAction" xml:space="preserve">
+    <value>Invite ›</value>
+  </data>
+  <data name="Client:UI:GameLobby.NoInviteCandidates" xml:space="preserve">
+    <value>No online players available to invite (room members and yourself are excluded).</value>
+  </data>
+  <data name="Client:UI:GameLobby.InviteSent" xml:space="preserve">
+    <value>Game invite sent to {0}</value>
+  </data>
+  <data name="Client:UI:GameLobby.FriendAdded" xml:space="preserve">
+    <value>Added {0} as a friend</value>
+  </data>
+  <data name="Client:UI:GameLobby.FriendRemoved" xml:space="preserve">
+    <value>Removed {0} from friends</value>
+  </data>
+  <data name="Client:UI:GameLobby.IgnoredUser" xml:space="preserve">
+    <value>Now ignoring {0}</value>
+  </data>
+  <data name="Client:UI:GameLobby.LeaveBody" xml:space="preserve">
+    <value>Leave the current game room?</value>
+  </data>
+  <data name="Client:UI:GameLobby.Left" xml:space="preserve">
+    <value>Left the room</value>
+  </data>
+  <data name="Client:UI:GameLobby.SpawnOccupied" xml:space="preserve">
+    <value>Spawn {0} is already occupied by {1}</value>
+  </data>
+  <data name="Client:UI:GameLobby.SideIndex" xml:space="preserve">
+    <value>Side {0}</value>
+  </data>
+  <data name="Client:UI:GameLobby.StillThere" xml:space="preserve">
+    <value>Are you still there?</value>
+  </data>
+  <data name="Client:UI:GameLobby.StillThereBody" xml:space="preserve">
+    <value>Your game room may be closed after a long period of inactivity.</value>
+  </data>
+  <data name="Client:UI:LanGame.NotInRoom" xml:space="preserve">
+    <value>Not in any LAN room yet</value>
+  </data>
+  <data name="Client:UI:LanGame.HostName" xml:space="preserve">
+    <value>Host {0}</value>
+  </data>
+  <data name="Client:UI:LanGame.Joining" xml:space="preserve">
+    <value>Joining LAN room…</value>
+  </data>
+  <data name="Client:UI:LanGame.StartHint" xml:space="preserve">
+    <value>The room must be locked and all players ready to start</value>
+  </data>
+  <data name="Client:UI:LanGame.LeaveBody" xml:space="preserve">
+    <value>Leave the current LAN room?</value>
+  </data>
+  <data name="Client:UI:LanLobby.Title" xml:space="preserve">
+    <value>LAN lobby</value>
+  </data>
+  <data name="Client:UI:LanLobby.NotStarted" xml:space="preserve">
+    <value>not started</value>
+  </data>
+  <data name="Client:UI:LanLobby.Broadcasting" xml:space="preserve">
+    <value>broadcasting</value>
+  </data>
+  <data name="Client:UI:LanLobby.BroadcastNotRunning" xml:space="preserve">
+    <value>⚠ LAN broadcast is not running</value>
+  </data>
+  <data name="Client:UI:LanLobby.NoRooms" xml:space="preserve">
+    <value>No LAN rooms yet (clients on the same subnet appear here)</value>
+  </data>
+  <data name="Client:UI:LanLobby.SavedGame" xml:space="preserve">
+    <value>Saved game</value>
+  </data>
+  <data name="Client:UI:LanLobby.VersionMismatchSuffix" xml:space="preserve">
+    <value> · Version mismatch</value>
+  </data>
+  <data name="Client:UI:LanLobby.Chat" xml:space="preserve">
+    <value>Lobby chat</value>
+  </data>
+  <data name="Client:UI:LanLobby.ChatColor" xml:space="preserve">
+    <value>Chat color</value>
+  </data>
+  <data name="Client:UI:LanLobby.ChatPlaceholder" xml:space="preserve">
+    <value>Type a message, Enter to send…</value>
+  </data>
+  <data name="Client:UI:LanLobby.NoPlayers" xml:space="preserve">
+    <value>No players on this subnet yet (visible after about 5s)</value>
+  </data>
+  <data name="Client:UI:LanLobby.Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Client:UI:LanLobby.VersionMismatch" xml:space="preserve">
+    <value>Version mismatch {0}</value>
+  </data>
+  <data name="Client:UI:LanLobby.CreateTitle" xml:space="preserve">
+    <value>Create LAN room</value>
+  </data>
+  <data name="Client:UI:LanLobby.RoomNamePlaceholder" xml:space="preserve">
+    <value>Default: {0}'s Game</value>
+  </data>
+  <data name="Client:UI:LanLobby.MaxPlayersHint" xml:space="preserve">
+    <value>Max {0} players</value>
+  </data>
+  <data name="Client:UI:LanLobby.LeaveBody" xml:space="preserve">
+    <value>Leave the LAN lobby?</value>
+  </data>
+  <data name="Client:UI:LanLobby.Left" xml:space="preserve">
+    <value>Left the LAN lobby</value>
+  </data>
+  <data name="Client:UI:Settings.Terminal" xml:space="preserve">
+    <value>SETTINGS TERMINAL · Applies on save</value>
+  </data>
+  <data name="Client:UI:Settings.NotConnected" xml:space="preserve">
+    <value>Not connected</value>
+  </data>
+  <data name="Client:UI:Settings.UnsavedChanges" xml:space="preserve">
+    <value>· Unsaved changes</value>
+  </data>
+  <data name="Client:UI:Settings.Synced" xml:space="preserve">
+    <value>Settings in sync</value>
+  </data>
+  <data name="Client:UI:Settings.LanguageHint" xml:space="preserve">
+    <value>LANGUAGE · applies instantly</value>
+  </data>
+  <data name="Client:UI:Settings.Theme" xml:space="preserve">
+    <value>Interface theme</value>
+  </data>
+  <data name="Client:UI:Settings.ThemeHint" xml:space="preserve">
+    <value>THEME · global skin</value>
+  </data>
+  <data name="Client:UI:Settings.IngameResolution" xml:space="preserve">
+    <value>In-game resolution</value>
+  </data>
+  <data name="Client:UI:Settings.IngameResolutionHint" xml:space="preserve">
+    <value>IN-GAME RESOLUTION · applies next game launch</value>
+  </data>
+  <data name="Client:UI:Settings.ClientResolution" xml:space="preserve">
+    <value>Client window resolution</value>
+  </data>
+  <data name="Client:UI:Settings.ClientResolutionHint" xml:space="preserve">
+    <value>CLIENT RESOLUTION · restart client to apply</value>
+  </data>
+  <data name="Client:UI:Settings.Windowed" xml:space="preserve">
+    <value>Run windowed</value>
+  </data>
+  <data name="Client:UI:Settings.Borderless" xml:space="preserve">
+    <value>Borderless window</value>
+  </data>
+  <data name="Client:UI:Settings.BorderlessHint" xml:space="preserve">
+    <value>BORDERLESS WINDOW · requires windowed mode</value>
+  </data>
+  <data name="Client:UI:Settings.ClientFps" xml:space="preserve">
+    <value>Client frame rate</value>
+  </data>
+  <data name="Client:UI:Settings.MinimizeOnStart" xml:space="preserve">
+    <value>Minimize window when the game starts</value>
+  </data>
+  <data name="Client:UI:Settings.ForceLowDetail" xml:space="preserve">
+    <value>Force lowest detail</value>
+  </data>
+  <data name="Client:UI:Settings.Renderer" xml:space="preserve">
+    <value>Game renderer</value>
+  </data>
+  <data name="Client:UI:Settings.RendererHint" xml:space="preserve">
+    <value>GAME RENDERER · compatibility choice</value>
+  </data>
+  <data name="Client:UI:Settings.RendererUnavailable" xml:space="preserve">
+    <value>Unavailable (game resources not ready)</value>
+  </data>
+  <data name="Client:UI:Settings.MasterVolume" xml:space="preserve">
+    <value>Master volume</value>
+  </data>
+  <data name="Client:UI:Settings.ScoreVolume" xml:space="preserve">
+    <value>Music volume</value>
+  </data>
+  <data name="Client:UI:Settings.VoiceVolume" xml:space="preserve">
+    <value>Voice volume</value>
+  </data>
+  <data name="Client:UI:Settings.MainMenuMusic" xml:space="preserve">
+    <value>Main menu music</value>
+  </data>
+  <data name="Client:UI:Settings.MessageSound" xml:space="preserve">
+    <value>Chat message sound</value>
+  </data>
+  <data name="Client:UI:Settings.ScrollRate" xml:space="preserve">
+    <value>Scroll rate</value>
+  </data>
+  <data name="Client:UI:Settings.DoubleTapInterval" xml:space="preserve">
+    <value>Double tap interval (ms)</value>
+  </data>
+  <data name="Client:UI:Settings.GameSpeed" xml:space="preserve">
+    <value>Game speed</value>
+  </data>
+  <data name="Client:UI:Settings.Difficulty" xml:space="preserve">
+    <value>Game difficulty</value>
+  </data>
+  <data name="Client:UI:Settings.DifficultyLevel" xml:space="preserve">
+    <value>Difficulty {0}</value>
+  </data>
+  <data name="Client:UI:Settings.AutoTrimUnderscores" xml:space="preserve">
+    <value>Auto trim underscores from nickname</value>
+  </data>
+  <data name="Client:UI:Settings.PlayerName" xml:space="preserve">
+    <value>Player name</value>
+  </data>
+  <data name="Client:UI:Settings.PlayerNameHint" xml:space="preserve">
+    <value>PLAYER NAME · applies after save</value>
+  </data>
+  <data name="Client:UI:Settings.SkipConnectDialog" xml:space="preserve">
+    <value>Remember me (skip login window)</value>
+  </data>
+  <data name="Client:UI:Settings.PersistentMode" xml:space="preserve">
+    <value>Stay connected after leaving lobby</value>
+  </data>
+  <data name="Client:UI:Settings.AutoConnect" xml:space="preserve">
+    <value>Auto connect on startup</value>
+  </data>
+  <data name="Client:UI:Settings.PingCustomTunnels" xml:space="preserve">
+    <value>Ping custom tunnels</value>
+  </data>
+  <data name="Client:UI:Settings.EnableMapSharing" xml:space="preserve">
+    <value>Allow map sharing</value>
+  </data>
+  <data name="Client:UI:Settings.AlwaysShowTunnelList" xml:space="preserve">
+    <value>Always show tunnel list</value>
+  </data>
+  <data name="Client:UI:Settings.CheckUpdates" xml:space="preserve">
+    <value>Check for updates on startup</value>
+  </data>
+  <data name="Client:UI:Settings.LocalVersion" xml:space="preserve">
+    <value>Local version</value>
+  </data>
+  <data name="Client:UI:Settings.ServerVersion" xml:space="preserve">
+    <value>Server version</value>
+  </data>
+  <data name="Client:UI:Settings.CheckingUpdates" xml:space="preserve">
+    <value>Checking for updates…</value>
+  </data>
+  <data name="Client:UI:Settings.Downloading" xml:space="preserve">
+    <value>Downloading: {0}</value>
+  </data>
+  <data name="Client:UI:Settings.Preparing" xml:space="preserve">
+    <value>Preparing…</value>
+  </data>
+  <data name="Client:UI:Settings.Progress" xml:space="preserve">
+    <value>Current file {0}% · total {1}%</value>
+  </data>
+  <data name="Client:UI:Settings.CancelUpdate" xml:space="preserve">
+    <value>Cancel update</value>
+  </data>
+  <data name="Client:UI:Settings.ManualUpdateRequired" xml:space="preserve">
+    <value>New version v{0} found; manual download and installation required.</value>
+  </data>
+  <data name="Client:UI:Settings.ManualDownload" xml:space="preserve">
+    <value>Manual download</value>
+  </data>
+  <data name="Client:UI:Settings.UpdateAvailable" xml:space="preserve">
+    <value>New version v{0} found · update size {1} KB</value>
+  </data>
+  <data name="Client:UI:Settings.UpdateNow" xml:space="preserve">
+    <value>Update now</value>
+  </data>
+  <data name="Client:UI:Settings.UpToDate" xml:space="preserve">
+    <value>The client is up to date.</value>
+  </data>
+  <data name="Client:UI:Settings.CheckAgain" xml:space="preserve">
+    <value>Check again</value>
+  </data>
+  <data name="Client:UI:Settings.UpdateUnavailable" xml:space="preserve">
+    <value>Update service unavailable: environment not ready or no update mirror configured.</value>
+  </data>
+  <data name="Client:UI:Settings.CheckFailed" xml:space="preserve">
+    <value>Update check failed: {0}</value>
+  </data>
+  <data name="Client:UI:Settings.Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Client:UI:Settings.NotChecked" xml:space="preserve">
+    <value>Updates have not been checked yet.</value>
+  </data>
+  <data name="Client:UI:Settings.CheckNow" xml:space="preserve">
+    <value>Check now</value>
+  </data>
+  <data name="Client:UI:Settings.ComponentsHint" xml:space="preserve">
+    <value>The custom component list comes from UpdaterConfig.ini [CustomComponents]. Click "Check component updates" to read component versions from the server; updatable components can be downloaded individually.</value>
+  </data>
+  <data name="Client:UI:Settings.CheckComponents" xml:space="preserve">
+    <value>Check component updates</value>
+  </data>
+  <data name="Client:UI:Settings.ComponentsUnavailable" xml:space="preserve">
+    <value>Component check unavailable: environment not ready or no update mirror configured.</value>
+  </data>
+  <data name="Client:UI:Settings.NoCustomComponents" xml:space="preserve">
+    <value>No custom components configured.</value>
+  </data>
+  <data name="Client:UI:Settings.Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Client:UI:Settings.Component.NotChecked" xml:space="preserve">
+    <value>Not checked</value>
+  </data>
+  <data name="Client:UI:Settings.Component.NotInstalled" xml:space="preserve">
+    <value>Not installed</value>
+  </data>
+  <data name="Client:UI:Settings.Component.Updatable" xml:space="preserve">
+    <value>Updatable</value>
+  </data>
+  <data name="Client:UI:Settings.Component.UpToDate" xml:space="preserve">
+    <value>Up to date</value>
+  </data>
+  <data name="Client:UI:Settings.PrivacyAccepted" xml:space="preserve">
+    <value>Privacy policy accepted</value>
+  </data>
+  <data name="Client:UI:Settings.Discord" xml:space="preserve">
+    <value>Discord integration</value>
+  </data>
+  <data name="Client:UI:Settings.Steam" xml:space="preserve">
+    <value>Steam integration</value>
+  </data>
+  <data name="Client:UI:Settings.SavedRestart" xml:space="preserve">
+    <value>Settings saved · some settings take effect after restarting the client</value>
+  </data>
+  <data name="Client:UI:Settings.Saved" xml:space="preserve">
+    <value>Settings saved</value>
+  </data>
+  <data name="Client:UI:Statistics.Title" xml:space="preserve">
+    <value>Match statistics</value>
+  </data>
+  <data name="Client:UI:Statistics.Subtitle" xml:space="preserve">
+    <value>SCORE DATABASE · {0} matches</value>
+  </data>
+  <data name="Client:UI:Statistics.TabsLabel" xml:space="preserve">
+    <value>Statistics views</value>
+  </data>
+  <data name="Client:UI:Statistics.GamesTab" xml:space="preserve">
+    <value>Game statistics</value>
+  </data>
+  <data name="Client:UI:Statistics.TotalTab" xml:space="preserve">
+    <value>Total statistics</value>
+  </data>
+  <data name="Client:UI:Statistics.Class" xml:space="preserve">
+    <value>Class</value>
+  </data>
+  <data name="Client:UI:Statistics.Mode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="Client:UI:Statistics.AllModes" xml:space="preserve">
+    <value>All modes</value>
+  </data>
+  <data name="Client:UI:Statistics.IncludeSpectated" xml:space="preserve">
+    <value>Include spectated games</value>
+  </data>
+  <data name="Client:UI:Statistics.Games" xml:space="preserve">
+    <value>Games</value>
+  </data>
+  <data name="Client:UI:Statistics.MatchCount" xml:space="preserve">
+    <value>{0} matches</value>
+  </data>
+  <data name="Client:UI:Statistics.Date" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Client:UI:Statistics.Map" xml:space="preserve">
+    <value>Map</value>
+  </data>
+  <data name="Client:UI:Statistics.Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="Client:UI:Statistics.Completed" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="Client:UI:Statistics.NoMatches" xml:space="preserve">
+    <value>No match records (dscore.dat is empty or missing)</value>
+  </data>
+  <data name="Client:UI:Statistics.PlayerDetails" xml:space="preserve">
+    <value>Player statistics</value>
+  </data>
+  <data name="Client:UI:Statistics.SortedByScore" xml:space="preserve">
+    <value>Sorted by score</value>
+  </data>
+  <data name="Client:UI:Statistics.Kills" xml:space="preserve">
+    <value>Kills</value>
+  </data>
+  <data name="Client:UI:Statistics.Losses" xml:space="preserve">
+    <value>Losses</value>
+  </data>
+  <data name="Client:UI:Statistics.Economy" xml:space="preserve">
+    <value>Economy</value>
+  </data>
+  <data name="Client:UI:Statistics.Score" xml:space="preserve">
+    <value>Score</value>
+  </data>
+  <data name="Client:UI:Statistics.Won" xml:space="preserve">
+    <value>Won</value>
+  </data>
+  <data name="Client:UI:Statistics.SelectMatchHint" xml:space="preserve">
+    <value>Select a match from the list above to view player data</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.GamesStarted" xml:space="preserve">
+    <value>Games started</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.GamesFinished" xml:space="preserve">
+    <value>Games finished</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.Wins" xml:space="preserve">
+    <value>Wins</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.Losses" xml:space="preserve">
+    <value>Losses</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.WinLossRatio" xml:space="preserve">
+    <value>Win / loss ratio</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.AverageGameLength" xml:space="preserve">
+    <value>Average match length</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.TotalTimePlayed" xml:space="preserve">
+    <value>Total time played</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.AverageEnemyCount" xml:space="preserve">
+    <value>Average enemy count</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.AverageAllyCount" xml:space="preserve">
+    <value>Average ally count</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.TotalKills" xml:space="preserve">
+    <value>Total kills</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.KillsPerGame" xml:space="preserve">
+    <value>Kills per game</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.TotalLosses" xml:space="preserve">
+    <value>Total losses</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.LossesPerGame" xml:space="preserve">
+    <value>Losses per game</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.KillLossRatio" xml:space="preserve">
+    <value>Kill / loss ratio</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.TotalScore" xml:space="preserve">
+    <value>Total score</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.AverageEconomy" xml:space="preserve">
+    <value>Average economy</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.FavouriteSide" xml:space="preserve">
+    <value>Favourite side</value>
+  </data>
+  <data name="Client:UI:Statistics.Total.AverageAILevel" xml:space="preserve">
+    <value>Average AI difficulty</value>
+  </data>
+  <data name="Client:UI:Statistics.ClearAll" xml:space="preserve">
+    <value>Clear statistics</value>
+  </data>
+  <data name="Client:UI:Statistics.ClearConfirm" xml:space="preserve">
+    <value>This will delete all statistics from the database. This action cannot be undone.&#10;&#10;Continue?</value>
+  </data>
+  <data name="Client:UI:Statistics.Cleared" xml:space="preserve">
+    <value>Statistics cleared</value>
+  </data>
+  <data name="Client:UI:Statistics.Filter.All" xml:space="preserve">
+    <value>All games</value>
+  </data>
+  <data name="Client:UI:Statistics.Filter.Online" xml:space="preserve">
+    <value>Online games</value>
+  </data>
+  <data name="Client:UI:Statistics.Filter.OnlinePvp" xml:space="preserve">
+    <value>Online PvP</value>
+  </data>
+  <data name="Client:UI:Statistics.Filter.OnlineCoop" xml:space="preserve">
+    <value>Online Co-op</value>
+  </data>
+  <data name="Client:UI:Statistics.Filter.Skirmish" xml:space="preserve">
+    <value>Skirmish</value>
+  </data>
+  <data name="Client:UI:Campaign.AllTags" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Client:UI:Campaign.CheaterBody" xml:space="preserve">
+    <value>Modified game files were detected (possible cheating or corrupted files).
+
+Continue launching this mission?
+{0}</value>
+  </data>
+  <data name="Client:UI:Campaign.CheaterTitle" xml:space="preserve">
+    <value>File modification detected</value>
+  </data>
+  <data name="Client:UI:Campaign.ComputerDifficulty" xml:space="preserve">
+    <value>Computer difficulty</value>
+  </data>
+  <data name="Client:UI:Campaign.CustomMission" xml:space="preserve">
+    <value>Custom mission</value>
+  </data>
+  <data name="Client:UI:Campaign.Difficulty" xml:space="preserve">
+    <value>Difficulty</value>
+  </data>
+  <data name="Client:UI:Campaign.FirestormAddon" xml:space="preserve">
+    <value>Firestorm expansion</value>
+  </data>
+  <data name="Client:UI:Campaign.HeaderMeta" xml:space="preserve">
+    <value>SINGLEPLAYER · {0} missions · Difficulty {1}</value>
+  </data>
+  <data name="Client:UI:Campaign.Launch" xml:space="preserve">
+    <value>Launch mission</value>
+  </data>
+  <data name="Client:UI:Campaign.LeaveBody" xml:space="preserve">
+    <value>Returning will discard the current unstarted campaign setup. Return?</value>
+  </data>
+  <data name="Client:UI:Campaign.Loading" xml:space="preserve">
+    <value>Loading campaign missions…</value>
+  </data>
+  <data name="Client:UI:Campaign.MissionDescription" xml:space="preserve">
+    <value>Mission description</value>
+  </data>
+  <data name="Client:UI:Campaign.MissionList" xml:space="preserve">
+    <value>Mission list</value>
+  </data>
+  <data name="Client:UI:Campaign.NoMissions" xml:space="preserve">
+    <value>No missions found (Battle.ini / BattleFS.ini missing)</value>
+  </data>
+  <data name="Client:UI:Campaign.PlayerDifficulty" xml:space="preserve">
+    <value>Player difficulty</value>
+  </data>
+  <data name="Client:UI:Campaign.SelectHint" xml:space="preserve">
+    <value>Select a mission on the left to view its description</value>
+  </data>
+  <data name="Client:UI:Campaign.SelectMission" xml:space="preserve">
+    <value>Mission selection</value>
+  </data>
+  <data name="Client:UI:Index.ClientConfig" xml:space="preserve">
+    <value>Client configuration</value>
+  </data>
+  <data name="Client:UI:Index.EnterMainMenu" xml:space="preserve">
+    <value>Enter main menu</value>
+  </data>
+  <data name="Client:UI:Index.Extracting" xml:space="preserve">
+    <value>Extracting…</value>
+  </data>
+  <data name="Client:UI:Index.Found" xml:space="preserve">
+    <value>Found</value>
+  </data>
+  <data name="Client:UI:Index.GameDirectory" xml:space="preserve">
+    <value>Game directory</value>
+  </data>
+  <data name="Client:UI:Index.Initialized" xml:space="preserve">
+    <value>Initialized</value>
+  </data>
+  <data name="Client:UI:Index.ListSeparator" xml:space="preserve">
+    <value>, </value>
+  </data>
+  <data name="Client:UI:Index.Missing" xml:space="preserve">
+    <value>Missing</value>
+  </data>
+  <data name="Client:UI:Index.MissingFilesHint" xml:space="preserve">
+    <value>Select a complete Yuri's Revenge installation directory; the client will extract the missing files automatically:</value>
+  </data>
+  <data name="Client:UI:Index.MissingFilesTitle" xml:space="preserve">
+    <value>Missing game files ({0})</value>
+  </data>
+  <data name="Client:UI:Index.NotFound" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="Client:UI:Index.NotInitialized" xml:space="preserve">
+    <value>Not initialized</value>
+  </data>
+  <data name="Client:UI:Index.PickDirectory" xml:space="preserve">
+    <value>Select Yuri's Revenge directory and extract</value>
+  </data>
+  <data name="Client:UI:Index.PreviewMenu" xml:space="preserve">
+    <value>Preview main menu (dev)</value>
+  </data>
+  <data name="Client:UI:Index.ReDetect" xml:space="preserve">
+    <value>Check again</value>
+  </data>
+  <data name="Client:UI:Index.StartupDirectory" xml:space="preserve">
+    <value>Startup directory</value>
+  </data>
+  <data name="Client:UI:Index.Subtitle" xml:space="preserve">
+    <value>Startup environment check</value>
+  </data>
+  <data name="Client:UI:Index.Title" xml:space="preserve">
+    <value>CNCNet Client</value>
+  </data>
+  <data name="Client:UI:Layout.Connected" xml:space="preserve">
+    <value>Connected to CnCNet</value>
+  </data>
+  <data name="Client:UI:Layout.ConnectionLost" xml:space="preserve">
+    <value>Connection lost, reconnecting… ({0})</value>
+  </data>
+  <data name="Client:UI:Layout.Disconnected" xml:space="preserve">
+    <value>Disconnected from CnCNet</value>
+  </data>
+  <data name="Client:UI:Layout.Failed" xml:space="preserve">
+    <value>Failed to connect to CnCNet</value>
+  </data>
+  <data name="Client:UI:Layout.Reconnected" xml:space="preserve">
+    <value>Reconnected to CnCNet</value>
+  </data>
+  <data name="Client:UI:Layout.Toast" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="Client:UI:LoadGame.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Client:UI:LoadGame.CustomMissionSave" xml:space="preserve">
+    <value>Custom mission save</value>
+  </data>
+  <data name="Client:UI:LoadGame.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Client:UI:LoadGame.HeaderMeta" xml:space="preserve">
+    <value>SINGLEPLAYER · {0} save games</value>
+  </data>
+  <data name="Client:UI:LoadGame.Load" xml:space="preserve">
+    <value>Load</value>
+  </data>
+  <data name="Client:UI:LoadGame.NoSaves" xml:space="preserve">
+    <value>No save games found (no Saved Games directory or *.SAV files in the game directory)</value>
+  </data>
+  <data name="Client:UI:LoadGame.SaveList" xml:space="preserve">
+    <value>Saved games</value>
+  </data>
+  <data name="Client:UI:LoadGame.SelectHint" xml:space="preserve">
+    <value>Select a save game above</value>
+  </data>
+  <data name="Client:UI:LoadGame.Title" xml:space="preserve">
+    <value>Load save game</value>
+  </data>
+  <!-- 载入页与共享组件 -->
+  <data name="Client:UI:Loading.NoActiveGame" xml:space="preserve">
+    <value>No match in progress</value>
+  </data>
+  <data name="Client:UI:Loading.NoActiveCampaign" xml:space="preserve">
+    <value>No campaign in progress</value>
+  </data>
+  <data name="Client:UI:Loading.BackToSkirmish" xml:space="preserve">
+    <value>Back to Skirmish</value>
+  </data>
+  <data name="Client:UI:Loading.BackToCampaign" xml:space="preserve">
+    <value>Back to Campaign</value>
+  </data>
+  <data name="Client:UI:Loading.RadarGame" xml:space="preserve">
+    <value>Match</value>
+  </data>
+  <data name="Client:UI:Loading.RadarLan" xml:space="preserve">
+    <value>LAN Match</value>
+  </data>
+  <data name="Client:UI:Loading.RadarSkirmish" xml:space="preserve">
+    <value>Skirmish</value>
+  </data>
+  <data name="Client:UI:Loading.RadarCampaign" xml:space="preserve">
+    <value>Campaign</value>
+  </data>
+  <data name="Client:UI:Loading.SubGame" xml:space="preserve">
+    <value>Match loading · Please wait</value>
+  </data>
+  <data name="Client:UI:Loading.SubLan" xml:space="preserve">
+    <value>LAN match loading · Please wait</value>
+  </data>
+  <data name="Client:UI:Loading.SubSkirmish" xml:space="preserve">
+    <value>Skirmish loading · Please wait</value>
+  </data>
+  <data name="Client:UI:Loading.SubCampaign" xml:space="preserve">
+    <value>Campaign loading · Please wait</value>
+  </data>
+  <data name="Client:UI:Loading.Room" xml:space="preserve">
+    <value>Room</value>
+  </data>
+  <data name="Client:UI:Loading.ProcessStarted" xml:space="preserve">
+    <value>Game process started, window minimized · </value>
+  </data>
+  <data name="Client:UI:Loading.ReturnRoom" xml:space="preserve">
+    <value>You will return to the room after the match (running </value>
+  </data>
+  <data name="Client:UI:Loading.ReturnSkirmish" xml:space="preserve">
+    <value>You will return to the Skirmish page after the match (running </value>
+  </data>
+  <data name="Client:UI:Loading.ReturnCampaign" xml:space="preserve">
+    <value>You will return to the Campaign page after the mission (running </value>
+  </data>
+  <data name="Client:UI:Loading.SecondsSuffix" xml:space="preserve">
+    <value>s)</value>
+  </data>
+  <data name="Client:UI:Loading.PlayersDetail" xml:space="preserve">
+    <value>{0} players (human {1} + AI {2})</value>
+  </data>
+  <data name="Client:UI:Loading.Mission" xml:space="preserve">
+    <value>Mission</value>
+  </data>
+  <data name="Client:UI:Loading.Difficulty" xml:space="preserve">
+    <value>Difficulty</value>
+  </data>
+  <data name="Client:UI:Loading.LeaveRoomBody" xml:space="preserve">
+    <value>A match is still in progress. Returning to the lobby will leave the current room. Continue?</value>
+  </data>
+  <data name="Client:UI:Loading.LeaveSkirmishBody" xml:space="preserve">
+    <value>A match is still in progress. Returning will interrupt the current flow. Continue?</value>
+  </data>
+  <data name="Client:UI:Loading.LeaveCampaignBody" xml:space="preserve">
+    <value>A mission is still in progress. Returning will interrupt the current flow. Continue?</value>
+  </data>
+  <data name="Client:UI:Extras.Title" xml:space="preserve">
+    <value>Extras</value>
+  </data>
+  <data name="Client:UI:Extras.Statistics" xml:space="preserve">
+    <value>Statistics</value>
+  </data>
+  <data name="Client:UI:Extras.MapEditor" xml:space="preserve">
+    <value>Map Editor</value>
+  </data>
+  <data name="Client:UI:Extras.Changelog" xml:space="preserve">
+    <value>Changelog</value>
+  </data>
+  <data name="Client:UI:Extras.Credits" xml:space="preserve">
+    <value>Credits</value>
+  </data>
+  <data name="Client:UI:Extras.About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Client:UI:Extras.MapEditorFailed" xml:space="preserve">
+    <value>Failed to launch the Map Editor: </value>
+  </data>
+  <data name="Client:UI:Extras.MapEditorStarted" xml:space="preserve">
+    <value>Map Editor started</value>
+  </data>
+  <data name="Client:UI:Extras.ChangelogFailed" xml:space="preserve">
+    <value>Unable to open the changelog: </value>
+  </data>
+  <data name="Client:UI:Extras.ChangelogOpened" xml:space="preserve">
+    <value>Opened the changelog in your browser</value>
+  </data>
+  <data name="Client:UI:Extras.CreditsFailed" xml:space="preserve">
+    <value>Unable to open the credits: </value>
+  </data>
+  <data name="Client:UI:Extras.CreditsOpened" xml:space="preserve">
+    <value>Opened the credits in your browser</value>
+  </data>
+  <data name="Client:UI:Login.Title" xml:space="preserve">
+    <value>Connect to CnCNet</value>
+  </data>
+  <data name="Client:UI:Login.PlayerName" xml:space="preserve">
+    <value>Player name</value>
+  </data>
+  <data name="Client:UI:Login.NamePlaceholder" xml:space="preserve">
+    <value>Nickname (letters/digits/-_, must not start with a digit)</value>
+  </data>
+  <data name="Client:UI:Login.RememberMe" xml:space="preserve">
+    <value>Remember me</value>
+  </data>
+  <data name="Client:UI:Login.RememberMeHint" xml:space="preserve">
+    <value>REMEMBER ME · Skip this screen next time</value>
+  </data>
+  <data name="Client:UI:Login.PersistentMode" xml:space="preserve">
+    <value>Stay connected when leaving the lobby</value>
+  </data>
+  <data name="Client:UI:Login.AutoConnect" xml:space="preserve">
+    <value>Connect automatically on startup</value>
+  </data>
+  <data name="Client:UI:Login.Connecting" xml:space="preserve">
+    <value>Connecting…</value>
+  </data>
+  <data name="Client:UI:Login.Connect" xml:space="preserve">
+    <value>Connect</value>
+  </data>
+  <data name="Client:UI:Login.NameInvalid" xml:space="preserve">
+    <value>Invalid nickname.</value>
+  </data>
+  <data name="Client:UI:Login.InitFailed" xml:space="preserve">
+    <value>Connection initialization failed: </value>
+  </data>
+  <data name="Client:UI:Login.Connected" xml:space="preserve">
+    <value>Connected to CnCNet: </value>
+  </data>
+  <data name="Client:UI:Login.ServerUnreachable" xml:space="preserve">
+    <value>Unable to connect to the CnCNet server. Check your network and try again.</value>
+  </data>
+  <data name="Client:UI:Preset.LoadTitle" xml:space="preserve">
+    <value>Load preset</value>
+  </data>
+  <data name="Client:UI:Preset.SaveTitle" xml:space="preserve">
+    <value>Save preset</value>
+  </data>
+  <data name="Client:UI:Preset.Load" xml:space="preserve">
+    <value>Load</value>
+  </data>
+  <data name="Client:UI:Preset.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Client:UI:Preset.NameLabel" xml:space="preserve">
+    <value>Preset name</value>
+  </data>
+  <data name="Client:UI:Preset.SelectPlaceholder" xml:space="preserve">
+    <value>[Select preset]</value>
+  </data>
+  <data name="Client:UI:Preset.NewPlaceholder" xml:space="preserve">
+    <value>[New preset]</value>
+  </data>
+  <data name="Client:UI:Preset.NewNameLabel" xml:space="preserve">
+    <value>New preset name</value>
+  </data>
+  <data name="Client:UI:Preset.NewNamePlaceholder" xml:space="preserve">
+    <value>Name the current options and save (optionally overwrite the selected preset)</value>
+  </data>
+  <data name="Client:UI:Preset.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Client:UI:Preset.NotFound" xml:space="preserve">
+    <value>Preset not found: </value>
+  </data>
+  <data name="Client:UI:Preset.Loaded" xml:space="preserve">
+    <value>Loaded preset: </value>
+  </data>
+  <data name="Client:UI:Preset.Saved" xml:space="preserve">
+    <value>Saved preset: </value>
+  </data>
+  <data name="Client:UI:Preset.DeleteTitle" xml:space="preserve">
+    <value>Delete preset</value>
+  </data>
+  <data name="Client:UI:Preset.DeleteConfirm" xml:space="preserve">
+    <value>Delete preset "{0}"?</value>
+  </data>
+  <data name="Client:UI:Preset.Deleted" xml:space="preserve">
+    <value>Deleted preset: </value>
+  </data>
+  <data name="Client:UI:Invite.Title" xml:space="preserve">
+    <value>Game invitation</value>
+  </data>
+  <data name="Client:UI:Invite.Body" xml:space="preserve">
+    <value>invites you to join "{0}". Accept?</value>
+  </data>
+  <data name="Client:UI:Invite.Accept" xml:space="preserve">
+    <value>Accept</value>
+  </data>
+  <data name="Client:UI:Invite.Decline" xml:space="preserve">
+    <value>Decline</value>
+  </data>
+  <data name="Client:UI:Invite.JoinFailedTitle" xml:space="preserve">
+    <value>Unable to join</value>
+  </data>
+  <data name="Client:UI:Invite.JoinFailedBody" xml:space="preserve">
+    <value>"{0}" is closed or no longer visible in the lobby; the invitation cannot be accepted.</value>
+  </data>
+  <data name="Client:UI:Common.OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Client:UI:Common.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Client:UI:Common.Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Client:UI:Common.No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Client:UI:Footer.RenderEngine" xml:space="preserve">
+    <value>Render engine</value>
+  </data>
+  <data name="Client:UI:Footer.ResolutionAdaptive" xml:space="preserve">
+    <value>Adaptive resolution</value>
+  </data>
+  <data name="Client:UI:Splash.Loading" xml:space="preserve">
+    <value>Loading</value>
+  </data>
+  <data name="Client:UI:Lobby.DefaultRoomName" xml:space="preserve">
+    <value>{0} game room</value>
+  </data>
+  <!-- 主菜单：更新状态 / 提示 / 退出确认 -->
+  <data name="Client:UI:MainMenu.Update.CheckNow" xml:space="preserve">
+    <value>Click to check for updates</value>
+  </data>
+  <data name="Client:UI:MainMenu.Update.Unavailable" xml:space="preserve">
+    <value>Update service unavailable</value>
+  </data>
+  <data name="Client:UI:MainMenu.Update.Checking" xml:space="preserve">
+    <value>Checking for updates…</value>
+  </data>
+  <data name="Client:UI:MainMenu.Update.Updating" xml:space="preserve">
+    <value>Updating… {0}%</value>
+  </data>
+  <data name="Client:UI:MainMenu.Update.NewVersionManual" xml:space="preserve">
+    <value>New version v{0} found (manual download required)</value>
+  </data>
+  <data name="Client:UI:MainMenu.Update.NewVersion" xml:space="preserve">
+    <value>New version v{0} found, click to view</value>
+  </data>
+  <data name="Client:UI:MainMenu.Update.Mismatch" xml:space="preserve">
+    <value>Version mismatch, click to check</value>
+  </data>
+  <data name="Client:UI:MainMenu.Update.Failed" xml:space="preserve">
+    <value>Update check failed, click to retry</value>
+  </data>
+  <data name="Client:UI:MainMenu.Update.UpToDate" xml:space="preserve">
+    <value>Already up to date v{0}, click to check</value>
+  </data>
+  <data name="Client:UI:MainMenu.Toast.AutoConnect" xml:space="preserve">
+    <value>Auto-connecting to CnCNet: {0}…</value>
+  </data>
+  <data name="Client:UI:MainMenu.Toast.ConnectCancelled" xml:space="preserve">
+    <value>Connection cancelled</value>
+  </data>
+  <data name="Client:UI:MainMenu.Toast.CreditsFailed" xml:space="preserve">
+    <value>Could not open credits: {0}</value>
+  </data>
+  <data name="Client:UI:MainMenu.Toast.MapEditorFailed" xml:space="preserve">
+    <value>Map editor failed to start: {0}</value>
+  </data>
+  <data name="Client:UI:MainMenu.Toast.Entering" xml:space="preserve">
+    <value>Entering {0}…</value>
+  </data>
+  <data name="Client:UI:MainMenu.ExitTitle" xml:space="preserve">
+    <value>Exit client</value>
+  </data>
+  <data name="Client:UI:MainMenu.ExitBody" xml:space="preserve">
+    <value>Are you sure you want to exit CNCNet CLIENT?</value>
+  </data>
+  <!-- 顶栏提示 / 启动兜底 -->
+  <data name="Client:UI:TopBar.Connected" xml:space="preserve">
+    <value>Connected to CnCNet</value>
+  </data>
+  <data name="Client:UI:TopBar.Disconnected" xml:space="preserve">
+    <value>Signed out of CnCNet</value>
+  </data>
+  <data name="Client:UI:Startup.UiDispatcherMissing" xml:space="preserve">
+    <value>No SynchronizationContext found on the UI thread. InfiniFrameDispatcher requires it at startup.</value>
+  </data>
+  <data name="Client:UI:Room.AlreadyInRoom" xml:space="preserve">
+    <value>Already in a game room. Please leave the current room first.</value>
+  </data>
+  <data name="Client:UI:Room.CreatingRoom" xml:space="preserve">
+    <value>Creating room "{0}"...</value>
+  </data>
+  <data name="Client:UI:Room.MissingChannelInfo" xml:space="preserve">
+    <value>This room is missing channel information and cannot be joined.</value>
+  </data>
+  <data name="Client:UI:Room.RoomFull" xml:space="preserve">
+    <value>This room is full and cannot be joined.</value>
+  </data>
+  <data name="Client:UI:Room.PasswordRequired" xml:space="preserve">
+    <value>This room requires a password to join.</value>
+  </data>
+  <data name="Client:UI:Room.JoiningRoom" xml:space="preserve">
+    <value>Joining room "{0}"...</value>
+  </data>
+  <data name="Client:UI:Room.NoLocalGame" xml:space="preserve">
+    <value>No local game selected; cannot create a room.</value>
+  </data>
+  <data name="Client:UI:Room.ChannelNameRetries" xml:space="preserve">
+    <value>Failed to find a free channel name after {0} attempts.</value>
+  </data>
+  <data name="Client:UI:Room.CommandHelp" xml:space="preserve">
+    <value>Available room commands: /roll &lt;count&gt;d&lt;sides&gt; to roll dice · /tunnelinfo to view tunnel · /downloadmap &lt;SHA1&gt; [map name] to download a map · /help for help</value>
+  </data>
+  <data name="Client:UI:Room.UnknownCommand" xml:space="preserve">
+    <value>Unknown command /{0}. Type /help for available commands.</value>
+  </data>
+  <data name="Client:UI:Room.DiceInvalidFormat" xml:space="preserve">
+    <value>Invalid dice format. Use /roll &lt;count&gt;d&lt;sides&gt;, e.g. /roll 3d6</value>
+  </data>
+  <data name="Client:UI:Room.DiceCountRange" xml:space="preserve">
+    <value>You can only roll 1 to 10 dice at a time.</value>
+  </data>
+  <data name="Client:UI:Room.DiceSidesRange" xml:space="preserve">
+    <value>Dice sides must be between 2 and 100.</value>
+  </data>
+  <data name="Client:UI:Room.DiceRollResult" xml:space="preserve">
+    <value>{0} rolled {1}d{2}: {3}</value>
+  </data>
+  <data name="Client:UI:Room.TunnelUnavailable" xml:space="preserve">
+    <value>Tunnel server is unavailable.</value>
+  </data>
+  <data name="Client:UI:Room.TunnelInfo" xml:space="preserve">
+    <value>Current tunnel server: {0} {1} (load {2}/{3}) (official: {4})</value>
+  </data>
+  <data name="Client:UI:Room.Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Client:UI:Room.No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Client:UI:Room.DownloadMapUsage" xml:space="preserve">
+    <value>Usage: /downloadmap &lt;SHA1&gt; [map name], e.g. /downloadmap ABC123DEF... My Battle Map</value>
+  </data>
+  <data name="Client:UI:Room.MapIdEmpty" xml:space="preserve">
+    <value>Map ID (SHA1) must not be empty.</value>
+  </data>
+  <data name="Client:UI:Room.MapAlreadyLoaded" xml:space="preserve">
+    <value>Map ID "{0}" is already loaded locally ({1}.{2}). Please delete that file and try again.</value>
+  </data>
+  <data name="Client:UI:Room.DownloadMapViaChat" xml:space="preserve">
+    <value>Downloading map via chat command: sha1={0}, map name={1}</value>
+  </data>
+  <data name="Client:UI:Room.SlotsLimitReached" xml:space="preserve">
+    <value>Room total slots reached the limit ({0}, including AI).</value>
+  </data>
+  <data name="Client:UI:Room.MissingMapPrompt" xml:space="preserve">
+    <value>The host selected a map not installed locally. Click "Download Map" to fetch it from the CnCNet map library.</value>
+  </data>
+  <data name="Client:UI:Room.MissingMapDisabled" xml:space="preserve">
+    <value>The host selected a map not installed locally and map sharing is disabled, so it cannot be fetched automatically. Please ask the host to change the map.</value>
+  </data>
+  <data name="Client:UI:Room.DownloadingMap" xml:space="preserve">
+    <value>Attempting to download the map…</value>
+  </data>
+  <data name="Client:UI:Room.SenderMissingOfficialMap" xml:space="preserve">
+    <value>{0} is missing the official map "{1}". Please change the map; otherwise they cannot join the match.</value>
+  </data>
+  <data name="Client:UI:Room.UploadingMapForSender" xml:space="preserve">
+    <value>{0} is missing map "{1}"; attempting to upload it to the CnCNet map library.</value>
+  </data>
+  <data name="Client:UI:Room.HostUploadFailed" xml:space="preserve">
+    <value>The host failed to upload the map to the CnCNet map library.</value>
+  </data>
+  <data name="Client:UI:Room.AskHostChangeMap" xml:space="preserve">
+    <value>Please ask the host to change the map; otherwise you cannot join the match.</value>
+  </data>
+  <data name="Client:UI:Room.SenderDownloadFailedHost" xml:space="preserve">
+    <value>{0} could not download this map from the map library. Please change the map; otherwise they cannot join the match.</value>
+  </data>
+  <data name="Client:UI:Room.SenderDownloadFailedJoiner" xml:space="preserve">
+    <value>{0} could not download this map from the map library. Please ask the host to change the map.</value>
+  </data>
+  <data name="Client:UI:Room.SenderMapSharingDisabled" xml:space="preserve">
+    <value>{0} is missing the current map and has map sharing disabled. Please switch to a non-custom map; otherwise they cannot join the match.</value>
+  </data>
+  <data name="Client:UI:Room.CustomMapDownloadFailed" xml:space="preserve">
+    <value>Custom map download failed. Please ask the host to change the map; otherwise they cannot join the match.</value>
+  </data>
+  <data name="Client:UI:Room.RequestingHostUpload" xml:space="preserve">
+    <value>Requesting the host to upload the map to the CnCNet map library…</value>
+  </data>
+  <data name="Client:UI:Room.UploadMapFailed" xml:space="preserve">
+    <value>Failed to upload map "{0}" to the CnCNet map library.</value>
+  </data>
+  <data name="Client:UI:Room.ChangeMapMissingPlayers" xml:space="preserve">
+    <value>Please change the map; otherwise players missing this map cannot join the match.</value>
+  </data>
+  <data name="Client:UI:Room.UploadMapComplete" xml:space="preserve">
+    <value>Finished uploading map "{0}" to the CnCNet map library.</value>
+  </data>
+  <data name="Client:UI:Room.MapDownloadedSelected" xml:space="preserve">
+    <value>Map "{0}" downloaded and selected automatically.</value>
+  </data>
+  <data name="Client:UI:Room.RoomPasswordSet" xml:space="preserve">
+    <value>Room password set.</value>
+  </data>
+  <data name="Client:UI:Room.CustomPasswordRemoved" xml:space="preserve">
+    <value>Custom password removed; the room is now public.</value>
+  </data>
+  <data name="Client:UI:Room.PlayerKicked" xml:space="preserve">
+    <value>{0} has been kicked from the room.</value>
+  </data>
+  <data name="Client:UI:Room.PlayerBanned" xml:space="preserve">
+    <value>{0} has been banned.</value>
+  </data>
+  <data name="Client:UI:Room.SelectMapFirst" xml:space="preserve">
+    <value>Please select a map first.</value>
+  </data>
+  <data name="Client:UI:Room.CoopNoSpectator" xml:space="preserve">
+    <value>Co-op missions do not support spectators; please choose an actual side.</value>
+  </data>
+  <data name="Client:UI:Room.NeedOnePlayerSide" xml:space="preserve">
+    <value>At least one player must choose an actual side before starting.</value>
+  </data>
+  <data name="Client:UI:Room.PlayersNotReady" xml:space="preserve">
+    <value>Some players are not ready yet.</value>
+  </data>
+  <data name="Client:UI:Room.TunnelUnavailableRetry" xml:space="preserve">
+    <value>Unable to select a tunnel server (the list has not loaded yet). Please try again later.</value>
+  </data>
+  <data name="Client:UI:Room.TunnelPortsInsufficient" xml:space="preserve">
+    <value>Tunnel server "{0}" has insufficient ports (need {1}, only {2} allocated). Please try again later.</value>
+  </data>
+  <data name="Client:UI:Room.HostInactiveClosed" xml:space="preserve">
+    <value>The host was inactive for too long; the room has been closed automatically.</value>
+  </data>
+  <data name="Client:UI:Room.TunnelSwitched" xml:space="preserve">
+    <value>Tunnel server switched to: {0}</value>
+  </data>
+  <data name="Client:UI:Room.HostInvalidTunnel" xml:space="preserve">
+    <value>The host selected an invalid tunnel server ({0}); this game cannot proceed.</value>
+  </data>
+  <data name="Client:UI:Room.HostTunnelSwitched" xml:space="preserve">
+    <value>The host switched the tunnel server to: {0}</value>
+  </data>
+  <data name="Client:UI:Room.IncorrectPassword" xml:space="preserve">
+    <value>Incorrect password; cannot join this room.</value>
+  </data>
+  <data name="Client:UI:Room.RoomLocked" xml:space="preserve">
+    <value>The room is locked; cannot join.</value>
+  </data>
+  <data name="Client:UI:Room.RoomFullJoinFailed" xml:space="preserve">
+    <value>The room is full; cannot join.</value>
+  </data>
+  <data name="Client:UI:Room.GameStarted" xml:space="preserve">
+    <value>The game has started</value>
+  </data>
+  <data name="Client:UI:Room.InvalidExtraOptions" xml:space="preserve">
+    <value>Received invalid player extra options data.</value>
+  </data>
+  <data name="Client:UI:Room.HostSelectedMissingMap" xml:space="preserve">
+    <value>The host selected a map not installed locally, map name: {0}</value>
+  </data>
+  <data name="Client:UI:Room.HostStartedGame" xml:space="preserve">
+    <value>The host has started the game</value>
+  </data>
+  <data name="Client:UI:LobbySvc.CmdKickDesc" xml:space="preserve">
+    <value>Kick a player from the channel</value>
+  </data>
+  <data name="Client:UI:LobbySvc.CmdBanDesc" xml:space="preserve">
+    <value>Ban a player (by host)</value>
+  </data>
+  <data name="Client:UI:LobbySvc.CmdMuteDesc" xml:space="preserve">
+    <value>Mute a player</value>
+  </data>
+  <data name="Client:UI:LobbySvc.CmdVoiceDesc" xml:space="preserve">
+    <value>Unmute a player</value>
+  </data>
+  <data name="Client:UI:LobbySvc.CmdInviteDesc" xml:space="preserve">
+    <value>Invite a player to the current game</value>
+  </data>
+  <data name="Client:UI:LobbySvc.CmdHelpDesc" xml:space="preserve">
+    <value>Show available channel commands</value>
+  </data>
+  <data name="Client:UI:LobbySvc.BroadcastChannelName" xml:space="preserve">
+    <value>{0} Broadcast</value>
+  </data>
+  <data name="Client:UI:LobbySvc.UnknownCommand" xml:space="preserve">
+    <value>Unknown command /{0}. Type /help for available commands.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.AdminRequired" xml:space="preserve">
+    <value>/{0} requires channel administrator privileges.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.KickUsage" xml:space="preserve">
+    <value>Usage: /kick &lt;player name&gt;</value>
+  </data>
+  <data name="Client:UI:LobbySvc.KickSelf" xml:space="preserve">
+    <value>You cannot kick yourself.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.PlayerNotFound" xml:space="preserve">
+    <value>Player {0} not found in the current channel.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.KickDone" xml:space="preserve">
+    <value>Kicked {0} from the channel.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.BanUsage" xml:space="preserve">
+    <value>Usage: /ban &lt;player name&gt;</value>
+  </data>
+  <data name="Client:UI:LobbySvc.BanSelf" xml:space="preserve">
+    <value>You cannot ban yourself.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.BanDone" xml:space="preserve">
+    <value>Banned {0}.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.MuteUsage" xml:space="preserve">
+    <value>Usage: /mute &lt;player name&gt;</value>
+  </data>
+  <data name="Client:UI:LobbySvc.VoiceUsage" xml:space="preserve">
+    <value>Usage: /voice &lt;player name&gt;</value>
+  </data>
+  <data name="Client:UI:LobbySvc.MuteSelf" xml:space="preserve">
+    <value>You cannot mute yourself.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.VoiceSelf" xml:space="preserve">
+    <value>You cannot unmute yourself.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.MuteDone" xml:space="preserve">
+    <value>Muted {0}.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.VoiceDone" xml:space="preserve">
+    <value>Unmuted {0}.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.InviteUsage" xml:space="preserve">
+    <value>Usage: /invite &lt;player name&gt;</value>
+  </data>
+  <data name="Client:UI:LobbySvc.InviteNoRoom" xml:space="preserve">
+    <value>Please create or join a game room before inviting players.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.InviteDone" xml:space="preserve">
+    <value>Invited {0} to the game.</value>
+  </data>
+  <data name="Client:UI:LobbySvc.HelpPrefix" xml:space="preserve">
+    <value>Available channel commands: {0}</value>
+  </data>
+  <data name="Client:UI:LobbySvc.InvitationFailed" xml:space="preserve">
+    <value>{0} cannot receive your invitation; they may be in a game or only accept invitations from friends. Please make sure the room is not locked and is visible in the lobby, then try again.</value>
+  </data>
+  <data name="Client:UI:LanRoom.AlreadyInRoom" xml:space="preserve">
+    <value>You are already in a LAN room. Please leave it first.</value>
+  </data>
+  <data name="Client:UI:LanRoom.TcpListenFailed" xml:space="preserve">
+    <value>Failed to listen on TCP {0}: {1}</value>
+  </data>
+  <data name="Client:UI:LanRoom.LocalLobbyConnectFailed" xml:space="preserve">
+    <value>Failed to connect to the local LAN lobby: {0}</value>
+  </data>
+  <data name="Client:UI:LanRoom.CreatedChat" xml:space="preserve">
+    <value>LAN room "{0}" created. Waiting for other players to join.</value>
+  </data>
+  <data name="Client:UI:LanRoom.RoomLocked" xml:space="preserve">
+    <value>This room is locked and cannot be joined.</value>
+  </data>
+  <data name="Client:UI:LanRoom.RoomGameMismatch" xml:space="preserve">
+    <value>This room is running a different game and cannot be joined.</value>
+  </data>
+  <data name="Client:UI:LanRoom.HostConnectFailed" xml:space="preserve">
+    <value>Cannot connect to host {0}: {1}</value>
+  </data>
+  <data name="Client:UI:LanRoom.JoiningChat" xml:space="preserve">
+    <value>Joining "{0}"...</value>
+  </data>
+  <data name="Client:UI:LanRoom.SelectMapFirst" xml:space="preserve">
+    <value>Please select a map first.</value>
+  </data>
+  <data name="Client:UI:LanRoom.LockBeforeStart" xml:space="preserve">
+    <value>Please lock the room before starting the game.</value>
+  </data>
+  <data name="Client:UI:LanRoom.PlayersNotReady" xml:space="preserve">
+    <value>Some players are not ready yet.</value>
+  </data>
+  <data name="Client:UI:LanRoom.PlayerJoined" xml:space="preserve">
+    <value>{0} joined the room.</value>
+  </data>
+  <data name="Client:UI:LanRoom.PlayerDisconnected" xml:space="preserve">
+    <value>{0} disconnected.</value>
+  </data>
+  <data name="Client:UI:LanRoom.PlayerLeft" xml:space="preserve">
+    <value>{0} left the room.</value>
+  </data>
+  <data name="Client:UI:LanRoom.FileHashMismatch" xml:space="preserve">
+    <value>{0}'s files differ from yours. Possible cheating!</value>
+  </data>
+  <data name="Client:UI:LanRoom.HostWaitingReady" xml:space="preserve">
+    <value>The host is waiting for you to get ready!</value>
+  </data>
+  <data name="Client:UI:LanRoom.HostClosedRoom" xml:space="preserve">
+    <value>The host has closed the room.</value>
+  </data>
+  <data name="Client:UI:LanRoom.PlayerReturned" xml:space="preserve">
+    <value>{0} has returned to the room.</value>
+  </data>
+  <data name="Client:UI:LanRoom.HostStartedGame" xml:space="preserve">
+    <value>The host has started the game.</value>
+  </data>
+  <data name="Client:UI:LanRoom.MapNotInstalled" xml:space="preserve">
+    <value>The host selected a map that is not installed (SHA1: {0})</value>
+  </data>
+  <data name="Client:UI:LanRoom.ConnectionTimeout" xml:space="preserve">
+    <value>Connection timed out. Leaving the room.</value>
+  </data>
+  <data name="Client:UI:LanRoom.HostConnectionLost" xml:space="preserve">
+    <value>The connection to the host was lost.</value>
+  </data>
+  <data name="Client:UI:LanSvc.SocketCreateFailed" xml:space="preserve">
+    <value>Failed to create the LAN socket: {0}. Please check your firewall settings and make sure no other program is using UDP ports 1232-1234.</value>
+  </data>
+  <data name="Client:UI:LanSvc.BroadcastSendFailed" xml:space="preserve">
+    <value>Failed to send the LAN broadcast: the network socket may not be initialized.</value>
+  </data>
+  <data name="Client:UI:SkirmishSvc.TooManyAI" xml:space="preserve">
+    <value>You can add at most {0} AI players.</value>
+  </data>
+  <data name="Client:UI:SkirmishSvc.SelectMapAndMode" xml:space="preserve">
+    <value>Please select a map and a game mode first.</value>
+  </data>
+  <data name="Client:UI:SkirmishSvc.MultiplayerOnly" xml:space="preserve">
+    <value>{0} can only be played on CnCNet and LAN.</value>
+  </data>
+  <data name="Client:UI:SkirmishSvc.MinPlayersRequired" xml:space="preserve">
+    <value>{0} requires at least {1} players.</value>
+  </data>
+  <data name="Client:UI:SkirmishSvc.MaxPlayersExceeded" xml:space="preserve">
+    <value>{0} supports at most {1} players.</value>
+  </data>
+  <data name="Client:UI:SkirmishSvc.SharedStartLocation" xml:space="preserve">
+    <value>Multiple players cannot share the same starting location.</value>
+  </data>
+  <data name="Client:UI:SkirmishSvc.CoopNoSpectator" xml:space="preserve">
+    <value>Co-op missions cannot be spectated. Please choose an actual side.</value>
+  </data>
+  <data name="Client:UI:SkirmishSvc.ConfigGenerateFailedTitle" xml:space="preserve">
+    <value>Failed to generate the game configuration</value>
+  </data>
+  <data name="Client:UI:Env.Detecting" xml:space="preserve">
+    <value>Detecting…</value>
+  </data>
+  <data name="Client:UI:Env.ResourcesNotFound" xml:space="preserve">
+    <value>Couldn't find the game resources directory. Please make sure the client is running from inside the game directory (the program should sit in a directory tree that contains the Resources directory).</value>
+  </data>
+  <data name="Client:UI:Env.ClientDefinitionsMissing" xml:space="preserve">
+    <value>Game directory located: {0}, but {1} was not found. This mod may not have the client resources installed yet.</value>
+  </data>
+  <data name="Client:UI:Env.Ready" xml:space="preserve">
+    <value>Game resources ready: {0}</value>
+  </data>
+  <data name="Client:UI:Env.ConfigInitFailed" xml:space="preserve">
+    <value>Failed to initialize the client configuration: {0}</value>
+  </data>
+  <data name="Client:UI:Env.SelectionCancelled" xml:space="preserve">
+    <value>Selection cancelled</value>
+  </data>
+  <data name="Client:UI:Env.FilesExtracted" xml:space="preserve">
+    <value>Extracted {0} file(s) from the selected directory</value>
+  </data>
+  <data name="Client:UI:Env.NoFilesToExtract" xml:space="preserve">
+    <value>No files needed to be extracted</value>
+  </data>
+  <data name="Client:UI:Env.FilesMissingSuffix" xml:space="preserve">
+    <value>; the following {0} file(s) are missing from the selected directory: {1}</value>
+  </data>
+  <data name="Client:UI:Env.GameFilesCompleteSuffix" xml:space="preserve">
+    <value>. Game files are now complete.</value>
+  </data>
+  <data name="Client:UI:Env.ListSeparator" xml:space="preserve">
+    <value>, </value>
+  </data>
+  <data name="Client:UI:Env.SelectGameDirectoryTitle" xml:space="preserve">
+    <value>Select your Yuri's Revenge installation directory</value>
+  </data>
+  <data name="Client:UI:Startup.WebView2MissingMessage" xml:space="preserve">
+    <value>Microsoft Edge WebView2 Runtime was not detected.\r\n\r\nThe CNCNet client interface is rendered by WebView2, which is required to start.\r\nOpen the official download page to install it now? (Windows 11 usually ships with it)</value>
+  </data>
+  <data name="Client:UI:Startup.WebView2MissingTitle" xml:space="preserve">
+    <value>WebView2 Runtime Missing</value>
+  </data>
+  <data name="Client:UI:Startup.DispatcherNotInitialized" xml:space="preserve">
+    <value>InfiniFrameDispatcher has not been initialized (call Initialize on the UI thread).</value>
+  </data>
+  <data name="Client:UI:Theme.MenuName" xml:space="preserve">
+    <value>Main menu</value>
+  </data>
+  <data name="Client:UI:Theme.MenuHint" xml:space="preserve">
+    <value>Monochrome teal HUD</value>
+  </data>
+  <data name="Client:UI:Theme.InnerName" xml:space="preserve">
+    <value>Inner pages</value>
+  </data>
+  <data name="Client:UI:Theme.InnerHint" xml:space="preserve">
+    <value>Blue command deck</value>
+  </data>
+  <data name="Client:UI:Theme.RaName" xml:space="preserve">
+    <value>Red Alert</value>
+  </data>
+  <data name="Client:UI:Theme.RaHint" xml:space="preserve">
+    <value>Classic Red Alert · tactical command</value>
+  </data>
+  <data name="Client:UI:Launch.ConfigErrorTitle" xml:space="preserve">
+    <value>Failed to generate game configuration</value>
+  </data>
+  <data name="Client:UI:Launch.ErrorTitle" xml:space="preserve">
+    <value>Failed to launch game</value>
+  </data>
+  <data name="Client:UI:Launch.ErrorText" xml:space="preserve">
+    <value>Failed to launch {0}. Check whether antivirus software blocked CnCNet Client. You can also try running the client as administrator.
+
+You cannot join this match.
+
+Returned error: {1}</value>
+  </data>
+  <data name="Client:UI:LoadGame.DeleteTitle" xml:space="preserve">
+    <value>Confirm deletion</value>
+  </data>
+  <data name="Client:UI:LoadGame.DeleteBody" xml:space="preserve">
+    <value>The following save will be permanently deleted:
+
+File: {0}
+Save name: {1}
+Date: {2}
+
+Continue?</value>
+  </data>
+  <data name="Client:UI:Extras.AboutText" xml:space="preserve">
+    <value>CNC NET CLIENT · {0}
+Game version: {1}
+Engine: Blazor WebView2 · Holographic Command View</value>
+  </data>
+  <data name="Client:UI:Component.NotRegistered" xml:space="preserve">
+    <value>ReplaceableComponent is not registered: {0}</value>
+  </data>
+  <data name="Client:UI:Component.UnknownType" xml:space="preserve">
+    <value>[Components] {0}={1} points to an unknown component type</value>
+  </data>
+  <data name="Client:UI:Component.NotBlazorComponent" xml:space="preserve">
+    <value>[Components] {0}={1} is not a Blazor component</value>
+  </data>
+  <data name="Client:UI:Connection.Online" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="Client:UI:Connection.Reconnecting" xml:space="preserve">
+    <value>Reconnecting</value>
+  </data>
+  <data name="Client:UI:Connection.Connecting" xml:space="preserve">
+    <value>Connecting</value>
+  </data>
+  <data name="Client:UI:Connection.Offline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Client:UI:Connection.Reconnected" xml:space="preserve">
+    <value>Reconnected to CnCNet</value>
+  </data>
+  <data name="Client:UI:Connection.Connected" xml:space="preserve">
+    <value>Connected to CnCNet</value>
+  </data>
+  <data name="Client:UI:Connection.Disconnected" xml:space="preserve">
+    <value>Disconnected from CnCNet</value>
+  </data>
+  <data name="Client:UI:Connection.ConnectFailed" xml:space="preserve">
+    <value>Failed to connect to CnCNet</value>
+  </data>
+  <data name="Client:UI:Chat.OpenLinkTitle" xml:space="preserve">
+    <value>Open link confirmation</value>
+  </data>
+  <data name="Client:UI:Chat.OpenLinkBody" xml:space="preserve">
+    <value>You are about to open a link shared in chat.
+
+Note: this link has not been verified and CnCNet is not responsible for its content.
+
+Open the following link in your browser?
+
+</value>
+  </data>
+  <data name="Client:UI:Chat.OpenLinkFailedTitle" xml:space="preserve">
+    <value>Could not open link</value>
+  </data>
+  <data name="Client:UI:Error.UnhandledTitle" xml:space="preserve">
+    <value>Unhandled exception in client</value>
+  </data>
+  <data name="Client:UI:Error.Unknown" xml:space="preserve">
+    <value>Unknown error</value>
+  </data>
+  <data name="Client:UI:Campaign.SelectMissionFirst" xml:space="preserve">
+    <value>Please select a mission first</value>
+  </data>
+  <data name="Client:UI:Campaign.MissingScenario" xml:space="preserve">
+    <value>This mission has no map file configured and cannot be started.</value>
+  </data>
+  <data name="Client:UI:Campaign.MissionUnavailable" xml:space="preserve">
+    <value>This mission is currently unavailable.</value>
+  </data>
 </root>

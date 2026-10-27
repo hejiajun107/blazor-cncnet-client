@@ -35,7 +35,7 @@ public sealed class EnvironmentCheck
     public bool IsReady => ResourcesFound && ClientDefinitionsFound && ConfigurationReady;
 
     /// <summary>供首页展示的检测信息。</summary>
-    public string Message { get; private set; } = "正在检测…";
+    public string Message { get; private set; } = UiText.T("Env.Detecting", "Detecting…");
 
     public EnvironmentCheck(IAssetPathProvider assetPaths)
     {
@@ -54,7 +54,8 @@ public sealed class EnvironmentCheck
 
         if (!ResourcesFound)
         {
-            Message = "未找到游戏资源目录。请确认客户端已放置在游戏目录中运行（程序应位于包含 Resources 目录的目录树下）。";
+            Message = UiText.T("Env.ResourcesNotFound",
+                "Couldn't find the game resources directory. Please make sure the client is running from inside the game directory (the program should sit in a directory tree that contains the Resources directory).");
             return;
         }
 
@@ -63,7 +64,10 @@ public sealed class EnvironmentCheck
 
         if (!ClientDefinitionsFound)
         {
-            Message = $"已定位游戏目录：{GamePath}，但未找到 {_assetPaths.BaseResourcePath}\\{ClientConfiguration.CLIENT_DEFS}。该 MOD 可能尚未安装客户端资源。";
+            Message = string.Format(
+                UiText.T("Env.ClientDefinitionsMissing",
+                    "Game directory located: {0}, but {1} was not found. This mod may not have the client resources installed yet."),
+                GamePath, $"{_assetPaths.BaseResourcePath}\\{ClientConfiguration.CLIENT_DEFS}");
             return;
         }
 
@@ -72,12 +76,12 @@ public sealed class EnvironmentCheck
         {
             _ = ClientConfiguration.Instance;
             ConfigurationReady = true;
-            Message = $"游戏资源就绪：{GamePath}";
+            Message = string.Format(UiText.T("Env.Ready", "Game resources ready: {0}"), GamePath);
         }
         catch (Exception ex)
         {
             ConfigurationReady = false;
-            Message = $"客户端配置初始化失败：{ex.Message}";
+            Message = string.Format(UiText.T("Env.ConfigInitFailed", "Failed to initialize the client configuration: {0}"), ex.Message);
         }
     }
 }

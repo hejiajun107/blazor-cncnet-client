@@ -16,6 +16,7 @@
 @inject UiDefinitionService UiDefs
 @inject DiscordPresenceService Discord
 @inject PluginCatalog Plugins
+@inject ITranslationService TranslationSvc
 
 @* F4 可替换主页：插件可通过 ReplaceSlot("page.mainmenu", …) 接管整个主菜单主体。
    宿主逻辑（自动连接、ESC、更新检查、隐私声明）仍在本页代码中执行，不受覆盖影响。 *@
@@ -32,11 +33,11 @@ else
             @if (ThemeProvider.Current.Key == "ra")
             {
                 <span style="color:#ffd23f;letter-spacing:5px">RED ALERT</span>
-                <span class="ver">// COMMAND &amp; CONQUER · 指挥作战</span>
+                <span class="ver">@UiText.T("MainMenu.LogoTagRa", "// COMMAND & CONQUER")</span>
             }
             else
             {
-                <text>CNC</text><span style="color:#fff">NET</span> <span class="ver">// 指挥视窗</span>
+                <text>CNC</text><span style="color:#fff">NET</span> <span class="ver">@UiText.T("MainMenu.LogoTag", "// COMMAND VIEW")</span>
             }
         </div>
 
@@ -51,10 +52,10 @@ else
         </div>
 
         <div class="readout item-in" style="animation-delay:80ms">
-            <div class="ro"><div class="k">在线玩家</div><div class="v" id="r1">—</div></div>
-            <div class="ro"><div class="k">活跃房间</div><div class="v" id="r2">327</div></div>
-            <div class="ro"><div class="k">界面帧率</div><div class="v"><span data-fps="1">—</span><small>FPS</small></div></div>
-            <div class="ro"><div class="k">威胁等级</div><div class="v" style="color:var(--gold);text-shadow:0 0 14px rgba(255,176,59,.5)">▲ 低</div></div>
+            <div class="ro"><div class="k">@UiText.T("MainMenu.OnlinePlayers", "Online players")</div><div class="v" id="r1">—</div></div>
+            <div class="ro"><div class="k">@UiText.T("MainMenu.ActiveRooms", "Active rooms")</div><div class="v" id="r2">327</div></div>
+            <div class="ro"><div class="k">@UiText.T("MainMenu.FrameRate", "Frame rate")</div><div class="v"><span data-fps="1">—</span><small>FPS</small></div></div>
+            <div class="ro"><div class="k">@UiText.T("MainMenu.ThreatLevel", "Threat level")</div><div class="v" style="color:var(--gold);text-shadow:0 0 14px rgba(255,176,59,.5)">▲ @UiText.T("MainMenu.ThreatLow", "Low")</div></div>
         </div>
 
         <!-- r9-1：更新状态链接（原版 lblUpdateStatus：点击检查/查看更新；OUTDATED 跳设置更新页）。
@@ -68,7 +69,7 @@ else
     </section>
 
     <aside class="panel">
-        <div class="ph"><span>指挥菜单</span><span style="font-family:var(--font-orbitron)">MAIN TERMINAL</span></div>
+        <div class="ph"><span>@UiText.T("MainMenu.PanelTitle", "Command Menu")</span><span style="font-family:var(--font-orbitron)">MAIN TERMINAL</span></div>
         @for (var i = 0; i < VisibleMenuItems.Length; i++)
         {
             var m = VisibleMenuItems[i];
@@ -77,13 +78,13 @@ else
                     disabled="@(!m.IsEnabled)"
                     @onclick="() => OnMenuClick(m)">
                 <span class="ic">@m.Icon</span>
-                <span class="txt"><span class="cn">@m.Cn</span><br><span class="en">@m.En</span></span>
+                <span class="txt"><span class="cn">@Label(m)</span></span>
                 <span class="go">›</span>
             </button>
         }
         @* F4 追加型槽位：插件自定义渲染的菜单入口（勿与 AddMenuEntry 的按钮式入口重复声明） *@
         <PluginSlot Key="menu.entry" />
-        <div class="pf"><span class="cn">© 2026 CNCNet CLIENT</span><span>ESC · 返回</span></div>
+        <div class="pf"><span class="cn">© 2026 CNCNet CLIENT</span><span>ESC · @UiText.T("MainMenu.Back", "Back")</span></div>
     </aside>
 </main>
 }
@@ -94,21 +95,21 @@ else
     <div class="ctx-backdrop" @onclick="OnPrivacyDismiss"></div>
     <div class="cr-panel privacy-panel pop-in">
         <div class="cr-head">
-            <span>隐私声明</span>
+            <span>@UiText.T("Privacy.Title", "Privacy Notice")</span>
             <span class="cr-en">PRIVACY NOTICE</span>
-            <button type="button" class="gop-close" @onclick="OnPrivacyDismiss" title="关闭">✕</button>
+            <button type="button" class="gop-close" @onclick="OnPrivacyDismiss" title="@UiText.T("Common.Close", "Close")">✕</button>
         </div>
         <div class="privacy-body">
-            <p>本应用会使用 CnCNet 网页与隧道服务器服务，并可能通过它们收集运行所必需的技术信息与其他必要信息。</p>
+            <p>@UiText.T("Privacy.Body", "This application uses CnCNet web and tunnel server services and may collect technical and other information necessary for its operation.")</p>
             <div class="privacy-links">
-                <button type="button" class="link" @onclick='() => OpenPrivacyUrl("https://cncnet.org/terms-and-conditions")'>条款与条件 · Terms</button>
-                <button type="button" class="link" @onclick='() => OpenPrivacyUrl("https://cncnet.org/privacy-policy")'>隐私政策 · Privacy</button>
+                <button type="button" class="link" @onclick='() => OpenPrivacyUrl("https://cncnet.org/terms-and-conditions")'>@UiText.T("Privacy.Terms", "Terms & Conditions")</button>
+                <button type="button" class="link" @onclick='() => OpenPrivacyUrl("https://cncnet.org/privacy-policy")'>@UiText.T("Privacy.Policy", "Privacy Policy")</button>
             </div>
-            <p class="sub">使用本应用即表示你同意 CnCNet 条款与条件以及隐私政策。相关选项可在「设置 → 隐私」中配置。</p>
+            <p class="sub">@UiText.T("Privacy.Footer", "By using this application you agree to the CnCNet terms and privacy policy. These options can be configured in Settings > Privacy.")</p>
         </div>
         <div class="cr-actions">
             <button type="button" class="mb-btn primary" @onclick="OnPrivacyAccept">
-                知道了<span class="en">GOT IT</span>
+                @UiText.T("Privacy.Accept", "Got it")<span class="en">GOT IT</span>
             </button>
         </div>
     </div>
@@ -137,6 +138,18 @@ else
         new("extras", "附加功能", "Extras", "＋"),
         new("exit", "退出", "Exit", "✕"),
     ];
+
+    /// <summary>
+    /// 菜单项显示文案（单语）：内置项走 Resx / 原版 Translation.ini；插件项按当前语言取 Label / LabelEn。
+    /// </summary>
+    private static string Label(MenuItem m)
+    {
+        if (!m.Key.StartsWith("plugin:", StringComparison.Ordinal))
+            return UiText.T("MainMenu." + m.Key, m.En);
+
+        return System.Globalization.CultureInfo.CurrentUICulture.Name
+            .StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? m.Cn : m.En;
+    }
 
     /// <summary>按 ClientDefinitions.ini [UI] HiddenMenus 过滤后的可见入口（F3）+ 插件菜单项（F4）。</summary>
     private MenuItem[]? _visible;
@@ -181,6 +194,8 @@ else
         _privacyOpen = !UserINISettings.Instance.PrivacyPolicyAccepted.Value;
         // r9-1：CnCNet 在线人数（任务由全局悬浮顶栏 TopBar 启动，本页仅订阅刷新 #r1）
         CnCNetPlayerCountTask.CnCNetGameCountUpdated += OnPlayerCountUpdated;
+        // 语言切换：文案走 Resx / Translation.ini，切换后整体重渲染
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
         // r9-1：更新状态链接（原版 lblUpdateStatus，启动检查结果由 TryStartupUpdateCheck 触发）
         UpdateSvc.StateChanged += OnUpdateStateChanged;
         RefreshUpdateStatus();
@@ -205,7 +220,7 @@ else
 
     // ── r9-1：更新状态链接（原版 lblUpdateStatus 各状态文案与点击行为） ──
 
-    private string UpdateStatusText { get; set; } = "点击检查更新";
+    private string UpdateStatusText { get; set; } = UiText.T("MainMenu.Update.CheckNow", "Click to check for updates");
     private bool _updateBusy;
     private bool _updateOutdated;
     private string _updateDot = "";
@@ -218,7 +233,7 @@ else
         _updateOutdated = false;
         if (!UpdateSvc.IsAvailable)
         {
-            UpdateStatusText = "更新服务不可用";
+            UpdateStatusText = UiText.T("MainMenu.Update.Unavailable", "Update service unavailable");
             _updateBusy = false;
             _updateDot = "";
             return;
@@ -227,35 +242,37 @@ else
         switch (UpdateSvc.VersionState)
         {
             case VersionState.UPDATECHECKINPROGRESS:
-                UpdateStatusText = "正在检查更新…";
+                UpdateStatusText = UiText.T("MainMenu.Update.Checking", "Checking for updates…");
                 _updateBusy = true;
                 _updateDot = "busy";
                 break;
             case VersionState.UPDATEINPROGRESS:
-                UpdateStatusText = $"正在更新… {UpdateSvc.TotalPercentage}%";
+                UpdateStatusText = string.Format(
+                    UiText.T("MainMenu.Update.Updating", "Updating… {0}%"), UpdateSvc.TotalPercentage);
                 _updateBusy = true;
                 _updateDot = "busy";
                 break;
             case VersionState.OUTDATED:
                 _updateOutdated = true;
                 UpdateStatusText = UpdateSvc.ManualUpdateRequired
-                    ? $"发现新版本 v{UpdateSvc.ServerGameVersion}（需手动下载安装）"
-                    : $"发现新版本 v{UpdateSvc.ServerGameVersion}，点击查看";
+                    ? string.Format(UiText.T("MainMenu.Update.NewVersionManual", "New version v{0} found (manual download required)"), UpdateSvc.ServerGameVersion)
+                    : string.Format(UiText.T("MainMenu.Update.NewVersion", "New version v{0} found, click to view"), UpdateSvc.ServerGameVersion);
                 _updateBusy = false;
                 _updateDot = "warn";
                 break;
             case VersionState.MISMATCHED:
-                UpdateStatusText = "版本不匹配，点击检查";
+                UpdateStatusText = UiText.T("MainMenu.Update.Mismatch", "Version mismatch, click to check");
                 _updateBusy = false;
                 _updateDot = "warn";
                 break;
             case VersionState.UNKNOWN:
-                UpdateStatusText = "检查更新失败，点击重试";
+                UpdateStatusText = UiText.T("MainMenu.Update.Failed", "Update check failed, click to retry");
                 _updateBusy = false;
                 _updateDot = "err";
                 break;
             default: // UPTODATE
-                UpdateStatusText = $"已是最新版本 v{UpdateSvc.GameVersion}，点击检查";
+                UpdateStatusText = string.Format(
+                    UiText.T("MainMenu.Update.UpToDate", "Already up to date v{0}, click to check"), UpdateSvc.GameVersion);
                 _updateBusy = false;
                 _updateDot = "ok";
                 break;
@@ -323,7 +340,8 @@ else
                 return;
             ProgramConstants.PLAYERNAME = ini.PlayerName.Value.Trim();
             var manager = (CnCNetManager)Services.GetService(typeof(CnCNetManager))!;
-            _ = JS.InvokeVoidAsync("cncnet.toast", $"自动连接 CnCNet：{ProgramConstants.PLAYERNAME}…");
+            _ = JS.InvokeVoidAsync("cncnet.toast", string.Format(
+                UiText.T("MainMenu.Toast.AutoConnect", "Auto-connecting to CnCNet: {0}…"), ProgramConstants.PLAYERNAME));
             manager.Connect();
         }
         catch
@@ -350,6 +368,12 @@ else
 
     private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
 
+    private void OnLanguageChanged() => InvokeAsync(() =>
+    {
+        RefreshUpdateStatus();
+        StateHasChanged();
+    });
+
     /// <summary>ESC 键：从主菜单返回首页（环境检测页）。由 JS keydown 触发。</summary>
     [JSInvokable]
     public Task OnEscKey()
@@ -361,6 +385,7 @@ else
     public void Dispose()
     {
         ThemeProvider.ThemeChanged -= OnThemeChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         CnCNetPlayerCountTask.CnCNetGameCountUpdated -= OnPlayerCountUpdated;
         UpdateSvc.StateChanged -= OnUpdateStateChanged;
         if (_dotNetRef is not null)
@@ -400,7 +425,7 @@ else
                 if (result == LoginResult.Connected)
                     Nav.NavigateTo("/online/lobby");
                 else if (result == LoginResult.Cancelled)
-                    await JS.InvokeVoidAsync("cncnet.toast", "已取消连接");
+                    await JS.InvokeVoidAsync("cncnet.toast", UiText.T("MainMenu.Toast.ConnectCancelled", "Connection cancelled"));
                 // Failed：浮窗内已给出错误提示
                 break;
             case "settings":
@@ -426,12 +451,14 @@ else
             case "credits":
                 // 鸣谢（原版 btnCredits CreditsWindow 语义）：直接打开鸣谢页面
                 if (Extras.OpenUrl(ClientConfiguration.Instance.CreditsURL) is { } creditsErr)
-                    await JS.InvokeVoidAsync("cncnet.toast", $"无法打开鸣谢：{creditsErr}", "err");
+                    await JS.InvokeVoidAsync("cncnet.toast", string.Format(
+                        UiText.T("MainMenu.Toast.CreditsFailed", "Could not open credits: {0}"), creditsErr), "err");
                 break;
             case "mapeditor":
                 // 直接启动地图编辑器（原版 btnMapEditor：FinalSun 外部进程）
                 if (Extras.LaunchMapEditor() is { } mapErr)
-                    await JS.InvokeVoidAsync("cncnet.toast", $"地图编辑器启动失败：{mapErr}", "err");
+                    await JS.InvokeVoidAsync("cncnet.toast", string.Format(
+                        UiText.T("MainMenu.Toast.MapEditorFailed", "Map editor failed to start: {0}"), mapErr), "err");
                 break;
             case "extras":
                 // 附加功能窗（原版 btnExtras ExtrasWindow：地图编辑器/更新日志/鸣谢/关于）
@@ -443,15 +470,18 @@ else
                 break;
             case "exit":
                 // 退出应用（原版 MainMenu 的 Exit）：确认后先持久化（IAppExitNotifier），再结束进程
-                if (await MessageBox.ShowAsync("退出客户端",
-                        "确定要退出 CNCNet CLIENT 吗？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm))
+                if (await MessageBox.ShowAsync(
+                        UiText.T("MainMenu.ExitTitle", "Exit client"),
+                        UiText.T("MainMenu.ExitBody", "Are you sure you want to exit CNCNet CLIENT?"),
+                        MessageBoxButtons.YesNo, MessageBoxKind.Confirm))
                 {
                     ExitNotifier.NotifyExiting();
                     Environment.Exit(0);
                 }
                 break;
             default:
-                await JS.InvokeVoidAsync("cncnet.toast", $"进入{item.Cn}…");
+                await JS.InvokeVoidAsync("cncnet.toast", string.Format(
+                    UiText.T("MainMenu.Toast.Entering", "Entering {0}…"), Label(item)));
                 break;
         }
     }

@@ -5,19 +5,20 @@
 @inject LoadGameService Svc
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
+@inject ITranslationService TranslationSvc
 
 <div class="groom page-anim">
     <header class="groom-top item-in">
         <div class="gt-left">
-            <span class="gt-badge host">载入<span class="en">LOAD GAME</span></span>
+            <span class="gt-badge host">@T("MainMenu.load", "Load Game")<span class="en">LOAD GAME</span></span>
             <div class="gt-tbox">
-                <span class="gt-title">加载存档</span>
-                <span class="gt-en">SINGLEPLAYER · 共 @_saves.Count 个存档</span>
+                <span class="gt-title">@T("LoadGame.Title", "Load save game")</span>
+                <span class="gt-en">@F("LoadGame.HeaderMeta", "SINGLEPLAYER · {0} save games", _saves.Count)</span>
             </div>
         </div>
         <div class="gt-right">
             <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
-            <button class="mb-btn" @onclick="BackToMenu">返回主菜单</button>
+            <button class="mb-btn" @onclick="BackToMenu">@T("Common.BackToMenu", "Back to main menu")</button>
         </div>
     </header>
 
@@ -25,12 +26,12 @@
         <!-- 左列：存档列表（参考原版 lbSaveGameList：名称 + 日期时间两列） -->
         <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
             <header class="gl-ph">
-                <span>存档列表 <em>SAVED GAMES</em></span>
+                <span>@T("LoadGame.SaveList", "Saved games") <em>SAVED GAMES</em></span>
             </header>
             <div class="gl-body">
                 @if (_saves.Count == 0)
                 {
-                    <div class="camp-empty">未找到任何存档（游戏目录下无 Saved Games 目录或 *.SAV 文件）</div>
+                    <div class="camp-empty">@T("LoadGame.NoSaves", "No save games found (no Saved Games directory or *.SAV files in the game directory)")</div>
                 }
                 else
                 {
@@ -51,7 +52,7 @@
         <!-- 右列：选中详情 + 加载/删除/取消 -->
         <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
             <header class="gl-ph">
-                <span>操作 <em>ACTIONS</em></span>
+                <span>@T("LoadGame.Actions", "Actions") <em>ACTIONS</em></span>
             </header>
             <div class="gl-body">
                 @if (_selected is { } sel)
@@ -62,21 +63,21 @@
                         <div class="load-meta">@sel.LastModified.ToString("yyyy-MM-dd HH:mm")</div>
                         @if (sel.CustomMissionID != 0)
                         {
-                            <div class="load-tag">自定义任务存档</div>
+                            <div class="load-tag">@T("LoadGame.CustomMissionSave", "Custom mission save")</div>
                         }
                     </div>
                 }
                 else
                 {
-                    <div class="camp-empty">请在上方选择一个存档</div>
+                    <div class="camp-empty">@T("LoadGame.SelectHint", "Select a save game above")</div>
                 }
                 <div class="cfg-actions">
-                    <button class="mb-btn danger" @onclick="BackToMenu">取消<span class="en">CANCEL</span></button>
+                    <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")<span class="en">CANCEL</span></button>
                     <button class="mb-btn primary start-btn" disabled="@(_selected is null)" @onclick="OnLoad">
-                        加载<span class="en">LOAD</span>
+                        @T("LoadGame.Load", "Load")<span class="en">LOAD</span>
                     </button>
                     <button class="mb-btn" disabled="@(_selected is null)" @onclick="OnDelete">
-                        删除<span class="en">DELETE</span>
+                        @T("LoadGame.Delete", "Delete")<span class="en">DELETE</span>
                     </button>
                 </div>
             </div>
@@ -85,6 +86,13 @@
 </div>
 
 @code {
+    /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    /// <summary>带参数的文案（占位符 {0}…）。</summary>
+    private static string F(string key, string fallback, params object[] args)
+        => string.Format(UiText.T(key, fallback), args);
+
     private IReadOnlyList<SavedGame> _saves = Array.Empty<SavedGame>();
     private SavedGame? _selected;
 
@@ -92,6 +100,7 @@
     {
         _saves = Svc.ListSaves();
         ThemeProvider.ThemeChanged += OnThemeChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
 
     private void Select(SavedGame saveGame) => _selected = saveGame;
@@ -119,5 +128,11 @@
 
     private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => ThemeProvider.ThemeChanged -= OnThemeChanged;
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        ThemeProvider.ThemeChanged -= OnThemeChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
+    }
 }

@@ -72,7 +72,7 @@ public sealed class CampaignLaunchService : IDisposable
         {
             _launchInProgress = false;
             _nav.NavigateTo("/campaign");
-            _ = _messageBox.ShowAsync("生成游戏配置出错", ex.Message,
+            _ = _messageBox.ShowAsync(UiText.T("Launch.ConfigErrorTitle", "Failed to generate game configuration"), ex.Message,
                 MessageBoxButtons.Ok, MessageBoxKind.Error);
         }
     }

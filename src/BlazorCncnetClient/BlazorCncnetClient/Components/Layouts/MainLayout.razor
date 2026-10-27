@@ -6,6 +6,7 @@
 @inject ConnectionMonitor Mon
 @inject ReplaceableComponentService Replacer
 @inject PluginAssetInjector PluginAssets
+@inject ITranslationService TranslationSvc
 
 <!-- HUD 顶栏（全局，TopBar 通用组件，spec §5.3；状态灯/文本由 ConnectionMonitor 驱动，M3.10）。
      主题切换已移至设置页（Settings.razor），此处仅保留版本/帧率读数 -->
@@ -35,7 +36,7 @@
 <ReplaceableComponent Key="layout.footer" />
 
 <!-- Toast（全局） -->
-<div class="toast" id="toast">提示</div>
+<div class="toast" id="toast">@T("Layout.Toast", "Notice")</div>
 
 <!-- 全局弹窗（spec §5.3 MessageBox，MessageBoxService 驱动） -->
 <MessageBox />
@@ -47,6 +48,13 @@
 <ExtrasWindow />
 
 @code {
+    /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    /// <summary>带参数的文案（占位符 {0}…）。</summary>
+    private static string F(string key, string fallback, params object[] args)
+        => string.Format(UiText.T(key, fallback), args);
+
     protected override void OnInitialized()
     {
         // 主题切换后刷新切换控件高亮态
@@ -54,6 +62,7 @@
         // 连接状态（M3.10 D2.7）：状态灯/底栏刷新 + 断线/重连 Toast
         Mon.StateChanged += OnMonStateChanged;
         Mon.Notification += OnMonNotification;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -73,17 +82,19 @@
 
     private void OnMonStateChanged() => InvokeAsync(StateHasChanged);
 
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
     private void OnMonNotification(ConnectionNotification notification)
     {
         // 断线原因（ConnectionLost）并入 Toast，便于定位
         var (text, kind) = notification.Kind switch
         {
-            ConnectionNotificationKind.Connected => ("已连接 CnCNet", ""),
-            ConnectionNotificationKind.Reconnected => ("已重新连接 CnCNet", ""),
-            ConnectionNotificationKind.Disconnected => ("已与 CnCNet 断开连接", "err"),
+            ConnectionNotificationKind.Connected => (T("Layout.Connected", "Connected to CnCNet"), ""),
+            ConnectionNotificationKind.Reconnected => (T("Layout.Reconnected", "Reconnected to CnCNet"), ""),
+            ConnectionNotificationKind.Disconnected => (T("Layout.Disconnected", "Disconnected from CnCNet"), "err"),
             ConnectionNotificationKind.ConnectionLost =>
-                ($"连接已断开，正在自动重连…（{notification.Message}）", "err"),
-            ConnectionNotificationKind.Failed => ("连接 CnCNet 失败", "warn"),
+                (F("Layout.ConnectionLost", "Connection lost, reconnecting… ({0})", notification.Message), "err"),
+            ConnectionNotificationKind.Failed => (T("Layout.Failed", "Failed to connect to CnCNet"), "warn"),
             _ => ("", "")
         };
         if (text.Length > 0)
@@ -95,5 +106,6 @@
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         Mon.StateChanged -= OnMonStateChanged;
         Mon.Notification -= OnMonNotification;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
     }
 }

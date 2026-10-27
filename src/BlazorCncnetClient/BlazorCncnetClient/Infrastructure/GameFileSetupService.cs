@@ -67,7 +67,7 @@ public sealed class GameFileSetupService
         string? source = PickGameDirectory();
         if (string.IsNullOrEmpty(source))
         {
-            LastMessage = "已取消选择";
+            LastMessage = UiText.T("Env.SelectionCancelled", "Selection cancelled");
             StateChanged?.Invoke();
             return (Array.Empty<string>(), Array.Empty<string>());
         }
@@ -82,12 +82,14 @@ public sealed class GameFileSetupService
         // 提取后复检：剩余缺失 = 源目录也没有的文件。
         MissingFiles = GameFileExtractor.GetMissingFiles(gamePath);
         LastMessage = result.Copied.Count > 0
-            ? $"已从所选目录提取 {result.Copied.Count} 个文件"
-            : "没有需要提取的文件";
+            ? string.Format(UiText.T("Env.FilesExtracted", "Extracted {0} file(s) from the selected directory"), result.Copied.Count)
+            : UiText.T("Env.NoFilesToExtract", "No files needed to be extracted");
         if (result.Skipped.Count > 0)
-            LastMessage += $"；以下 {result.Skipped.Count} 个文件在所选目录中缺失：{string.Join("、", result.Skipped)}";
+            LastMessage += string.Format(
+                UiText.T("Env.FilesMissingSuffix", "; the following {0} file(s) are missing from the selected directory: {1}"),
+                result.Skipped.Count, string.Join(UiText.T("Env.ListSeparator", ", "), result.Skipped));
         if (MissingFiles.Length == 0)
-            LastMessage += "。游戏文件已齐备。";
+            LastMessage += UiText.T("Env.GameFilesCompleteSuffix", ". Game files are now complete.");
 
         StateChanged?.Invoke();
         return (result.Copied.ToArray(), result.Skipped.ToArray());
@@ -100,7 +102,7 @@ public sealed class GameFileSetupService
     /// </summary>
     private string? PickGameDirectory()
     {
-        const string title = "请选择尤里的复仇（Yuri's Revenge）游戏安装目录";
+        string title = UiText.T("Env.SelectGameDirectoryTitle", "Select your Yuri's Revenge installation directory");
 
         try
         {

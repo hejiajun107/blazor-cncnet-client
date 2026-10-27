@@ -1,20 +1,30 @@
 @inject ConnectionMonitor Mon
+@inject ITranslationService TranslationSvc
 @implements IDisposable
 
 <!-- 底栏（全局；SYSTEM STATUS 反映连接状态，M3.10）——F2 可替换槽位 layout.footer 默认实现 -->
 <footer class="foot">
-    <div>SYSTEM STATUS: <b class="foot-status @Mon.StatusClass">@Mon.StateText</b> <span>· 渲染引擎 ACTIVE</span></div>
-    <div class="r"><span>分辨率自适应</span><span>60 FPS</span><span>WEBGL OK</span></div>
+    <div>SYSTEM STATUS: <b class="foot-status @Mon.StatusClass">@Mon.StateText</b> <span>· @T("Footer.RenderEngine", "Render engine") ACTIVE</span></div>
+    <div class="r"><span>@T("Footer.ResolutionAdaptive", "Adaptive resolution")</span><span>60 FPS</span><span>WEBGL OK</span></div>
 </footer>
 
 @code {
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
     protected override void OnInitialized()
     {
         // 顶栏/底栏独立订阅连接状态，避免进入页面后停留在旧状态文本
         Mon.StateChanged += OnMonStateChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
 
     private void OnMonStateChanged() => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Mon.StateChanged -= OnMonStateChanged;
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Mon.StateChanged -= OnMonStateChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
+    }
 }

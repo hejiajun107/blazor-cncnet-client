@@ -14,14 +14,15 @@
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
 @inject LanGameLaunchService GameLauncher
+@inject ITranslationService TranslationSvc
 
 @if (!Room.IsInGameRoom)
 {
     <div class="game-empty page-anim">
         <div class="ge-box pop-in">
             <div class="ge-title">LAN GAME ROOM</div>
-            <div class="ge-sub">尚未进入任何 LAN 房间</div>
-            <button class="mb-btn primary" @onclick="BackToLobby">返回大厅</button>
+            <div class="ge-sub">@T("LanGame.NotInRoom", "Not in any LAN room yet")</div>
+            <button class="mb-btn primary" @onclick="BackToLobby">@T("GameLobby.BackToLobby", "Back to lobby")</button>
         </div>
     </div>
 }
@@ -30,15 +31,15 @@ else
     <div class="groom page-anim">
         <header class="groom-top item-in">
             <div class="gt-left">
-                <span class="gt-badge @(Room.IsHost ? "host" : "")">@(Room.IsHost ? "房主" : "加入")<span class="en">@(Room.IsHost ? "HOST" : "JOIN")</span></span>
+                <span class="gt-badge @(Room.IsHost ? "host" : "")">@(Room.IsHost ? T("Lobby.Host", "Host") : T("Lobby.Join", "Join"))<span class="en">@(Room.IsHost ? "HOST" : "JOIN")</span></span>
                 <div class="gt-tbox">
                     <span class="gt-title">@Room.RoomName</span>
-                    <span class="gt-en">@(Room.HostName.Length > 0 ? $"房主 {Room.HostName}" : "—") · LAN · TCP @(ProgramConstants.LAN_GAME_LOBBY_PORT)</span>
+                    <span class="gt-en">@(Room.HostName.Length > 0 ? F("LanGame.HostName", "Host {0}", Room.HostName) : "—") · LAN · TCP @(ProgramConstants.LAN_GAME_LOBBY_PORT)</span>
                 </div>
             </div>
             <div class="gt-right">
                 <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
-                <button class="mb-btn danger" @onclick="OnLeave">离开房间</button>
+                <button class="mb-btn danger" @onclick="OnLeave">@T("GameLobby.LeaveRoom", "Leave room")</button>
             </div>
         </header>
 
@@ -46,7 +47,7 @@ else
         {
             <div class="groom-joining">
                 <div class="gj-spinner"></div>
-                <span>正在加入 LAN 房间…</span>
+                <span>@T("LanGame.Joining", "Joining LAN room…")</span>
             </div>
         }
         else
@@ -54,9 +55,9 @@ else
             <div class="groom-grid">
                 <section class="gl-panel gl-slots item-in" style="animation-delay:50ms">
                     <header class="gl-ph">
-                        <span>玩家 <em>@Room.Players.Count/@Room.MaxPlayers</em></span>
-                        <span class="gl-lock" title="房间锁定状态">
-                            @(Room.Locked ? "◉ 已锁定" : "○ 公开")
+                        <span>@T("Lobby.Players", "Players") <em>@Room.Players.Count/@Room.MaxPlayers</em></span>
+                        <span class="gl-lock" title="@T("GameLobby.LockStatusTip", "Room lock status")">
+                            @(Room.Locked ? T("GameLobby.Locked", "◉ Locked") : T("GameLobby.Unlocked", "○ Public"))
                         </span>
                     </header>
                     <div class="gl-body">
@@ -67,7 +68,7 @@ else
                                 <span class="slot-idx">@(i + 1)</span>
                                 @if (slotPlayer is null)
                                 {
-                                    <span class="slot-empty-text">等待玩家加入…</span>
+                                    <span class="slot-empty-text">@T("GameLobby.WaitingForPlayers", "Waiting for players…")</span>
                                 }
                                 else
                                 {
@@ -81,7 +82,7 @@ else
                                             }
                                         </span>
                                         <span class="slot-meta">
-                                            @GetSideName(slotPlayer.SideId) · 出生@(slotPlayer.StartingLocation)@(slotPlayer.TeamId > 0 ? " · 队" + slotPlayer.TeamId : "")
+                                            @GetSideName(slotPlayer.SideId)@F("GameLobby.StartSuffix", " · Start {0}", slotPlayer.StartingLocation)@(slotPlayer.TeamId > 0 ? F("GameLobby.TeamSuffix", " · Team {0}", slotPlayer.TeamId) : "")
                                         </span>
                                     </div>
                                     <span class="slot-ready @(slotPlayer.Ready ? "on" : "")">@(slotPlayer.Ready ? "READY" : "…")</span>
@@ -93,7 +94,7 @@ else
 
                 <section class="gl-panel gl-config item-in" style="animation-delay:100ms">
                     <header class="gl-ph">
-                        <span>地图与规则 <em>MAP & RULES</em></span>
+                        <span>@T("GameLobby.MapAndRules", "Map & rules") <em>MAP & RULES</em></span>
                     </header>
                     <div class="gl-body">
                         <div class="cfg-map">
@@ -101,7 +102,7 @@ else
                                 <MapThumbnail MapHash="@Room.SelectedMap?.Map.SHA1" MapName="@Room.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
                                 @if (Room.SelectedMap is null)
                                 {
-                                    <div class="cfg-map-none">@(Room.IsHost ? "请选择地图" : "等待主机选择地图…")</div>
+                                    <div class="cfg-map-none">@(Room.IsHost ? T("Skirmish.SelectMap", "Please select a map") : T("GameLobby.WaitingHostMap", "Waiting for the host to pick a map…"))</div>
                                 }
                                 else
                                 {
@@ -113,7 +114,7 @@ else
                                             <button type="button"
                                                     class="spawn-dot @spCls"
                                                     style="@spStyle"
-                                                    title="@(sp.OccupantName is null ? $"出生点 {sp.Index}" : $"出生点 {sp.Index} · {sp.OccupantName}")"
+                                                    title="@(sp.OccupantName is null ? F("Skirmish.SpawnPoint", "Spawn {0}", sp.Index) : F("Skirmish.SpawnPointOwner", "Spawn {0} · {1}", sp.Index, sp.OccupantName))"
                                                     @onclick="() => OnSpawnClick(sp.Index)">
                                                 <span class="spawn-num">@sp.Index</span>
                                                 @if (sp.OccupantName is not null)
@@ -129,11 +130,11 @@ else
                             {
                                 <!-- 游戏模式选择（原版 cmbGameMode：切换模式过滤地图列表） -->
                                 <div class="map-mode">
-                                    <span class="mm-label">游戏模式</span>
+                                    <span class="mm-label">@T("Skirmish.GameMode", "Game mode")</span>
                                     <select class="gl-select" value="@_selectedMode" @onchange="OnModeChange">
                                         @if (ModeOptions.Count == 0)
                                         {
-                                            <option value="">— 加载中 —</option>
+                                            <option value="">@T("Common.Loading", "— Loading —")</option>
                                         }
                                         else
                                         {
@@ -148,7 +149,7 @@ else
                                 <div class="map-list">
                                     @if (_mapOptions.Count == 0)
                                     {
-                                        <div class="map-list-empty">@(ModeOptions.Count == 0 ? "— 地图加载中 —" : "— 无匹配地图 —")</div>
+                                        <div class="map-list-empty">@(ModeOptions.Count == 0 ? T("Skirmish.MapsLoading", "— Loading maps —") : T("Skirmish.NoMatchingMaps", "— No matching maps —"))</div>
                                     }
                                     else
                                     {
@@ -174,17 +175,17 @@ else
                             }
 
                             <div class="map-info">
-                                <div class="mi-row"><span>游戏</span><b>@LocalGameName</b></div>
-                                <div class="mi-row"><span>版本</span><b>@ProgramConstants.GAME_VERSION</b></div>
-                                <div class="mi-row"><span>房主</span><b>@Room.HostName</b></div>
-                                <div class="mi-row"><span>人数</span><b>@Room.Players.Count / @Room.MaxPlayers</b></div>
+                                <div class="mi-row"><span>@T("Lobby.Game", "Game")</span><b>@LocalGameName</b></div>
+                                <div class="mi-row"><span>@T("GameLobby.Version", "Version")</span><b>@ProgramConstants.GAME_VERSION</b></div>
+                                <div class="mi-row"><span>@T("Lobby.Host", "Host")</span><b>@Room.HostName</b></div>
+                                <div class="mi-row"><span>@T("GameLobby.PlayerCount", "Players")</span><b>@Room.Players.Count / @Room.MaxPlayers</b></div>
                                 @if (Room.SelectedMap is not null)
                                 {
                                     <div class="mi-divider"></div>
-                                    <div class="mi-row"><span>地图</span><b>@Room.SelectedMap.Map.Name</b></div>
-                                    <div class="mi-row"><span>作者</span><b>@Room.SelectedMap.Map.Author</b></div>
-                                    <div class="mi-row"><span>尺寸</span><b>@Room.SelectedMap.Map.GetSizeString()</b></div>
-                                    <div class="mi-row"><span>模式</span><b>@Room.SelectedMap.GameMode.UIName</b></div>
+                                    <div class="mi-row"><span>@T("Lobby.Map", "Map")</span><b>@Room.SelectedMap.Map.Name</b></div>
+                                    <div class="mi-row"><span>@T("Skirmish.Author", "Author")</span><b>@Room.SelectedMap.Map.Author</b></div>
+                                    <div class="mi-row"><span>@T("Skirmish.Size", "Size")</span><b>@Room.SelectedMap.Map.GetSizeString()</b></div>
+                                    <div class="mi-row"><span>@T("Lobby.Mode", "Mode")</span><b>@Room.SelectedMap.GameMode.UIName</b></div>
                                     @if (!string.IsNullOrEmpty(Room.SelectedMap.Map.Briefing))
                                     {
                                         <div class="mi-briefing">@Room.SelectedMap.Map.Briefing</div>
@@ -198,16 +199,16 @@ else
                             <div class="cfg-rules">
                                 <div class="cfg-row">
                                     <button class="mb-btn @(Room.Locked ? "danger" : "")" @onclick="OnToggleLock">
-                                        @(Room.Locked ? "解除锁定" : "锁定房间")
+                                        @(Room.Locked ? T("GameLobby.UnlockRoom", "Unlock room") : T("GameLobby.LockRoom", "Lock room"))
                                     </button>
-                                    <span class="cfg-hint">开始游戏需先锁定房间且全员就绪</span>
+                                    <span class="cfg-hint">@T("LanGame.StartHint", "The room must be locked and all players ready to start")</span>
                                 </div>
                             </div>
                         }
 
                         <div class="cfg-options">
-                            <div class="cfg-self-title">游戏选项 <em>GAME OPTIONS</em>
-                                <span class="self-spec">@(Room.IsHost ? "房主可改，将同步给全员" : "由房主设置，同步显示")</span>
+                            <div class="cfg-self-title">@T("Skirmish.GameOptions", "Game options") <em>GAME OPTIONS</em>
+                                <span class="self-spec">@(Room.IsHost ? T("GameLobby.HostCanChange", "Host can change; synced to everyone") : T("GameLobby.HostSets", "Set by the host; shown to everyone"))</span>
                             </div>
                             <div class="go-grid">
                                 @foreach (var opt in CheckBoxOptions)
@@ -235,32 +236,32 @@ else
                         </div>
 
                         <div class="cfg-self">
-                            <div class="cfg-self-title">我的配置 <em>SELF</em></div>
+                            <div class="cfg-self-title">@T("GameLobby.MyConfig", "My setup") <em>SELF</em></div>
                             <div class="cfg-row">
-                                <label>阵营</label>
+                                <label>@T("GameLobby.Side", "Side")</label>
                                 <select class="gl-select" value="@Self!.SideId" @onchange="OnSideChange">
                                     @for (int s = 0; s < Sides.Length; s++)
                                     {
                                         <option value="@s">@Sides[s]</option>
                                     }
                                 </select>
-                                <label>出生点</label>
+                                <label>@T("GameLobby.Start", "Spawn")</label>
                                 <select class="gl-select" value="@Self!.StartingLocation" @onchange="OnStartChange">
                                     @for (int st = 1; st <= Room.MaxPlayers; st++)
                                     {
                                         <option value="@st">@st</option>
                                     }
                                 </select>
-                                <label>队伍</label>
+                                <label>@T("GameLobby.Team", "Team")</label>
                                 <select class="gl-select" value="@Self!.TeamId" @onchange="OnTeamChange">
                                     @for (int t = 0; t <= 4; t++)
                                     {
-                                        <option value="@t">@(t == 0 ? "无" : t.ToString())</option>
+                                        <option value="@t">@(t == 0 ? T("GameLobby.None", "None") : t.ToString())</option>
                                     }
                                 </select>
                             </div>
                             <div class="cfg-row">
-                                <label>颜色</label>
+                                <label>@T("GameLobby.Color", "Color")</label>
                                 <div class="cfg-colors">
                                     @foreach (var c in _colors)
                                     {
@@ -272,12 +273,12 @@ else
                             </div>
                             <div class="cfg-actions">
                                 <button class="mb-btn @(Self!.Ready ? "primary" : "") ready-btn" @onclick="OnToggleReady">
-                                    @(Self!.Ready ? "已就绪" : "准备就绪")<span class="en">READY</span>
+                                    @(Self!.Ready ? T("GameLobby.Ready", "Ready") : T("GameLobby.SetReady", "Set ready"))<span class="en">READY</span>
                                 </button>
                                 @if (Room.IsHost)
                                 {
                                     <button class="mb-btn primary start-btn" disabled="@(Room.SelectedMap is null || !Room.Locked)" @onclick="OnStartGame">
-                                        开始游戏<span class="en">START</span>
+                                        @T("Skirmish.StartGame", "Start game")<span class="en">START</span>
                                     </button>
                                 }
                             </div>
@@ -287,12 +288,12 @@ else
 
                 <section class="gl-panel gl-chat item-in" style="animation-delay:150ms">
                     <header class="gl-ph">
-                        <span>房间聊天 <em>@Room.Players.Count 人</em></span>
+                        <span>@T("GameLobby.RoomChat", "Room chat") <em>@F("Lobby.NPlayers", "{0} players", Room.Players.Count)</em></span>
                     </header>
                     <div class="chat-scroll">
                         @if (RoomMessages.Count == 0)
                         {
-                            <div class="lb-empty">暂无房间消息</div>
+                            <div class="lb-empty">@T("GameLobby.NoRoomMessages", "No room messages yet")</div>
                         }
                         else
                         {
@@ -315,9 +316,9 @@ else
                         <div @ref="_chatEnd"></div>
                     </div>
                     <div class="chat-input">
-                        <input class="ci-field" maxlength="200" placeholder="房间消息，Enter 发送…"
+                        <input class="ci-field" maxlength="200" placeholder="@T("GameLobby.ChatPlaceholder", "Room message, Enter to send…")"
                                value="@_draft" @oninput="OnDraftInput" @onkeydown="OnChatKeyDown" />
-                        <button class="mb-btn primary ci-send" @onclick="OnSend">发送</button>
+                        <button class="mb-btn primary ci-send" @onclick="OnSend">@T("Lobby.Send", "Send")</button>
                     </div>
                 </section>
             </div>
@@ -326,6 +327,13 @@ else
 }
 
 @code {
+    /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    /// <summary>带参数的文案（占位符 {0}…）。</summary>
+    private static string F(string key, string fallback, params object[] args)
+        => string.Format(UiText.T(key, fallback), args);
+
     private const int MAX_VISIBLE_MESSAGES = 300;
 
     private string _draft = string.Empty;
@@ -453,6 +461,7 @@ else
         Room.Changed += OnChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         MapLoader.MapLoadingComplete += OnMapLoadingComplete;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
         RefreshMaps();
         EnterRoom();
     }
@@ -470,14 +479,14 @@ else
         }
         return new List<ColorOption>
         {
-            new("红", 0, new Rgba32(255, 60, 60, 255)),
-            new("蓝", 1, new Rgba32(70, 120, 255, 255)),
-            new("青", 2, new Rgba32(80, 220, 255, 255)),
-            new("绿", 3, new Rgba32(80, 220, 120, 255)),
-            new("黄", 4, new Rgba32(255, 220, 80, 255)),
-            new("橙", 5, new Rgba32(255, 150, 60, 255)),
-            new("紫", 6, new Rgba32(190, 120, 255, 255)),
-            new("粉", 7, new Rgba32(255, 130, 200, 255)),
+            new(T("Skirmish.Color.Red", "Red"), 0, new Rgba32(255, 60, 60, 255)),
+            new(T("Skirmish.Color.Blue", "Blue"), 1, new Rgba32(70, 120, 255, 255)),
+            new(T("Skirmish.Color.Teal", "Teal"), 2, new Rgba32(80, 220, 255, 255)),
+            new(T("Skirmish.Color.Green", "Green"), 3, new Rgba32(80, 220, 120, 255)),
+            new(T("Skirmish.Color.Yellow", "Yellow"), 4, new Rgba32(255, 220, 80, 255)),
+            new(T("Skirmish.Color.Orange", "Orange"), 5, new Rgba32(255, 150, 60, 255)),
+            new(T("Skirmish.Color.Purple", "Purple"), 6, new Rgba32(190, 120, 255, 255)),
+            new(T("Skirmish.Color.Pink", "Pink"), 7, new Rgba32(255, 130, 200, 255)),
         };
     }
 
@@ -552,16 +561,18 @@ else
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
+    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
+
     // ── 顶部操作 ──
 
     private async Task OnLeave()
     {
-        var confirm = await MessageBox.ShowAsync("离开房间",
-            "确认离开当前 LAN 房间？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        var confirm = await MessageBox.ShowAsync(T("GameLobby.LeaveRoom", "Leave room"),
+            T("LanGame.LeaveBody", "Leave the current LAN room?"), MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
         if (!confirm)
             return;
         Room.LeaveGame();
-        await JS.InvokeVoidAsync("cncnet.toast", "已离开房间");
+        await JS.InvokeVoidAsync("cncnet.toast", T("GameLobby.Left", "Left the room"));
         Nav.NavigateTo("/lan/lobby");
     }
 
@@ -619,7 +630,7 @@ else
             return;
         if (sp.OccupantName is not null && !sp.IsSelf)
         {
-            _ = JS.InvokeVoidAsync("cncnet.toast", $"出生点 {index} 已被 {sp.OccupantName} 占用");
+            _ = JS.InvokeVoidAsync("cncnet.toast", F("Skirmish.SpawnOccupied", "Spawn {0} is already occupied by {1}", index, sp.OccupantName));
             return;
         }
         ApplyOwnOptions(Self!.SideId, Self.ColorId, index, Self.TeamId);
@@ -687,7 +698,7 @@ else
     }
 
     private string GetSideName(int side) =>
-        side >= 0 && side < Sides.Length ? Sides[side] : $"阵营{side}";
+        side >= 0 && side < Sides.Length ? Sides[side] : F("GameLobby.SideIndex", "Side {0}", side);
 
     private Rgba32 GetColor(int index) =>
         (_colors.FirstOrDefault(c => c.Index == index) ?? _colors.FirstOrDefault())?.Color
@@ -700,6 +711,7 @@ else
         Room.Changed -= OnChanged;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         if (_dotNetRef is not null)
         {
             _ = JS.InvokeVoidAsync("cncnet.disposeLobbyKeyNav");

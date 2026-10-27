@@ -374,7 +374,8 @@ namespace BlazorCncnetClient.Infrastructure
         {
             int count = _aiPlayers.Count;
             if (slot < 0 || slot > count || count >= MaxAIPlayersConst)
-                throw new InvalidOperationException($"最多只能添加 {MaxAIPlayersConst} 个 AI 玩家");
+                throw new InvalidOperationException(string.Format(
+                    UiText.T("SkirmishSvc.TooManyAI", "You can add at most {0} AI players."), MaxAIPlayersConst));
 
             level = Math.Clamp(level, 0, 2);
             var ai = new PlayerInfo(GetAIName(level), 0, 0, 0, 0)
@@ -434,22 +435,25 @@ namespace BlazorCncnetClient.Infrastructure
         public string? CheckGameValidity()
         {
             if (SelectedMap is null)
-                return "请先选择地图与游戏模式";
+                return UiText.T("SkirmishSvc.SelectMapAndMode", "Please select a map and a game mode first.");
 
             var gmm = SelectedMap;
             // G5：观战者不计入玩家数（同原版 CheckGameValidity：Players 中 Spectator 阵营的玩家不计入 totalPlayerCount）
             int totalPlayerCount = (IsHumanSpectator ? 0 : 1) + _aiPlayers.Count;
 
             if (gmm.MultiplayerOnly)
-                return $"{gmm} 只能在 CnCNet 和局域网中游玩。";
+                return string.Format(UiText.T("SkirmishSvc.MultiplayerOnly",
+                    "{0} can only be played on CnCNet and LAN."), gmm);
 
             if (gmm.EnforceMinPlayers && totalPlayerCount < gmm.MinPlayers)
-                return $"{gmm} 需要至少 {gmm.MinPlayers} 名玩家才能游玩。";
+                return string.Format(UiText.T("SkirmishSvc.MinPlayersRequired",
+                    "{0} requires at least {1} players."), gmm, gmm.MinPlayers);
 
             if (gmm.EnforceMaxPlayers)
             {
                 if (totalPlayerCount > gmm.MaxPlayers)
-                    return $"{gmm} 最多支持 {gmm.MaxPlayers} 名玩家。";
+                    return string.Format(UiText.T("SkirmishSvc.MaxPlayersExceeded",
+                        "{0} supports at most {1} players."), gmm, gmm.MaxPlayers);
 
                 IEnumerable<PlayerInfo> all = new[] { HumanPlayer! }.Concat(_aiPlayers);
                 foreach (var p in all)
@@ -457,13 +461,15 @@ namespace BlazorCncnetClient.Infrastructure
                     if (p.StartingLocation == 0)
                         continue;
                     if (all.Count(x => x.StartingLocation == p.StartingLocation) > 1)
-                        return "多名玩家不能共享同一出生点。";
+                        return UiText.T("SkirmishSvc.SharedStartLocation",
+                            "Multiple players cannot share the same starting location.");
                 }
             }
 
             // G5：合作任务不可观战（同原版 SkirmishLobby.CheckGameValidity）
             if (gmm.IsCoop && IsHumanSpectator)
-                return "合作任务不能观战，请选择实际阵营。";
+                return UiText.T("SkirmishSvc.CoopNoSpectator",
+                    "Co-op missions cannot be spectated. Please choose an actual side.");
 
             // 自动结盟映射校验（原版 GetTeamMappingsError：出生点映射不重复 + 至少两个队伍）
             if (UseTeamStartMappings)

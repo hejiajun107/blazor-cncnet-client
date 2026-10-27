@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using CnCNetClient.Core;
+using CnCNetClient.Core.Extensions;
 using CnCNetClient.Tools;
 
 namespace CnCNetClient.Integration;
@@ -51,9 +52,11 @@ public static class GameProcessLogic
         string gameExecutableName;
         string additionalExecutableName = string.Empty;
 
-        const string errorLaunchingTitle = "启动游戏出错";
-        const string errorLaunchingText = "启动 {0} 出错。请检查杀毒软件是否拦截了 CnCNet Client。" +
-            "你也可以尝试以管理员身份运行客户端。\n\n你无法参与本局比赛。\n\n返回错误：{1}";
+        // 文案按当前语言取（原版 Translation.ini 兼容，未命中回退内置 Resx）。
+        string errorLaunchingTitle = "Failed to launch game".L10N("Client:UI:Launch.ErrorTitle");
+        string errorLaunchingText = ("Failed to launch {0}. Check whether antivirus software blocked CnCNet Client. " +
+            "You can also try running the client as administrator.\n\nYou cannot join this match.\n\nReturned error: {1}")
+            .L10N("Client:UI:Launch.ErrorText");
 
         if (osVersion == OSVersion.UNIX)
         {

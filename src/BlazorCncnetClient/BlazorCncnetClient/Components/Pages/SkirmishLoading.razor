@@ -5,14 +5,15 @@
 @inject SkirmishService Svc
 @inject NavigationManager Nav
 @inject MessageBoxService MessageBox
+@inject ITranslationService TranslationSvc
 
 @if (!Svc.IsActive)
 {
     <div class="game-empty page-anim">
         <div class="ge-box pop-in">
             <div class="ge-title">SKIRMISH LOADING</div>
-            <div class="ge-sub">当前没有正在进行的对局</div>
-            <button class="mb-btn primary" @onclick="BackToSkirmish">返回遭遇战</button>
+            <div class="ge-sub">@T("Loading.NoActiveGame", "No match in progress")</div>
+            <button class="mb-btn primary" @onclick="BackToSkirmish">@T("Loading.BackToSkirmish", "Back to Skirmish")</button>
         </div>
     </div>
 }
@@ -28,27 +29,27 @@ else
                 <div class="radar-sweep"></div>
                 <div class="radar-core">
                     <span class="rc-en">SKIRMISH</span>
-                    <span class="rc-cn">遭遇战</span>
+                    <span class="rc-cn">@T("Loading.RadarSkirmish", "Skirmish")</span>
                 </div>
             </div>
 
             <div class="gload-title">SKIRMISH LOADING</div>
-            <div class="gload-sub">遭遇战加载中 · 请稍候</div>
+            <div class="gload-sub">@T("Loading.SubSkirmish", "Skirmish loading · Please wait")</div>
 
             <div class="gload-info">
-                <div class="gi-row"><span>模式</span><b>@(Svc.SelectedMap?.GameMode.UIName ?? "—")</b></div>
-                <div class="gi-row"><span>地图</span><b>@(Svc.SelectedMap?.Map.UntranslatedName ?? "—")</b></div>
-                <div class="gi-row"><span>玩家</span><b>@TotalPlayers 人（人类 @(1) + AI @(Svc.AIPlayers.Count)）</b></div>
+                <div class="gi-row"><span>@T("Lobby.Mode", "Mode")</span><b>@(Svc.SelectedMap?.GameMode.UIName ?? "—")</b></div>
+                <div class="gi-row"><span>@T("Lobby.Map", "Map")</span><b>@(Svc.SelectedMap?.Map.UntranslatedName ?? "—")</b></div>
+                <div class="gi-row"><span>@T("Lobby.Player", "Player")</span><b>@F("Loading.PlayersDetail", "{0} players (human {1} + AI {2})", TotalPlayers, 1, Svc.AIPlayers.Count)</b></div>
                 <div class="gi-row"><span>GameID</span><b>#@Svc.UniqueGameId</b></div>
             </div>
 
             <div class="gload-status">
                 <span class="gs-dot"></span>
-                游戏进程已启动，窗口已最小化 · 对局结束后将自动返回遭遇战页（已运行 <b>@ElapsedSeconds</b>s）
+                @T("Loading.ProcessStarted", "Game process started, window minimized · ")@T("Loading.ReturnSkirmish", "You will return to the Skirmish page after the match (running ")<b>@ElapsedSeconds</b>@T("Loading.SecondsSuffix", "s)")
             </div>
 
             <div class="gload-actions">
-                <button class="mb-btn" @onclick="BackToSkirmish">返回遭遇战</button>
+                <button class="mb-btn" @onclick="BackToSkirmish">@T("Loading.BackToSkirmish", "Back to Skirmish")</button>
             </div>
         </div>
     </div>
@@ -62,6 +63,9 @@ else
 
     private int TotalPlayers => 1 + Svc.AIPlayers.Count;
 
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+    private static string F(string key, string fallback, params object[] args) => string.Format(UiText.T(key, fallback), args);
+
     protected override void OnInitialized()
     {
         // 对局进行中计时显示；每秒刷新一次
@@ -70,12 +74,16 @@ else
             _elapsedSeconds++;
             StateHasChanged();
         }), null, 1000, 1000);
+
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
+
+    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
 
     private async Task BackToSkirmish()
     {
-        var confirm = await MessageBox.ShowAsync("返回遭遇战",
-            "对局仍在进行中，返回将中断当前流程。确认继续？",
+        var confirm = await MessageBox.ShowAsync(T("Loading.BackToSkirmish", "Back to Skirmish"),
+            T("Loading.LeaveSkirmishBody", "A match is still in progress. Returning will interrupt the current flow. Continue?"),
             MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
         if (!confirm)
             return;
@@ -84,6 +92,7 @@ else
 
     public void Dispose()
     {
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         _timer?.Dispose();
         _timer = null;
     }

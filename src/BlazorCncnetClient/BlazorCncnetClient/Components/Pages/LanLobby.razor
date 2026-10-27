@@ -9,28 +9,29 @@
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
+@inject ITranslationService TranslationSvc
 
 <div class="lobby page-anim">
     <header class="lobby-top item-in">
         <div class="lt-left">
             <span class="lt-t">LAN</span>
-            <span class="lt-select" style="line-height:34px;padding:0 14px">局域网大厅 · UDP @(LanSvc.IsRunning ? $"{ProgramConstants.LAN_LOBBY_PORT}" : "未启动")</span>
+            <span class="lt-select" style="line-height:34px;padding:0 14px">@T("LanLobby.Title", "LAN lobby") · UDP @(LanSvc.IsRunning ? ProgramConstants.LAN_LOBBY_PORT.ToString() : T("LanLobby.NotStarted", "not started"))</span>
         </div>
         <div class="lt-mid">
-            <span class="lt-title">局域网大厅</span>
+            <span class="lt-title">@T("LanLobby.Title", "LAN lobby")</span>
             <span class="lt-en">LAN LOBBY · @(LanSvc.LocalGame.Length > 0 ? LanSvc.LocalGame : "—")</span>
         </div>
         <div class="lt-right">
             <span class="lt-player">@ProgramConstants.PLAYERNAME</span>
-            <span class="lt-conn @(LanSvc.IsRunning ? "online" : "err")"><i class="dot"></i>@(LanSvc.IsRunning ? "广播中" : "未启动")</span>
-            <button class="mb-btn item-in" @onclick="OnLeave">离开</button>
+            <span class="lt-conn @(LanSvc.IsRunning ? "online" : "err")"><i class="dot"></i>@(LanSvc.IsRunning ? T("LanLobby.Broadcasting", "broadcasting") : T("LanLobby.NotStarted", "not started"))</span>
+            <button class="mb-btn item-in" @onclick="OnLeave">@T("Lobby.Leave", "Leave")</button>
         </div>
     </header>
 
     @if (!LanSvc.IsRunning)
     {
         <div class="conn-banner err">
-            ⚠ LAN 广播未启动
+            @T("LanLobby.BroadcastNotRunning", "⚠ LAN broadcast is not running")
             @if (!string.IsNullOrEmpty(LanSvc.LastError))
             {
                 <span class="cb-reason">@LanSvc.LastError</span>
@@ -41,16 +42,16 @@
     <div class="lobby-grid">
         <section class="lb-panel lb-games item-in" style="animation-delay:60ms">
             <header class="lb-ph">
-                <span>房间列表 <em>@FilteredGames.Count</em></span>
+                <span>@T("Lobby.Rooms", "Rooms") <em>@FilteredGames.Count</em></span>
                 <div class="lb-ph-actions">
-                    <input class="lb-search" placeholder="筛选房间…" value="@_gameFilter" @oninput="OnGameFilterInput" />
-                    <button class="mb-btn primary lb-create" @onclick="OnCreateRoom">创建房间</button>
+                    <input class="lb-search" placeholder="@T("Lobby.FilterRooms", "Filter rooms…")" value="@_gameFilter" @oninput="OnGameFilterInput" />
+                    <button class="mb-btn primary lb-create" @onclick="OnCreateRoom">@T("Lobby.CreateRoom", "Create Room")</button>
                 </div>
             </header>
             <div class="lb-body">
                 @if (FilteredGames.Count == 0)
                 {
-                    <div class="lb-empty">@(_gameFilter.Length == 0 ? "暂无 LAN 房间（同网段多开客户端后互相可见）" : "无匹配房间")</div>
+                    <div class="lb-empty">@(_gameFilter.Length == 0 ? T("LanLobby.NoRooms", "No LAN rooms yet (clients on the same subnet appear here)") : T("Lobby.NoMatchingRooms", "No matching rooms"))</div>
                 }
                 else
                 {
@@ -68,7 +69,7 @@
                             <div class="gc-meta">
                                 <span class="gc-mode">@g.GameMode</span>
                                 <span class="gc-host">@g.HostName</span>
-                                <span class="gc-tag">@(g.IsLoadedGame ? "存档局" : "LAN")@(g.Incompatible ? " · 版本不符" : "")</span>
+                                <span class="gc-tag">@(g.IsLoadedGame ? T("LanLobby.SavedGame", "Saved game") : "LAN")@(g.Incompatible ? T("LanLobby.VersionMismatchSuffix", " · Version mismatch") : "")</span>
                             </div>
                         </div>
                     </Virtualize>
@@ -78,12 +79,12 @@
 
         <section class="lb-panel lb-chat item-in" style="animation-delay:110ms">
             <header class="lb-ph">
-                <span>大厅聊天 <em>@LanSvc.ChatMessages.Count</em></span>
+                <span>@T("LanLobby.Chat", "Lobby chat") <em>@LanSvc.ChatMessages.Count</em></span>
             </header>
             <div class="chat-scroll">
                 @if (LanSvc.ChatMessages.Count == 0)
                 {
-                    <div class="lb-empty">尚无消息，打个招呼吧</div>
+                    <div class="lb-empty">@T("Lobby.NoMessages", "No messages yet — say hello!")</div>
                 }
                 else
                 {
@@ -106,27 +107,27 @@
                 <div @ref="_chatEnd"></div>
             </div>
             <div class="chat-input">
-                <select class="ci-color" title="聊天颜色" value="@LanSvc.ChatColorIndex" @onchange="OnColorChange">
+                <select class="ci-color" title="@T("LanLobby.ChatColor", "Chat color")" value="@LanSvc.ChatColorIndex" @onchange="OnColorChange">
                     @for (int i = 0; i < LanLobbyService.ChatColors.Length; i++)
                     {
                         <option value="@i" style="color:@LanLobbyService.ToCssHex(LanLobbyService.ChatColors[i].XNAColor)">@LanLobbyService.ChatColors[i].Name</option>
                     }
                 </select>
-                <input class="ci-field" maxlength="200" placeholder="输入消息，Enter 发送…"
+                <input class="ci-field" maxlength="200" placeholder="@T("LanLobby.ChatPlaceholder", "Type a message, Enter to send…")"
                        value="@_draft" disabled="@(!LanSvc.IsRunning)"
                        @oninput="OnDraftInput" @onkeydown="OnChatKeyDown" />
-                <button class="mb-btn primary ci-send" @onclick="OnSend" disabled="@(!LanSvc.IsRunning)">发送</button>
+                <button class="mb-btn primary ci-send" @onclick="OnSend" disabled="@(!LanSvc.IsRunning)">@T("Lobby.Send", "Send")</button>
             </div>
         </section>
 
         <section class="lb-panel lb-users item-in" style="animation-delay:160ms">
             <header class="lb-ph">
-                <span>玩家 <em>@LanSvc.PlayerNames.Count</em></span>
+                <span>@T("Lobby.Players", "Players") <em>@LanSvc.PlayerNames.Count</em></span>
             </header>
             <div class="lb-body">
                 @if (LanSvc.PlayerNames.Count == 0)
                 {
-                    <div class="lb-empty">同网段暂无玩家（约 5s 后可见）</div>
+                    <div class="lb-empty">@T("LanLobby.NoPlayers", "No players on this subnet yet (visible after about 5s)")</div>
                 }
                 else
                 {
@@ -147,25 +148,25 @@
         <div class="game-detail pop-in">
             <header class="gd-head">
                 <span class="gd-name">@_selectedGame.RoomName</span>
-                <button type="button" class="gd-close" @onclick="CloseGameDetail" aria-label="关闭">✕</button>
+                <button type="button" class="gd-close" @onclick="CloseGameDetail" aria-label="@T("Common.Close", "Close")">✕</button>
             </header>
             <div class="gd-map">
                 <MapThumbnail MapHash="@_selectedGame.MapHash" MapName="@_selectedGame.Map" />
             </div>
             <div class="gd-rows">
-                <div class="gd-row"><span>地图</span><b>@_selectedGame.Map</b></div>
-                <div class="gd-row"><span>房主</span><b>@_selectedGame.HostName</b></div>
-                <div class="gd-row"><span>模式</span><b>@_selectedGame.GameMode</b></div>
-                <div class="gd-row"><span>人数</span><b>@_selectedGame.Players.Length / @_selectedGame.MaxPlayers</b></div>
-                <div class="gd-row"><span>地址</span><b>@_selectedGame.EndPoint</b></div>
+                <div class="gd-row"><span>@T("Lobby.Map", "Map")</span><b>@_selectedGame.Map</b></div>
+                <div class="gd-row"><span>@T("Lobby.Host", "Host")</span><b>@_selectedGame.HostName</b></div>
+                <div class="gd-row"><span>@T("Lobby.Mode", "Mode")</span><b>@_selectedGame.GameMode</b></div>
+                <div class="gd-row"><span>@T("GameLobby.PlayerCount", "Players")</span><b>@_selectedGame.Players.Length / @_selectedGame.MaxPlayers</b></div>
+                <div class="gd-row"><span>@T("LanLobby.Address", "Address")</span><b>@_selectedGame.EndPoint</b></div>
                 @if (_selectedGame.Incompatible)
                 {
-                    <div class="gd-row"><span>版本</span><b class="gd-pass">版本不匹配 @(_selectedGame.GameVersion)</b></div>
+                    <div class="gd-row"><span>@T("GameLobby.Version", "Version")</span><b class="gd-pass">@F("LanLobby.VersionMismatch", "Version mismatch {0}", _selectedGame.GameVersion)</b></div>
                 }
             </div>
             <div class="gd-actions">
-                <button type="button" class="mb-btn primary" @onclick="OnJoinGame">加入游戏</button>
-                <button type="button" class="mb-btn" @onclick="CloseGameDetail">取消</button>
+                <button type="button" class="mb-btn primary" @onclick="OnJoinGame">@T("Lobby.JoinGame", "Join game")</button>
+                <button type="button" class="mb-btn" @onclick="CloseGameDetail">@T("Lobby.Cancel", "Cancel")</button>
             </div>
         </div>
     }
@@ -175,24 +176,31 @@
         <div class="ctx-backdrop" @onclick="CancelCreate"></div>
         <div class="game-detail pop-in">
             <header class="gd-head">
-                <span class="gd-name">创建 LAN 房间</span>
-                <button type="button" class="gd-close" @onclick="CancelCreate" aria-label="关闭">✕</button>
+                <span class="gd-name">@T("LanLobby.CreateTitle", "Create LAN room")</span>
+                <button type="button" class="gd-close" @onclick="CancelCreate" aria-label="@T("Common.Close", "Close")">✕</button>
             </header>
             <div class="gd-rows">
-                <div class="gd-row"><span>房间名</span></div>
-                <input class="gl-input gc-name-input" maxlength="40" placeholder="默认：@(ProgramConstants.PLAYERNAME)'s Game"
+                <div class="gd-row"><span>@T("Lobby.RoomName", "Room name")</span></div>
+                <input class="gl-input gc-name-input" maxlength="40" placeholder="@F("LanLobby.RoomNamePlaceholder", "Default: {0}'s Game", ProgramConstants.PLAYERNAME)"
                        value="@_roomNameDraft" @oninput="OnRoomNameInput" @onkeydown="OnCreateKeyDown" />
-                <div class="gd-row"><span>人数</span><b>最多 @(LanGameRoomService.MaxPlayersConst) 人</b></div>
+                <div class="gd-row"><span>@T("GameLobby.PlayerCount", "Players")</span><b>@F("LanLobby.MaxPlayersHint", "Max {0} players", LanGameRoomService.MaxPlayersConst)</b></div>
             </div>
             <div class="gd-actions">
-                <button type="button" class="mb-btn primary" @onclick="ConfirmCreate">创建</button>
-                <button type="button" class="mb-btn" @onclick="CancelCreate">取消</button>
+                <button type="button" class="mb-btn primary" @onclick="ConfirmCreate">@T("Lobby.Create", "Create")</button>
+                <button type="button" class="mb-btn" @onclick="CancelCreate">@T("Lobby.Cancel", "Cancel")</button>
             </div>
         </div>
     }
 </div>
 
 @code {
+    /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    /// <summary>带参数的文案（占位符 {0}…）。</summary>
+    private static string F(string key, string fallback, params object[] args)
+        => string.Format(UiText.T(key, fallback), args);
+
     private string _draft = string.Empty;
     private string _gameFilter = string.Empty;
     private string _roomNameDraft = string.Empty;
@@ -228,6 +236,7 @@
     {
         LanSvc.StateChanged += OnStateChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -252,6 +261,8 @@
     }
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
+
+    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
 
     private void OnDraftInput(ChangeEventArgs e) => _draft = e.Value?.ToString() ?? string.Empty;
 
@@ -321,12 +332,12 @@
 
     private async Task OnLeave()
     {
-        var confirm = await MessageBox.ShowAsync("离开大厅",
-            "确认退出局域网大厅？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        var confirm = await MessageBox.ShowAsync(T("Lobby.LeaveTitle", "Leave lobby"),
+            T("LanLobby.LeaveBody", "Leave the LAN lobby?"), MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
         if (!confirm)
             return;
         LanSvc.Stop();
-        await JS.InvokeVoidAsync("cncnet.toast", "已离开局域网大厅");
+        await JS.InvokeVoidAsync("cncnet.toast", T("LanLobby.Left", "Left the LAN lobby"));
         Nav.NavigateTo("/menu");
     }
 
@@ -334,6 +345,7 @@
     {
         LanSvc.StateChanged -= OnStateChanged;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         LanSvc.Stop();
     }
 }

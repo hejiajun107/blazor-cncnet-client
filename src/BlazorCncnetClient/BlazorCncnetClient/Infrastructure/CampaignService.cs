@@ -265,11 +265,11 @@ namespace BlazorCncnetClient.Infrastructure
         {
             Mission? mission = SelectedMission;
             if (mission is null)
-                throw new InvalidOperationException("请先选择任务");
+                throw new InvalidOperationException(UiText.T("Campaign.SelectMissionFirst", "Please select a mission first"));
             if (string.IsNullOrEmpty(mission.Scenario))
-                throw new InvalidOperationException("该任务未配置地图文件，无法启动。");
+                throw new InvalidOperationException(UiText.T("Campaign.MissingScenario", "This mission has no map file configured and cannot be started."));
             if (!mission.Enabled)
-                throw new InvalidOperationException("该任务当前不可用。");
+                throw new InvalidOperationException(UiText.T("Campaign.MissionUnavailable", "This mission is currently unavailable."));
 
             SaveSettings();
 

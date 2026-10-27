@@ -40,7 +40,8 @@ public sealed class ReplaceableComponentService
             return pluginType;
         if (_defaults.TryGetValue(key, out Type? defaultType))
             return defaultType;
-        throw new InvalidOperationException($"ReplaceableComponent 未注册: {key}");
+        throw new InvalidOperationException(string.Format(
+            UiText.T("Component.NotRegistered", "ReplaceableComponent is not registered: {0}"), key));
     }
 
     /// <summary>
@@ -62,10 +63,12 @@ public sealed class ReplaceableComponentService
 
         type = AppAssembly.GetType(name, throwOnError: false)
             ?? AppAssembly.GetTypes().FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.Ordinal))
-            ?? throw new InvalidOperationException($"[Components] {key}={name} 指向未知组件类型");
+            ?? throw new InvalidOperationException(string.Format(
+                UiText.T("Component.UnknownType", "[Components] {0}={1} points to an unknown component type"), key, name));
 
         if (!typeof(IComponent).IsAssignableFrom(type))
-            throw new InvalidOperationException($"[Components] {key}={name} 不是 Blazor 组件");
+            throw new InvalidOperationException(string.Format(
+                UiText.T("Component.NotBlazorComponent", "[Components] {0}={1} is not a Blazor component"), key, name));
 
         return true;
     }

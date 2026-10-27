@@ -6,23 +6,24 @@
 @inject GameRoomNavigation NavData
 @inject NavigationManager Nav
 @inject MessageBoxService MessageBox
+@inject ITranslationService TranslationSvc
 
 @* 全局游戏邀请条（第六轮补缺，原版 ChoiceNotificationBox 的邀请场景：顶部滑入，接受/拒绝）。
    由 MainLayout 挂载，任意页面收到 INVITE 私有 CTCP 都弹条；接受后离开当前房间并导航加入。 *@
 @if (_invitation is not null)
 {
-    <div class="inv-toast pop-in" role="alertdialog" aria-label="游戏邀请">
+    <div class="inv-toast pop-in" role="alertdialog" aria-label="@T("Invite.Title", "Game invitation")">
         <div class="inv-head">
-            <span>游戏邀请</span>
+            <span>@T("Invite.Title", "Game invitation")</span>
             <span class="en">GAME INVITATION</span>
         </div>
         <div class="inv-body">
             <span class="inv-sender">@_invitation.Sender</span>
-            <span class="inv-text">邀请你加入「@_invitation.GameName」，是否接受？</span>
+            <span class="inv-text">@F("Invite.Body", "invites you to join \"{0}\". Accept?", _invitation.GameName)</span>
         </div>
         <div class="inv-actions">
-            <button type="button" class="mb-btn primary" @onclick="Accept">接受<span class="en">YES</span></button>
-            <button type="button" class="mb-btn" @onclick="Decline">拒绝<span class="en">NO</span></button>
+            <button type="button" class="mb-btn primary" @onclick="Accept">@T("Invite.Accept", "Accept")<span class="en">YES</span></button>
+            <button type="button" class="mb-btn" @onclick="Decline">@T("Invite.Decline", "Decline")<span class="en">NO</span></button>
         </div>
     </div>
 }
@@ -30,7 +31,16 @@
 @code {
     private GameInvitation? _invitation;
 
-    protected override void OnInitialized() => LobbySvc.GameInvitationReceived += OnInvitationReceived;
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+    private static string F(string key, string fallback, params object[] args) => string.Format(UiText.T(key, fallback), args);
+
+    protected override void OnInitialized()
+    {
+        LobbySvc.GameInvitationReceived += OnInvitationReceived;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 
     private void OnInvitationReceived(GameInvitation inv)
     {
@@ -60,8 +70,8 @@
         if (game is null)
         {
             await MessageBox.ShowAsync(
-                "无法加入".L10N(UIStrings.KeyPrefix + "Chat.JoinFailedTitle"),
-                $"「{inv.GameName}」已关闭或在大厅不可见，无法接受邀请。",
+                T("Invite.JoinFailedTitle", "Unable to join"),
+                F("Invite.JoinFailedBody", "\"{0}\" is closed or no longer visible in the lobby; the invitation cannot be accepted.", inv.GameName),
                 MessageBoxButtons.Ok, MessageBoxKind.Error);
             return;
         }
@@ -76,5 +86,9 @@
         Nav.NavigateTo("/online/game");
     }
 
-    public void Dispose() => LobbySvc.GameInvitationReceived -= OnInvitationReceived;
+    public void Dispose()
+    {
+        LobbySvc.GameInvitationReceived -= OnInvitationReceived;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
+    }
 }

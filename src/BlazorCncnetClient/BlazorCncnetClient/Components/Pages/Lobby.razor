@@ -12,11 +12,12 @@
 @inject IThemeProvider ThemeProvider
 @inject MessageBoxService MessageBox
 @inject DiscordPresenceService Discord
+@inject ITranslationService TranslationSvc
 
 <div class="lobby page-anim">
     <header class="lobby-top item-in">
         <div class="lt-left">
-            <span class="lt-t">频道</span>
+            <span class="lt-t">@T("Lobby.Channel", "Channel")</span>
             <select class="lt-select" value="@CurrentChannelName" @onchange="OnChannelChanged">
                 @foreach (var c in LobbySvc.Channels)
                 {
@@ -25,51 +26,52 @@
             </select>
         </div>
         <div class="lt-mid">
-            <span class="lt-title">CNCNet 在线大厅</span>
+            <span class="lt-title">@T("Lobby.Title", "CnCNet Online Lobby")</span>
             <span class="lt-en">ONLINE LOBBY · @(LobbySvc.LocalGame?.UIName ?? "CnCNet")</span>
         </div>
         <div class="lt-right">
             <span class="lt-player">@ProgramConstants.PLAYERNAME</span>
-            <span class="lt-conn @Mon.StatusClass"><i class="dot"></i>@Mon.StateCn@(Mon.IsConnected ? $" · {OnlineCount} 在线" : "")</span>
-            <button class="mb-btn item-in" @onclick="OnLogout">离开</button>
+            <span class="lt-conn @Mon.StatusClass"><i class="dot"></i>@Mon.StateCn@(Mon.IsConnected ? " · " + OnlineCount + " " + T("Lobby.Online", "online") : "")</span>
+            <button class="mb-btn item-in" @onclick="OnLogout">@T("Lobby.Leave", "Leave")</button>
         </div>
     </header>
 
     <div class="lobby-grid">
         <section class="lb-panel lb-games item-in" style="animation-delay:60ms">
             <header class="lb-ph">
-                <span>房间列表 <em>@FilteredGames.Count</em></span>
+                <span>@T("Lobby.Rooms", "Rooms") <em>@FilteredGames.Count</em></span>
                 <div class="lb-ph-actions">
-                    <input class="lb-search" placeholder="筛选房间…" value="@_gameFilter" @oninput="OnGameFilterInput" />
-                    <button class="mb-btn primary lb-create" @onclick="OpenCreateDialog">创建房间</button>
+                    <input class="lb-search" placeholder="@T("Lobby.FilterRooms", "Filter rooms…")" value="@_gameFilter" @oninput="OnGameFilterInput" />
+                    <button class="mb-btn primary lb-create" @onclick="OpenCreateDialog">@T("Lobby.CreateRoom", "Create Room")</button>
                 </div>
             </header>
             <div class="lb-filters">
-                <label class="fl-chip @(_friendsOnly ? "on" : "")" title="只显示好友开的房间">
-                    <input type="checkbox" @bind="_friendsOnly" /><i></i>好友专用
+                <label class="fl-chip @(_friendsOnly ? "on" : "")" title="@T("Lobby.FriendsOnlyTip", "Only show rooms hosted by friends")">
+                    <input type="checkbox" @bind="_friendsOnly" /><i></i>@T("Lobby.FriendsOnly", "Friends only")
                 </label>
-                <label class="fl-chip @(_hideLocked ? "on" : "")" title="隐藏已锁定房间">
-                    <input type="checkbox" @bind="_hideLocked" /><i></i>隐藏锁定
+                <label class="fl-chip @(_hideLocked ? "on" : "")" title="@T("Lobby.HideLockedTip", "Hide locked rooms")">
+                    <input type="checkbox" @bind="_hideLocked" /><i></i>@T("Lobby.HideLocked", "Hide locked")
                 </label>
-                <label class="fl-chip @(_hidePassworded ? "on" : "")" title="隐藏密码房">
-                    <input type="checkbox" @bind="_hidePassworded" /><i></i>隐藏密码
+                <label class="fl-chip @(_hidePassworded ? "on" : "")" title="@T("Lobby.HidePasswordedTip", "Hide passworded rooms")">
+                    <input type="checkbox" @bind="_hidePassworded" /><i></i>@T("Lobby.HidePassworded", "Hide passworded")
                 </label>
-                <label class="fl-chip @(_hideIncompatible ? "on" : "")" title="隐藏版本不一致的房间">
-                    <input type="checkbox" @bind="_hideIncompatible" /><i></i>隐藏不兼容
+                <label class="fl-chip @(_hideIncompatible ? "on" : "")" title="@T("Lobby.HideIncompatibleTip", "Hide rooms with a different version")">
+                    <input type="checkbox" @bind="_hideIncompatible" /><i></i>@T("Lobby.HideIncompatible", "Hide incompatible")
                 </label>
                 <select class="fl-select" value="@_maxPlayersFilter" @onchange="OnMaxPlayersFilterChange">
-                    <option value="0">全部人数</option>
+                    <option value="0">@T("Lobby.AllPlayers", "Any player count")</option>
                     @for (int p = 2; p <= 8; p++)
                     {
-                        <option value="@p">@p 人</option>
+                        <option value="@p">@Players(p)</option>
                     }
                 </select>
-                <button type="button" class="fl-reset" @onclick="ResetFilters" title="重置全部筛选">重置</button>
+                <button type="button" class="fl-reset" @onclick="ResetFilters" title="@T("Lobby.ResetTip", "Reset all filters")">@T("Lobby.Reset", "Reset")</button>
             </div>
             <div class="lb-body">
                 @if (FilteredGames.Count == 0)
                 {
-                    <div class="lb-empty">@(_gameFilter.Length == 0 ? "暂无公开房间" : "无匹配房间")</div>
+                    <div class="lb-empty">@T(_gameFilter.Length == 0 ? "Lobby.NoRooms" : "Lobby.NoMatchingRooms",
+                        _gameFilter.Length == 0 ? "No public rooms" : "No matching rooms")</div>
                 }
                 else
                 {
@@ -87,7 +89,7 @@
                             <div class="gc-meta">
                                 <span class="gc-mode">@g.GameMode</span>
                                 <span class="gc-host">@g.HostName</span>
-                                <span class="gc-tag">@(g.IsLadder ? "天梯" : g.Tunneled ? "隧道" : "动态")</span>
+                                <span class="gc-tag">@(g.IsLadder ? T("Lobby.Ladder", "Ladder") : g.Tunneled ? T("Lobby.Tunneled", "Tunnel") : T("Lobby.Dynamic", "Dynamic"))</span>
                             </div>
                         </div>
                     </Virtualize>
@@ -97,18 +99,18 @@
 
         <section class="lb-panel lb-chat item-in" style="animation-delay:110ms">
             <header class="lb-ph">
-                <span>频道聊天 <em>@CurrentChannelName</em></span>
+                <span>@T("Lobby.ChannelChat", "Channel chat") <em>@CurrentChannelName</em></span>
             </header>
             @if (!Mon.IsConnected)
             {
                 <div class="conn-banner @Mon.StatusClass">
                     @if (Mon.State == ConnectionState.Reconnecting)
                     {
-                        <text>⚠ 连接已断开，正在自动重连…</text>
+                        <text>⚠ @T("Lobby.Reconnecting", "Connection lost, reconnecting automatically…")</text>
                     }
                     else
                     {
-                        <text>⚠ 已与 CnCNet 断开连接</text>
+                        <text>⚠ @T("Lobby.Disconnected", "Disconnected from CnCNet")</text>
                     }
                     @if (!string.IsNullOrEmpty(Mon.LastError))
                     {
@@ -119,7 +121,7 @@
             <div class="chat-scroll">
                 @if (VisibleMessages.Count == 0)
                 {
-                    <div class="lb-empty">尚无消息，打个招呼吧</div>
+                    <div class="lb-empty">@T("Lobby.NoMessages", "No messages yet — say hello!")</div>
                 }
                 else
                 {
@@ -154,27 +156,27 @@
                                 <span class="ch-desc">@c.Description</span>
                                 @if (c.RequiresAdmin)
                                 {
-                                    <span class="ch-admin">管理员</span>
+                                    <span class="ch-admin">@T("Lobby.Admin", "Admin")</span>
                                 }
                             </div>
                         }
                     </div>
                 }
-                <input class="ci-field" maxlength="200" placeholder="输入消息，Enter 发送；/ 开头为频道指令（/help）"
+                <input class="ci-field" maxlength="200" placeholder="@T("Lobby.ChatPlaceholder", "Type a message, Enter to send; start with / for channel commands (/help)")"
                        value="@_draft" disabled="@(CurrentChannel is null)"
                        @oninput="OnDraftInput" @onkeydown="OnChatKeyDown" />
-                <button class="mb-btn primary ci-send" @onclick="OnSend" disabled="@(CurrentChannel is null)">发送</button>
+                <button class="mb-btn primary ci-send" @onclick="OnSend" disabled="@(CurrentChannel is null)">@T("Lobby.Send", "Send")</button>
             </div>
         </section>
 
         <section class="lb-panel lb-users item-in" style="animation-delay:160ms">
             <header class="lb-ph">
-                <span>玩家 <em>@Users.Count</em></span>
+                <span>@T("Lobby.Players", "Players") <em>@Users.Count</em></span>
             </header>
             <div class="lb-body">
                 @if (Users.Count == 0)
                 {
-                    <div class="lb-empty">频道暂无玩家</div>
+                    <div class="lb-empty">@T("Lobby.NoPlayers", "No players in this channel")</div>
                 }
                 else
                 {
@@ -190,7 +192,7 @@
                             }
                             @if (u.IRCUser.IsIgnored)
                             {
-                                <span class="u-ignored">屏蔽</span>
+                                <span class="u-ignored">@T("Lobby.Ignored", "Ignored")</span>
                             }
                         </div>
                     </Virtualize>
@@ -208,24 +210,24 @@
         <div class="ctx-menu pop-in" style="left:@(_menuX)px;top:@(_menuY)px"
              @onmousedown:stopPropagation="true" @oncontextmenu:stopPropagation="true">
             <div class="ctx-title">@_menuUser.IRCUser.Name</div>
-            <button type="button" class="ctx-item" @onclick="OnPrivateMessage">私聊<span class="en">PM</span></button>
+            <button type="button" class="ctx-item" @onclick="OnPrivateMessage">@T("Lobby.Pm", "Private Message")<span class="en">PM</span></button>
             <button type="button" class="ctx-item" disabled="@(!LobbySvc.CanInvite)" @onclick="OnInvite">
-                邀请加入<span class="en">INVITE</span></button>
+                @T("Lobby.Invite", "Invite")<span class="en">INVITE</span></button>
             @if (LobbySvc.IsCurrentChannelAdmin)
             {
                 <div class="ctx-sep"></div>
                 <button type="button" class="ctx-item warn" @onclick="OnKickPlayer">
-                    踢出频道<span class="en">KICK</span></button>
+                    @T("Lobby.Kick", "Kick")<span class="en">KICK</span></button>
                 <button type="button" class="ctx-item warn" @onclick="OnBanPlayer">
-                    封禁<span class="en">BAN</span></button>
+                    @T("Lobby.Ban", "Ban")<span class="en">BAN</span></button>
                 <button type="button" class="ctx-item warn" @onclick="OnToggleMute">
-                    @(_menuUser.HasVoice ? "禁言" : "解除禁言")<span class="en">@(_menuUser.HasVoice ? "MUTE" : "VOICE")</span></button>
+                    @(_menuUser.HasVoice ? T("Lobby.Mute", "Mute") : T("Lobby.Unmute", "Unmute"))<span class="en">@(_menuUser.HasVoice ? "MUTE" : "VOICE")</span></button>
             }
             <div class="ctx-sep"></div>
             <button type="button" class="ctx-item" @onclick="OnToggleFriend">
-                @(_menuUser.IRCUser.IsFriend ? "取消加友" : "加为好友")<span class="en">FRIEND</span></button>
+                @(_menuUser.IRCUser.IsFriend ? T("Lobby.RemoveFriend", "Remove friend") : T("Lobby.AddFriend", "Add friend"))<span class="en">FRIEND</span></button>
             <button type="button" class="ctx-item" @onclick="OnToggleIgnore">
-                @(_menuUser.IRCUser.IsIgnored ? "取消屏蔽" : "屏蔽此人")<span class="en">IGNORE</span></button>
+                @(_menuUser.IRCUser.IsIgnored ? T("Lobby.Unignore", "Unignore") : T("Lobby.Ignore", "Ignore"))<span class="en">IGNORE</span></button>
         </div>
     }
 
@@ -234,19 +236,19 @@
         <div class="ctx-backdrop" @onclick="ClosePm"></div>
         <div class="pm-panel pop-in">
             <div class="pm-head">
-                <span>私聊中心</span><span class="pm-en">PRIVATE MSG</span>
-                <button type="button" class="pm-close" @onclick="ClosePm" aria-label="关闭">✕</button>
+                <span>@T("Lobby.PmCenter", "Messages")</span><span class="pm-en">PRIVATE MSG</span>
+                <button type="button" class="pm-close" @onclick="ClosePm" aria-label="@T("Common.Close", "Close")">✕</button>
             </div>
             <!-- 第七轮补缺：私聊 / 最近玩家 双 tab（原版 PrivateMessagingWindow 双标签） -->
             <div class="pm-mode">
-                <button type="button" class="pm-mode-btn @(!_pmRecentTab ? "active" : "")" @onclick="() => SwitchPmTab(false)">私聊</button>
-                <button type="button" class="pm-mode-btn @(_pmRecentTab ? "active" : "")" @onclick="() => SwitchPmTab(true)">最近玩家</button>
+                <button type="button" class="pm-mode-btn @(!_pmRecentTab ? "active" : "")" @onclick="() => SwitchPmTab(false)">@T("Lobby.Pm", "Private Message")</button>
+                <button type="button" class="pm-mode-btn @(_pmRecentTab ? "active" : "")" @onclick="() => SwitchPmTab(true)">@T("Lobby.RecentPlayers", "Recent players")</button>
             </div>
             @if (!_pmRecentTab)
             {
                 @if (LobbySvc.PmSessions.Count == 0)
                 {
-                    <div class="pm-empty">暂无私聊会话</div>
+                    <div class="pm-empty">@T("Lobby.NoSessions", "No conversations yet")</div>
                 }
                 else
                 {
@@ -261,7 +263,7 @@
                                     <span class="pt-badge">@s.UnreadCount</span>
                                 }
                                 <button type="button" class="pt-close" @onclick="() => ClosePmSession(s.UserName)"
-                                        @onclick:stopPropagation="true" aria-label="关闭会话">✕</button>
+                                        @onclick:stopPropagation="true" aria-label="@T("Lobby.CloseSession", "Close conversation")">✕</button>
                             </div>
                         }
                     </div>
@@ -271,7 +273,7 @@
                     <div class="pm-body">
                         @if (active.Messages.Count == 0)
                         {
-                            <div class="pm-empty">尚无消息，说点什么吧</div>
+                            <div class="pm-empty">@T("Lobby.NoPmMessages", "No messages yet — say something!")</div>
                         }
                         else
                         {
@@ -279,7 +281,7 @@
                             {
                                 <div class="pm-msg @(m.IsMine ? "mine" : "")">
                                     <span class="pm-time">@m.Time.ToString("HH:mm")</span>
-                                    <span class="pm-name">@(m.IsMine ? "我" : m.SenderName)</span>
+                                    <span class="pm-name">@(m.IsMine ? T("Lobby.Me", "Me") : m.SenderName)</span>
                                     <span class="pm-text"><ChatText Text="@m.Text" /></span>
                                 </div>
                             }
@@ -287,23 +289,23 @@
                         <div @ref="_pmChatEnd"></div>
                     </div>
                     <div class="pm-input">
-                        <input class="pm-field" maxlength="200" placeholder="输入消息，Enter 发送…"
+                        <input class="pm-field" maxlength="200" placeholder="@T("Lobby.PmPlaceholder", "Type a message, Enter to send…")"
                                value="@_pmDraft" @oninput="OnPmInput" @onkeydown="OnPmKeyDown" />
-                        <button type="button" class="mb-btn primary" @onclick="OnPmSend">发送</button>
+                        <button type="button" class="mb-btn primary" @onclick="OnPmSend">@T("Lobby.Send", "Send")</button>
                     </div>
                 }
             }
             else
             {
                 <div class="rp-head">
-                    <span class="rp-col">玩家</span>
-                    <span class="rp-col">游戏</span>
-                    <span class="rp-col">时间</span>
+                    <span class="rp-col">@T("Lobby.Player", "Player")</span>
+                    <span class="rp-col">@T("Lobby.Game", "Game")</span>
+                    <span class="rp-col">@T("Lobby.Time", "Time")</span>
                 </div>
                 <div class="rp-body">
                     @if (RecentPlayersList.Count == 0)
                     {
-                        <div class="pm-empty">暂无最近玩家记录（参与对局后自动记录）</div>
+                        <div class="pm-empty">@T("Lobby.NoRecentPlayers", "No recent players yet (recorded after you play a match)")</div>
                     }
                     else
                     {
@@ -333,12 +335,12 @@
         <div class="ctx-menu pop-in" style="left:@(_rpMenuX)px;top:@(_rpMenuY)px"
              @onmousedown:stopPropagation="true" @oncontextmenu:stopPropagation="true">
             <div class="ctx-title">@_rpMenuPlayer</div>
-            <button type="button" class="ctx-item" @onclick="OnRpmPrivateMessage">私聊<span class="en">PM</span></button>
+            <button type="button" class="ctx-item" @onclick="OnRpmPrivateMessage">@T("Lobby.Pm", "Private Message")<span class="en">PM</span></button>
             <div class="ctx-sep"></div>
             <button type="button" class="ctx-item" @onclick="OnRpmToggleFriend">
-                @(LobbySvc.IsFriend(_rpMenuPlayer) ? "取消加友" : "加为好友")<span class="en">FRIEND</span></button>
+                @(LobbySvc.IsFriend(_rpMenuPlayer) ? T("Lobby.RemoveFriend", "Remove friend") : T("Lobby.AddFriend", "Add friend"))<span class="en">FRIEND</span></button>
             <button type="button" class="ctx-item" @onclick="OnRpmToggleIgnore">
-                @(LobbySvc.IsIgnored(_rpMenuPlayer, null) ? "取消屏蔽" : "屏蔽此人")<span class="en">IGNORE</span></button>
+                @(LobbySvc.IsIgnored(_rpMenuPlayer, null) ? T("Lobby.Unignore", "Unignore") : T("Lobby.Ignore", "Ignore"))<span class="en">IGNORE</span></button>
         </div>
     }
 
@@ -348,25 +350,25 @@
         <div class="game-detail pop-in">
             <header class="gd-head">
                 <span class="gd-name">@(_selectedGame.Passworded ? "◈ " : "")@_selectedGame.RoomName</span>
-                <button type="button" class="gd-close" @onclick="CloseGameDetail" aria-label="关闭">✕</button>
+                <button type="button" class="gd-close" @onclick="CloseGameDetail" aria-label="@T("Common.Close", "Close")">✕</button>
             </header>
             <div class="gd-map">
                 <MapThumbnail MapHash="@_selectedGame.MapHash" MapName="@_selectedGame.Map" />
             </div>
             <div class="gd-rows">
-                <div class="gd-row"><span>地图</span><b>@_selectedGame.Map</b></div>
-                <div class="gd-row"><span>房主</span><b>@_selectedGame.HostName</b></div>
-                <div class="gd-row"><span>模式</span><b>@_selectedGame.GameMode</b></div>
-                <div class="gd-row"><span>人数</span><b>@_selectedGame.PlayerCount / @_selectedGame.MaxPlayers</b></div>
-                <div class="gd-row"><span>类型</span><b>@(_selectedGame.IsLadder ? "天梯" : _selectedGame.Tunneled ? "隧道" : "动态")</b></div>
+                <div class="gd-row"><span>@T("Lobby.Map", "Map")</span><b>@_selectedGame.Map</b></div>
+                <div class="gd-row"><span>@T("Lobby.Host", "Host")</span><b>@_selectedGame.HostName</b></div>
+                <div class="gd-row"><span>@T("Lobby.Mode", "Mode")</span><b>@_selectedGame.GameMode</b></div>
+                <div class="gd-row"><span>@T("Lobby.Players", "Players")</span><b>@_selectedGame.PlayerCount / @_selectedGame.MaxPlayers</b></div>
+                <div class="gd-row"><span>@T("Lobby.Type", "Type")</span><b>@(_selectedGame.IsLadder ? T("Lobby.Ladder", "Ladder") : _selectedGame.Tunneled ? T("Lobby.Tunneled", "Tunnel") : T("Lobby.Dynamic", "Dynamic"))</b></div>
                 @if (_selectedGame.Passworded)
                 {
-                    <div class="gd-row"><span>密码</span><b class="gd-pass">已加密</b></div>
+                    <div class="gd-row"><span>@T("Lobby.Password", "Password")</span><b class="gd-pass">@T("Lobby.Encrypted", "Encrypted")</b></div>
                 }
             </div>
             <div class="gd-actions">
-                <button type="button" class="mb-btn primary" @onclick="OnJoinGame">加入游戏</button>
-                <button type="button" class="mb-btn" @onclick="CloseGameDetail">取消</button>
+                <button type="button" class="mb-btn primary" @onclick="OnJoinGame">@T("Lobby.JoinGame", "Join game")</button>
+                <button type="button" class="mb-btn" @onclick="CloseGameDetail">@T("Lobby.Cancel", "Cancel")</button>
             </div>
         </div>
     }
@@ -375,29 +377,29 @@
     {
         <div class="ctx-backdrop" @onclick="CloseCreateDialog"></div>
         <div class="cr-panel pop-in">
-            <div class="cr-head">创建房间<span class="cr-en">CREATE ROOM</span></div>
+            <div class="cr-head">@T("Lobby.CreateRoom", "Create Room")<span class="cr-en">CREATE ROOM</span></div>
             <label class="cr-field">
-                <span>房间名</span>
+                <span>@T("Lobby.RoomName", "Room name")</span>
                 <input maxlength="40" value="@_createRoomName" @oninput="OnCreateRoomNameInput" />
             </label>
             <div class="cr-row">
                 <label class="cr-field">
-                    <span>最大人数</span>
+                    <span>@T("Lobby.MaxPlayers", "Max players")</span>
                     <select value="@_createMaxPlayers" @onchange="OnCreateMaxPlayersChange">
                         @for (int p = 2; p <= 8; p++)
                         {
-                            <option value="@p">@p 人</option>
+                            <option value="@p">@Players(p)</option>
                         }
                     </select>
                 </label>
                 <label class="cr-field">
-                    <span>密码（可选）</span>
-                    <input maxlength="32" placeholder="留空为公开房" value="@_createPassword" @oninput="OnCreatePasswordInput" />
+                    <span>@T("Lobby.PasswordOptional", "Password (optional)")</span>
+                    <input maxlength="32" placeholder="@T("Lobby.PublicRoomHint", "Leave empty for a public room")" value="@_createPassword" @oninput="OnCreatePasswordInput" />
                 </label>
             </div>
             <div class="cr-actions">
-                <button type="button" class="mb-btn" @onclick="CloseCreateDialog">取消</button>
-                <button type="button" class="mb-btn primary" @onclick="OnCreateGame">创建</button>
+                <button type="button" class="mb-btn" @onclick="CloseCreateDialog">@T("Lobby.Cancel", "Cancel")</button>
+                <button type="button" class="mb-btn primary" @onclick="OnCreateGame">@T("Lobby.Create", "Create")</button>
             </div>
         </div>
     }
@@ -406,15 +408,15 @@
     {
         <div class="ctx-backdrop" @onclick="CloseJoinPw"></div>
         <div class="cr-panel pop-in">
-            <div class="cr-head">加入房间 · <b>@_selectedGame.RoomName</b><span class="cr-en">ENTER PASSWORD</span></div>
+            <div class="cr-head">@T("Lobby.JoinRoom", "Join room") · <b>@_selectedGame.RoomName</b><span class="cr-en">ENTER PASSWORD</span></div>
             <label class="cr-field">
-                <span>房间密码</span>
+                <span>@T("Lobby.RoomPassword", "Room password")</span>
                 <input maxlength="32" value="@_joinPassword" @oninput="OnJoinPasswordInput"
                        @onkeydown="OnJoinPwKeyDown" autocomplete="off" />
             </label>
             <div class="cr-actions">
-                <button type="button" class="mb-btn" @onclick="CloseJoinPw">取消</button>
-                <button type="button" class="mb-btn primary" @onclick="OnJoinWithPassword">加入</button>
+                <button type="button" class="mb-btn" @onclick="CloseJoinPw">@T("Lobby.Cancel", "Cancel")</button>
+                <button type="button" class="mb-btn primary" @onclick="OnJoinWithPassword">@T("Lobby.Join", "Join")</button>
             </div>
         </div>
     }
@@ -479,6 +481,16 @@
 
     private Channel? CurrentChannel => LobbySvc.CurrentChannel;
     private string CurrentChannelName => CurrentChannel?.ChannelName ?? "—";
+
+    /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    /// <summary>人数文案（“N 人” / “N players”）。</summary>
+    private static string Players(int n) => string.Format(UiText.T("Lobby.NPlayers", "{0} players"), n);
+
+    /// <summary>带参数的文案（占位符 {0}…）。</summary>
+    private static string F(string key, string fallback, params object[] args)
+        => string.Format(UiText.T(key, fallback), args);
 
     private int OnlineCount
     {
@@ -559,6 +571,7 @@
         LobbySvc.PmChanged += OnPmChanged;
         LobbySvc.PmReceived += OnPmReceived;
         ThemeProvider.ThemeChanged += OnThemeChanged;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
         // 连接状态变化时刷新左侧状态条（lt-conn），否则停留在进入页面时的旧值（顶栏/底栏已实时刷新）
         Mon.StateChanged += OnMonConnectionChanged;
 
@@ -645,6 +658,8 @@
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
+    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
+
     private void OnChannelChanged(ChangeEventArgs e)
     {
         var name = e.Value?.ToString();
@@ -716,7 +731,9 @@
 
     private void OpenCreateDialog()
     {
-        _createRoomName = $"{LobbySvc.LocalGame?.UIName ?? "CnCNet"} 游戏房";
+        _createRoomName = string.Format(
+            T("Lobby.DefaultRoomName", "{0} game room"),
+            LobbySvc.LocalGame?.UIName ?? "CnCNet");
         _createMaxPlayers = 8;
         _createPassword = string.Empty;
         _createOpen = true;
@@ -739,7 +756,7 @@
         var name = _createRoomName.Trim();
         if (name.Length == 0)
         {
-            _ = JS.InvokeVoidAsync("cncnet.toast", "请填写房间名");
+            _ = JS.InvokeVoidAsync("cncnet.toast", T("Lobby.RoomNameRequired", "Please enter a room name"));
             return;
         }
         NavData.PendingCreate = new CreateRoomRequest(name, _createMaxPlayers, _createPassword);
@@ -767,7 +784,7 @@
     {
         if (string.IsNullOrWhiteSpace(_joinPassword))
         {
-            _ = JS.InvokeVoidAsync("cncnet.toast", "请填写房间密码");
+            _ = JS.InvokeVoidAsync("cncnet.toast", T("Lobby.PasswordRequired", "Please enter the room password"));
             return;
         }
         _joinPwOpen = false;
@@ -834,7 +851,7 @@
         if (_menuUser is not null)
         {
             LobbySvc.InvitePlayer(_menuUser);
-            _ = JS.InvokeVoidAsync("cncnet.toast", $"已邀请 {_menuUser.IRCUser.Name} 加入游戏");
+            _ = JS.InvokeVoidAsync("cncnet.toast", F("Lobby.Invited", "Invited {0} to the game", _menuUser.IRCUser.Name));
         }
         CloseContextMenu();
     }
@@ -893,8 +910,8 @@
             var was = _menuUser.IRCUser.IsFriend;
             LobbySvc.ToggleFriend(_menuUser);
             _ = JS.InvokeVoidAsync("cncnet.toast", was
-                ? $"已将 {_menuUser.IRCUser.Name} 移出好友"
-                : $"已将 {_menuUser.IRCUser.Name} 加为好友");
+                ? F("Lobby.FriendRemoved", "Removed {0} from friends", _menuUser.IRCUser.Name)
+                : F("Lobby.FriendAdded", "Added {0} as a friend", _menuUser.IRCUser.Name));
         }
         CloseContextMenu();
     }
@@ -906,8 +923,8 @@
             var was = _menuUser.IRCUser.IsIgnored;
             LobbySvc.ToggleIgnore(_menuUser);
             _ = JS.InvokeVoidAsync("cncnet.toast", was
-                ? $"已取消屏蔽 {_menuUser.IRCUser.Name}"
-                : $"已屏蔽 {_menuUser.IRCUser.Name} 的消息");
+                ? F("Lobby.Unignored", "Unignored {0}", _menuUser.IRCUser.Name)
+                : F("Lobby.IgnoredUser", "Now ignoring messages from {0}", _menuUser.IRCUser.Name));
         }
         CloseContextMenu();
     }
@@ -1007,8 +1024,8 @@
         var was = LobbySvc.IsFriend(name);
         LobbySvc.ToggleFriend(name);
         _ = JS.InvokeVoidAsync("cncnet.toast", was
-            ? $"已将 {name} 移出好友"
-            : $"已将 {name} 加为好友");
+            ? F("Lobby.FriendRemoved", "Removed {0} from friends", name)
+            : F("Lobby.FriendAdded", "Added {0} as a friend", name));
         CloseRpmMenu();
     }
 
@@ -1020,8 +1037,8 @@
         var was = LobbySvc.IsIgnored(name, null);
         LobbySvc.ToggleIgnore(name, null);
         _ = JS.InvokeVoidAsync("cncnet.toast", was
-            ? $"已取消屏蔽 {name}"
-            : $"已屏蔽 {name} 的消息");
+            ? F("Lobby.Unignored", "Unignored {0}", name)
+            : F("Lobby.IgnoredUser", "Now ignoring messages from {0}", name));
         CloseRpmMenu();
     }
 
@@ -1048,12 +1065,12 @@
 
     private async Task OnLogout()
     {
-        var confirm = await MessageBox.ShowAsync("离开大厅",
-            "确认退出 CnCNet 在线大厅？", MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+        var confirm = await MessageBox.ShowAsync(T("Lobby.LeaveTitle", "Leave lobby"),
+            T("Lobby.LeaveBody", "Leave the CnCNet online lobby?"), MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
         if (!confirm)
             return;
         LobbySvc.Logout();
-        await JS.InvokeVoidAsync("cncnet.toast", "已离开大厅");
+        await JS.InvokeVoidAsync("cncnet.toast", T("Lobby.Left", "Left the lobby"));
         Nav.NavigateTo("/menu");
     }
 
@@ -1065,6 +1082,7 @@
         LobbySvc.PmChanged -= OnPmChanged;
         LobbySvc.PmReceived -= OnPmReceived;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         Mon.StateChanged -= OnMonConnectionChanged;
         _renderThrottle?.Dispose();
         _renderThrottle = null;

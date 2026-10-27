@@ -82,7 +82,7 @@ public sealed class SkirmishLaunchService : IDisposable
         {
             _launchInProgress = false;
             _nav.NavigateTo("/skirmish");
-            _ = _messageBox.ShowAsync("生成游戏配置出错", ex.Message,
+            _ = _messageBox.ShowAsync(UiText.T("SkirmishSvc.ConfigGenerateFailedTitle", "Failed to generate the game configuration"), ex.Message,
                 MessageBoxButtons.Ok, MessageBoxKind.Error);
         }
     }

@@ -6,14 +6,15 @@
 @inject CampaignService Svc
 @inject NavigationManager Nav
 @inject MessageBoxService MessageBox
+@inject ITranslationService TranslationSvc
 
 @if (!Svc.IsActive)
 {
     <div class="game-empty page-anim">
         <div class="ge-box pop-in">
             <div class="ge-title">CAMPAIGN LOADING</div>
-            <div class="ge-sub">当前没有进行中的战役</div>
-            <button class="mb-btn primary" @onclick="BackToCampaign">返回战役选择</button>
+            <div class="ge-sub">@T("Loading.NoActiveCampaign", "No campaign in progress")</div>
+            <button class="mb-btn primary" @onclick="BackToCampaign">@T("Loading.BackToCampaign", "Back to Campaign")</button>
         </div>
     </div>
 }
@@ -29,26 +30,26 @@ else
                 <div class="radar-sweep"></div>
                 <div class="radar-core">
                     <span class="rc-en">CAMPAIGN</span>
-                    <span class="rc-cn">战役</span>
+                    <span class="rc-cn">@T("Loading.RadarCampaign", "Campaign")</span>
                 </div>
             </div>
 
             <div class="gload-title">CAMPAIGN LOADING</div>
-            <div class="gload-sub">战役加载中 · 请稍候</div>
+            <div class="gload-sub">@T("Loading.SubCampaign", "Campaign loading · Please wait")</div>
 
             <div class="gload-info">
-                <div class="gi-row"><span>任务</span><b>@(Svc.SelectedMission?.GUIName ?? "—")</b></div>
-                <div class="gi-row"><span>难度</span><b>@CampaignService.GetDifficultyName(Svc.Difficulty)</b></div>
-                <div class="gi-row"><span>阵营</span><b>@(SideName)</b></div>
+                <div class="gi-row"><span>@T("Loading.Mission", "Mission")</span><b>@(Svc.SelectedMission?.GUIName ?? "—")</b></div>
+                <div class="gi-row"><span>@T("Loading.Difficulty", "Difficulty")</span><b>@CampaignService.GetDifficultyName(Svc.Difficulty)</b></div>
+                <div class="gi-row"><span>@T("Skirmish.Side", "Side")</span><b>@(SideName)</b></div>
             </div>
 
             <div class="gload-status">
                 <span class="gs-dot"></span>
-                游戏进程已启动，窗口已最小化 · 任务结束后将自动返回战役选择页（已运行 <b>@ElapsedSeconds</b>s）
+                @T("Loading.ProcessStarted", "Game process started, window minimized · ")@T("Loading.ReturnCampaign", "You will return to the Campaign page after the mission (running ")<b>@ElapsedSeconds</b>@T("Loading.SecondsSuffix", "s)")
             </div>
 
             <div class="gload-actions">
-                <button class="mb-btn" @onclick="BackToCampaign">返回战役选择</button>
+                <button class="mb-btn" @onclick="BackToCampaign">@T("Loading.BackToCampaign", "Back to Campaign")</button>
             </div>
         </div>
     </div>
@@ -59,6 +60,8 @@ else
     private int _elapsedSeconds;
 
     private int ElapsedSeconds => _elapsedSeconds;
+
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
 
     private string SideName
     {
@@ -82,12 +85,16 @@ else
             _elapsedSeconds++;
             StateHasChanged();
         }), null, 1000, 1000);
+
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
+
+    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
 
     private async Task BackToCampaign()
     {
-        var confirm = await MessageBox.ShowAsync("返回战役选择",
-            "任务仍在进行中，返回将中断当前流程。确认继续？",
+        var confirm = await MessageBox.ShowAsync(T("Loading.BackToCampaign", "Back to Campaign"),
+            T("Loading.LeaveCampaignBody", "A mission is still in progress. Returning will interrupt the current flow. Continue?"),
             MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
         if (!confirm)
             return;
@@ -96,6 +103,7 @@ else
 
     public void Dispose()
     {
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         _timer?.Dispose();
         _timer = null;
     }

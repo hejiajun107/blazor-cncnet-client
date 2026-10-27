@@ -5,14 +5,15 @@
 @inject LanGameRoomService Room
 @inject NavigationManager Nav
 @inject MessageBoxService MessageBox
+@inject ITranslationService TranslationSvc
 
 @if (!Room.IsInGameRoom)
 {
     <div class="game-empty page-anim">
         <div class="ge-box pop-in">
             <div class="ge-title">LAN LOADING</div>
-            <div class="ge-sub">当前没有正在进行的对局</div>
-            <button class="mb-btn primary" @onclick="BackToLobby">返回大厅</button>
+            <div class="ge-sub">@T("Loading.NoActiveGame", "No match in progress")</div>
+            <button class="mb-btn primary" @onclick="BackToLobby">@T("GameLobby.BackToLobby", "Back to lobby")</button>
         </div>
     </div>
 }
@@ -28,28 +29,28 @@ else
                 <div class="radar-sweep"></div>
                 <div class="radar-core">
                     <span class="rc-en">LAN SPAWN</span>
-                    <span class="rc-cn">局域网对局</span>
+                    <span class="rc-cn">@T("Loading.RadarLan", "LAN Match")</span>
                 </div>
             </div>
 
             <div class="gload-title">LAN GAME LOADING</div>
-            <div class="gload-sub">局域网对局加载中 · 请稍候</div>
+            <div class="gload-sub">@T("Loading.SubLan", "LAN match loading · Please wait")</div>
 
             <div class="gload-info">
-                <div class="gi-row"><span>房间</span><b>@Room.RoomName</b></div>
+                <div class="gi-row"><span>@T("Loading.Room", "Room")</span><b>@Room.RoomName</b></div>
                 <div class="gi-row"><span>GameID</span><b>#@Room.UniqueGameId</b></div>
-                <div class="gi-row"><span>地图</span><b>@(Room.SelectedMap?.Map.UntranslatedName ?? "—")</b></div>
-                <div class="gi-row"><span>模式</span><b>@(Room.SelectedMap?.GameMode.UIName ?? "—")</b></div>
-                <div class="gi-row"><span>玩家</span><b>@Room.Players.Count 人</b></div>
+                <div class="gi-row"><span>@T("Lobby.Map", "Map")</span><b>@(Room.SelectedMap?.Map.UntranslatedName ?? "—")</b></div>
+                <div class="gi-row"><span>@T("Lobby.Mode", "Mode")</span><b>@(Room.SelectedMap?.GameMode.UIName ?? "—")</b></div>
+                <div class="gi-row"><span>@T("Lobby.Player", "Player")</span><b>@F("Lobby.NPlayers", "{0} players", Room.Players.Count)</b></div>
             </div>
 
             <div class="gload-status">
                 <span class="gs-dot"></span>
-                游戏进程已启动，窗口已最小化 · 对局结束后将自动返回房间（已运行 <b>@ElapsedSeconds</b>s）
+                @T("Loading.ProcessStarted", "Game process started, window minimized · ")@T("Loading.ReturnRoom", "You will return to the room after the match (running ")<b>@ElapsedSeconds</b>@T("Loading.SecondsSuffix", "s)")
             </div>
 
             <div class="gload-actions">
-                <button class="mb-btn" @onclick="BackToLobby">返回大厅</button>
+                <button class="mb-btn" @onclick="BackToLobby">@T("GameLobby.BackToLobby", "Back to lobby")</button>
             </div>
         </div>
     </div>
@@ -61,6 +62,9 @@ else
 
     private int ElapsedSeconds => _elapsedSeconds;
 
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+    private static string F(string key, string fallback, params object[] args) => string.Format(UiText.T(key, fallback), args);
+
     protected override void OnInitialized()
     {
         // 对局进行中计时显示；每秒刷新一次
@@ -69,14 +73,18 @@ else
             _elapsedSeconds++;
             StateHasChanged();
         }), null, 1000, 1000);
+
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
+
+    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
 
     private async Task BackToLobby()
     {
         if (Room.IsInGameRoom)
         {
-            var confirm = await MessageBox.ShowAsync("返回大厅",
-                "对局仍在进行中，返回大厅将离开当前房间。确认继续？",
+            var confirm = await MessageBox.ShowAsync(T("GameLobby.BackToLobby", "Back to lobby"),
+                T("Loading.LeaveRoomBody", "A match is still in progress. Returning to the lobby will leave the current room. Continue?"),
                 MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
             if (!confirm)
                 return;
@@ -87,6 +95,7 @@ else
 
     public void Dispose()
     {
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
         _timer?.Dispose();
         _timer = null;
     }

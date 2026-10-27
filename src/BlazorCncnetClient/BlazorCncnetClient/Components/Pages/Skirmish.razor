@@ -13,14 +13,15 @@
 @inject SkirmishLaunchService GameLauncher
 @inject DiscordPresenceService Discord
 @inject GameContentServer ContentServer
+@inject ITranslationService TranslationSvc
 
 @if (!Svc.IsActive)
 {
     <div class="game-empty page-anim">
         <div class="ge-box pop-in">
             <div class="ge-title">SKIRMISH</div>
-            <div class="ge-sub">遭遇战配置初始化中…</div>
-            <button class="mb-btn primary" @onclick="BackToMenu">返回主菜单</button>
+            <div class="ge-sub">@T("Skirmish.Initializing", "Setting up skirmish…")</div>
+            <button class="mb-btn primary" @onclick="BackToMenu">@T("Common.BackToMenu", "Back to main menu")</button>
         </div>
     </div>
 }
@@ -29,10 +30,10 @@ else
     <div class="groom page-anim">
         <header class="groom-top item-in">
             <div class="gt-left">
-                <span class="gt-badge host">遭遇战<span class="en">SKIRMISH</span></span>
+                <span class="gt-badge host">@T("MainMenu.skirmish", "Skirmish")<span class="en">SKIRMISH</span></span>
                 <div class="gt-tbox">
-                    <span class="gt-title">本地对战配置</span>
-                    <span class="gt-en">@(Svc.LocalGame?.UIName ?? "—") · 单机 · 人类 @(1) + AI @(Svc.AIPlayers.Count)</span>
+                    <span class="gt-title">@T("Skirmish.LocalSetup", "Local match setup")</span>
+                    <span class="gt-en">@(Svc.LocalGame?.UIName ?? "—") · @T("Skirmish.Singleplayer", "Single player") · @T("Skirmish.Humans", "Humans") @(1) + AI @(Svc.AIPlayers.Count)</span>
                 </div>
             </div>
             <div class="gt-right">
@@ -44,16 +45,16 @@ else
             <!-- 左列：地图选择（参考原版 lbMapList） -->
             <section class="gl-panel gl-maplist item-in" style="animation-delay:50ms">
                 <header class="gl-ph">
-                    <span>地图选择 <em>MAP LIST</em></span>
+                    <span>@T("Skirmish.MapSelection", "Map selection") <em>MAP LIST</em></span>
                 </header>
                 <div class="gl-body">
                     <!-- 游戏模式选择（原版 cmbGameMode：切换模式过滤地图列表） -->
                     <div class="map-mode">
-                        <span class="mm-label">游戏模式</span>
+                        <span class="mm-label">@T("Skirmish.GameMode", "Game mode")</span>
                         <select class="gl-select" value="@_selectedMode" @onchange="OnModeChange">
                             @if (ModeOptions.Count == 0)
                             {
-                                <option value="">— 加载中 —</option>
+                                <option value="">@T("Common.Loading", "— Loading —")</option>
                             }
                             else
                             {
@@ -68,7 +69,7 @@ else
                     <div class="map-list">
                         @if (_mapOptions.Count == 0)
                         {
-                            <div class="map-list-empty">@(ModeOptions.Count == 0 ? "— 地图加载中 —" : "— 无匹配地图 —")</div>
+                            <div class="map-list-empty">@(ModeOptions.Count == 0 ? T("Skirmish.MapsLoading", "— Loading maps —") : T("Skirmish.NoMatchingMaps", "— No matching maps —"))</div>
                         }
                         else
                         {
@@ -91,14 +92,14 @@ else
 
                     <!-- 地图工具条（原版 tbMapSearch / btnShowFavoriteMaps / btnMapSortAlphabetically / btnPickRandomMap） -->
                     <div class="map-tools">
-                        <input class="gl-input map-search" placeholder="搜索地图…" value="@_mapSearch" @oninput="OnMapSearchInput" />
-                        <button type="button" class="mt-btn @(_favOnly ? "on" : "")" title="仅显示收藏地图" @onclick="OnToggleFavOnly">
+                        <input class="gl-input map-search" placeholder="@T("Skirmish.SearchMaps", "Search maps…")" value="@_mapSearch" @oninput="OnMapSearchInput" />
+                        <button type="button" class="mt-btn @(_favOnly ? "on" : "")" title="@T("Skirmish.FavoritesOnly", "Show favorite maps only")" @onclick="OnToggleFavOnly">
                             ★<span class="en">FAV</span>
                         </button>
-                        <button type="button" class="mt-btn @(_sortMode != 0 ? "on" : "")" title="按名称排序" @onclick="OnCycleSort">
+                        <button type="button" class="mt-btn @(_sortMode != 0 ? "on" : "")" title="@T("Skirmish.SortByName", "Sort by name")" @onclick="OnCycleSort">
                             <span class="en">@SortModeLabel</span>
                         </button>
-                        <button type="button" class="mt-btn" title="随机选择地图" @onclick="OnPickRandomMap">
+                        <button type="button" class="mt-btn" title="@T("Skirmish.PickRandom", "Pick a random map")" @onclick="OnPickRandomMap">
                             <span class="en">RND</span>
                         </button>
                     </div>
@@ -108,11 +109,11 @@ else
             <!-- 右上·左：玩家配置（参考原版 PlayerOptionsPanel：固定 8 行槽位表格，列=阵营/颜色/队伍） -->
             <section class="gl-panel gl-players item-in" style="animation-delay:100ms">
                 <header class="gl-ph">
-                    <span>玩家配置 <em>@TotalPlayers/@Svc.MaxPlayers</em></span>
+                    <span>@T("Skirmish.PlayerSetup", "Player setup") <em>@TotalPlayers/@Svc.MaxPlayers</em></span>
                     <span class="gl-ph-right">
-                        <span class="gl-lock">@(Svc.IsCoop ? "合作" : "对战")</span>
+                        <span class="gl-lock">@(Svc.IsCoop ? T("Skirmish.Coop", "Co-op") : T("Skirmish.Versus", "Versus"))</span>
                         <button type="button" class="mb-btn gl-reset" @onclick="OnResetAI">
-                            重置<span class="en">RESET</span>
+                            @T("Skirmish.Reset", "Reset")<span class="en">RESET</span>
                         </button>
                     </span>
                 </header>
@@ -120,11 +121,11 @@ else
                 <div class="gl-body">
                     <!-- 表头行（参考原版 PLAYER/SIDE/COLOR/TEAM 标题） -->
                     <div class="gl-tr gl-tr-head">
-                        <span class="gl-tc-name">玩家 <em>PLAYER</em></span>
-                        <span>阵营 <em>SIDE</em></span>
-                        <span>颜色 <em>COLOR</em></span>
-                        <span>出生点 <em>START</em></span>
-                        <span>队伍 <em>TEAM</em></span>
+                        <span class="gl-tc-name">@T("Lobby.Player", "Player") <em>PLAYER</em></span>
+                        <span>@T("Skirmish.Side", "Side") <em>SIDE</em></span>
+                        <span>@T("Skirmish.Color", "Color") <em>COLOR</em></span>
+                        <span>@T("Skirmish.Start", "Start") <em>START</em></span>
+                        <span>@T("Skirmish.Team", "Team") <em>TEAM</em></span>
                     </div>
 
                     <!-- 人类玩家行 -->
@@ -152,7 +153,7 @@ else
                             }
                         </select>
                         <select class="gl-select gl-start" disabled="@(Svc.ForceRandomStarts || Svc.IsHumanSpectator)" value="@HumanStartLocation" @onchange="OnHumanStartChange">
-                            <option value="0">随机</option>
+                            <option value="0">@T("Skirmish.Random", "Random")</option>
                             @foreach (var st in StartLocationOptions)
                             {
                                 <option value="@st">@st</option>
@@ -180,19 +181,19 @@ else
                                     <span class="slot-color" style="background:@ToCss(GetColor(ai.ColorId))"></span>
                                     <span class="nm">@ai.Name</span>
                                     <select class="gl-select ai-level" value="@ai.AILevel" @onchange="(e) => OnAILevelChange(ai, e)">
-                                        <option value="0">简单</option>
-                                        <option value="1">中等</option>
-                                        <option value="2">困难</option>
+                                        <option value="0">@T("Skirmish.Easy", "Easy")</option>
+                                        <option value="1">@T("Skirmish.Medium", "Medium")</option>
+                                        <option value="2">@T("Skirmish.Hard", "Hard")</option>
                                     </select>
-                                    <button class="ai-remove" title="移除" @onclick="() => OnRemoveAI(ai)" @onclick:stopPropagation="true">✕</button>
+                                    <button class="ai-remove" title="@T("Skirmish.Remove", "Remove")" @onclick="() => OnRemoveAI(ai)" @onclick:stopPropagation="true">✕</button>
                                 }
                                 else
                                 {
                                     <select class="gl-select ai-add-sel" value="0" @onchange="(e) => OnEmptySlotAdd(slotIndex, e)">
-                                        <option value="0">— 空位 —</option>
-                                        <option value="1">简单 AI</option>
-                                        <option value="2">中等 AI</option>
-                                        <option value="3">困难 AI</option>
+                                        <option value="0">@T("Skirmish.EmptySlot", "— Empty —")</option>
+                                        <option value="1">@T("Skirmish.EasyAI", "Easy AI")</option>
+                                        <option value="2">@T("Skirmish.MediumAI", "Medium AI")</option>
+                                        <option value="3">@T("Skirmish.HardAI", "Hard AI")</option>
                                     </select>
                                 }
                             </div>
@@ -215,7 +216,7 @@ else
                                 }
                             </select>
                             <select class="gl-select gl-start" disabled="@(ai is null || Svc.ForceRandomStarts)" value="@(ai?.StartingLocation ?? 0)" @onchange="(e) => { if (ai is not null) OnAIStartChange(ai, e); }">
-                                <option value="0">随机</option>
+                                <option value="0">@T("Skirmish.Random", "Random")</option>
                                 @foreach (var st in StartLocationOptions)
                                 {
                                     <option value="@st">@st</option>
@@ -262,12 +263,12 @@ else
                             <input type="checkbox" checked="@Svc.UseTeamStartMappings"
                                    disabled="@(!Svc.TeamStartMappingsAllowed)"
                                    @onchange="OnToggleAutoAlly" />
-                            <span>自动结盟<span class="en">AUTO ALLY</span></span>
+                            <span>@T("Skirmish.AutoAlly", "Auto ally")<span class="en">AUTO ALLY</span></span>
                         </label>
                         <select class="gl-select ally-preset" value="0"
                                 disabled="@(!Svc.UseTeamStartMappings || Svc.TeamStartMappingPresets.Count == 0)"
                                 @onchange="OnAutoAllyPresetChange">
-                            <option value="0">自定义</option>
+                            <option value="0">@T("Skirmish.Custom", "Custom")</option>
                             @for (int p = 0; p < Svc.TeamStartMappingPresets.Count; p++)
                             {
                                 <option value="@(p + 1)">@Svc.TeamStartMappingPresets[p].Name</option>
@@ -280,9 +281,9 @@ else
             <!-- 右上·右：游戏选项（参考原版 GameOptionsPanel + 预设 LoadOrSaveGameOptionPresetWindow） -->
             <section class="gl-panel gl-options item-in" style="animation-delay:150ms">
                 <header class="gl-ph">
-                    <span>游戏选项 <em>GAME OPTIONS</em></span>
+                    <span>@T("Skirmish.GameOptions", "Game options") <em>GAME OPTIONS</em></span>
                     <button type="button" class="mb-btn go-preset-btn" @onclick="OpenPresetDialog">
-                        预设<span class="en">PRESET</span>
+                        @T("Skirmish.Preset", "Preset")<span class="en">PRESET</span>
                     </button>
                 </header>
                 <div class="gl-body">
@@ -314,8 +315,8 @@ else
             <!-- 右下：地图预览（参考原版 MapPreviewBox，固定宽高比 + 下方出生点文字信息） -->
             <section class="gl-panel gl-preview item-in" style="animation-delay:200ms">
                 <header class="gl-ph">
-                    <span>地图预览 <em>MAP PREVIEW</em></span>
-                    <span class="gl-mapname">@(Svc.SelectedMap?.Map.Name ?? "未选择地图")</span>
+                    <span>@T("Skirmish.MapPreview", "Map preview") <em>MAP PREVIEW</em></span>
+                    <span class="gl-mapname">@(Svc.SelectedMap?.Map.Name ?? T("Skirmish.NoMapSelected", "No map selected"))</span>
                 </header>
                 <div class="gl-body">
                     <div class="map-preview-wrap">
@@ -323,7 +324,7 @@ else
                             <MapThumbnail MapHash="@Svc.SelectedMap?.Map.SHA1" MapName="@Svc.SelectedMap?.Map.UntranslatedName" CssClass="cfg-thumb" />
                             @if (Svc.SelectedMap is null)
                             {
-                                <div class="cfg-map-none">请选择地图</div>
+                                <div class="cfg-map-none">@T("Skirmish.SelectMap", "Please select a map")</div>
                             }
                             else
                             {
@@ -335,7 +336,7 @@ else
                                         <button type="button"
                                                 class="spawn-dot @spCls"
                                                 style="@spStyle"
-                                                title="@(sp.OccupantName is null ? $"出生点 {sp.Index}" : $"出生点 {sp.Index} · {sp.OccupantName}")"
+                                                title="@(sp.OccupantName is null ? F("Skirmish.SpawnPoint", "Spawn {0}", sp.Index) : F("Skirmish.SpawnPointOwner", "Spawn {0} · {1}", sp.Index, sp.OccupantName))"
                                                 @onclick="() => OnSpawnClick(sp.Index)">
                                             <span class="spawn-num">@sp.Index</span>
                                             @if (sp.OccupantName is not null)
@@ -356,13 +357,13 @@ else
                             @foreach (var sp in SpawnPoints)
                             {
                                 var spCoord = $"({sp.X * 100:0.##}%, {sp.Y * 100:0.##}%)";
-                                <div class="pos-item" title="出生点 @sp.Index · @spCoord">
+                                <div class="pos-item" title="@F("Skirmish.SpawnPointPos", "Spawn {0} · {1}", sp.Index, spCoord)">
                                     <span class="pos-idx">@sp.Index</span>
                                     @if (sp.OccupantName is not null)
                                     {
                                         <span class="pos-swatch" style="background:@ToCss(GetColor(sp.ColorIndex))"></span>
                                     }
-                                    <span class="pos-owner @(sp.OccupantName is null ? "free" : "")">@(sp.OccupantName ?? "空位")</span>
+                                    <span class="pos-owner @(sp.OccupantName is null ? "free" : "")">@(sp.OccupantName ?? T("Skirmish.FreeSlot", "Empty"))</span>
                                 </div>
                             }
                         </div>
@@ -373,16 +374,16 @@ else
                 @if (Svc.SelectedMap is not null)
                 {
                     <div class="map-info compact">
-                        <div class="mi-row"><span>地图</span><b>@Svc.SelectedMap.Map.Name</b></div>
-                        <div class="mi-row"><span>作者</span><b>@Svc.SelectedMap.Map.Author</b></div>
-                        <div class="mi-row"><span>尺寸</span><b>@Svc.SelectedMap.Map.GetSizeString()</b></div>
-                        <div class="mi-row"><span>模式</span><b>@Svc.SelectedMap.GameMode.UIName</b></div>
-                        <div class="mi-row"><span>人数</span><b>@(Svc.SelectedMap.MinPlayers)–@(Svc.SelectedMap.MaxPlayers)</b></div>
-                        <div class="mi-row"><span>排名</span><b class="mi-rank">@RankStars</b></div>
+                        <div class="mi-row"><span>@T("Skirmish.Map", "Map")</span><b>@Svc.SelectedMap.Map.Name</b></div>
+                        <div class="mi-row"><span>@T("Skirmish.Author", "Author")</span><b>@Svc.SelectedMap.Map.Author</b></div>
+                        <div class="mi-row"><span>@T("Skirmish.Size", "Size")</span><b>@Svc.SelectedMap.Map.GetSizeString()</b></div>
+                        <div class="mi-row"><span>@T("Skirmish.Mode", "Mode")</span><b>@Svc.SelectedMap.GameMode.UIName</b></div>
+                        <div class="mi-row"><span>@T("Skirmish.Players", "Players")</span><b>@(Svc.SelectedMap.MinPlayers)–@(Svc.SelectedMap.MaxPlayers)</b></div>
+                        <div class="mi-row"><span>@T("Skirmish.Rank", "Rank")</span><b class="mi-rank">@RankStars</b></div>
                         <div class="mi-row">
-                            <span>收藏</span>
+                            <span>@T("Skirmish.Favorite", "Favorite")</span>
                             <button type="button" class="mi-star @(Svc.SelectedMap.IsFavorite ? "on" : "")" @onclick="OnToggleFavorite">
-                                ★ <b>@(Svc.SelectedMap.IsFavorite ? "已收藏" : "收藏此图")</b>
+                                ★ <b>@(Svc.SelectedMap.IsFavorite ? T("Skirmish.Favorited", "Favorited") : T("Skirmish.AddFavorite", "Add to favorites"))</b>
                             </button>
                         </div>
                         @if (!string.IsNullOrEmpty(Svc.SelectedMap.Map.Briefing))
@@ -397,10 +398,10 @@ else
         <!-- 底部操作条（原版 btnLaunchGame/btnLeaveGame：开始游戏在地图/地区选择区下方，返回主菜单在右） -->
         <div class="groom-actions item-in" style="animation-delay:250ms">
             <button class="mb-btn primary start-btn" disabled="@(Svc.SelectedMap is null)" @onclick="OnStartGame">
-                开始游戏<span class="en">START</span>
+                @T("Skirmish.StartGame", "Start game")<span class="en">START</span>
             </button>
             <button class="mb-btn" @onclick="BackToMenu">
-                返回主菜单<span class="en">MAIN MENU</span>
+                @T("Common.BackToMenu", "Back to main menu")<span class="en">MAIN MENU</span>
             </button>
         </div>
 
@@ -413,22 +414,22 @@ else
             <div class="ctx-menu" style="left:@(_mapCtxX)px;top:@(_mapCtxY)px">
                 <div class="ctx-title">@m.Map.Name</div>
                 <button class="ctx-item" @onclick="() => ToggleMapFavorite(m)">
-                    <span>@(m.IsFavorite ? "取消收藏" : "收藏")</span><span class="en">@(m.IsFavorite ? "UNFAVORITE" : "FAVORITE")</span>
+                    <span>@(m.IsFavorite ? T("Skirmish.RemoveFavorite", "Remove from favorites") : T("Skirmish.Favorite", "Favorite"))</span><span class="en">@(m.IsFavorite ? "UNFAVORITE" : "FAVORITE")</span>
                 </button>
                 <button class="ctx-item" @onclick="() => CopyMapName(m)">
-                    <span>复制地图名</span><span class="en">COPY NAME</span>
+                    <span>@T("Skirmish.CopyMapName", "Copy map name")</span><span class="en">COPY NAME</span>
                 </button>
                 <button class="ctx-item" @onclick="() => CopyMapName(m, true)">
-                    <span>复制原名</span><span class="en">COPY ORIGINAL</span>
+                    <span>@T("Skirmish.CopyOriginalName", "Copy original name")</span><span class="en">COPY ORIGINAL</span>
                 </button>
                 @if (!m.Map.Official)
                 {
                     <div class="ctx-sep"></div>
                     <button class="ctx-item" @onclick="() => OpenMapFolder(m)">
-                        <span>显示在文件夹</span><span class="en">SHOW IN FOLDER</span>
+                        <span>@T("Skirmish.ShowInFolder", "Show in folder")</span><span class="en">SHOW IN FOLDER</span>
                     </button>
                     <button class="ctx-item warn" @onclick="() => DeleteMap(m)">
-                        <span>删除地图</span><span class="en">DELETE</span>
+                        <span>@T("Skirmish.DeleteMap", "Delete map")</span><span class="en">DELETE</span>
                     </button>
                 }
             </div>
@@ -443,6 +444,13 @@ else
 }
 
 @code {
+    /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
+    private static string T(string key, string fallback) => UiText.T(key, fallback);
+
+    /// <summary>带参数的文案（占位符 {0}…）。</summary>
+    private static string F(string key, string fallback, params object[] args)
+        => string.Format(UiText.T(key, fallback), args);
+
     private List<ColorOption> _colors = new();
     private string[] _sides = Array.Empty<string>();
     private string[] Sides => _sides;
@@ -516,8 +524,8 @@ else
     /// <summary>自动结盟出生点下拉选项（x=阻挡 / -=无 / A..D=队伍）。</summary>
     private static List<TeamOption> MappingTeamOptions => new()
     {
-        new(TeamStartMapping.NO_PLAYER, "阻挡"),
-        new(TeamStartMapping.NO_TEAM, "无队伍"),
+        new(TeamStartMapping.NO_PLAYER, T("Skirmish.Block", "Block")),
+        new(TeamStartMapping.NO_TEAM, T("Skirmish.NoTeam", "No team")),
         new("A", "A"),
         new("B", "B"),
         new("C", "C"),
@@ -551,6 +559,7 @@ else
         Svc.Changed += OnChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         MapLoader.MapLoadingComplete += OnMapLoadingComplete;
+        TranslationSvc.LanguageChanged += OnLanguageChanged;
         // 阵营国旗等游戏目录资源经 GameContentServer 伺服（幂等：已启动则复用）
         ContentServer.Start(ProgramConstants.GamePath);
         RefreshMaps();
@@ -570,14 +579,14 @@ else
         }
         return new List<ColorOption>
         {
-            new("红", 0, new Rgba32(255, 60, 60, 255)),
-            new("蓝", 1, new Rgba32(70, 120, 255, 255)),
-            new("青", 2, new Rgba32(80, 220, 255, 255)),
-            new("绿", 3, new Rgba32(80, 220, 120, 255)),
-            new("黄", 4, new Rgba32(255, 220, 80, 255)),
-            new("橙", 5, new Rgba32(255, 150, 60, 255)),
-            new("紫", 6, new Rgba32(190, 120, 255, 255)),
-            new("粉", 7, new Rgba32(255, 130, 200, 255)),
+            new(T("Skirmish.Color.Red", "Red"), 0, new Rgba32(255, 60, 60, 255)),
+            new(T("Skirmish.Color.Blue", "Blue"), 1, new Rgba32(70, 120, 255, 255)),
+            new(T("Skirmish.Color.Teal", "Teal"), 2, new Rgba32(80, 220, 255, 255)),
+            new(T("Skirmish.Color.Green", "Green"), 3, new Rgba32(80, 220, 120, 255)),
+            new(T("Skirmish.Color.Yellow", "Yellow"), 4, new Rgba32(255, 220, 80, 255)),
+            new(T("Skirmish.Color.Orange", "Orange"), 5, new Rgba32(255, 150, 60, 255)),
+            new(T("Skirmish.Color.Purple", "Purple"), 6, new Rgba32(190, 120, 255, 255)),
+            new(T("Skirmish.Color.Pink", "Pink"), 7, new Rgba32(255, 130, 200, 255)),
         };
     }
 
@@ -644,12 +653,19 @@ else
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
+    /// <summary>语言切换：颜色名来自 INI 翻译，需重载后刷新。</summary>
+    private void OnLanguageChanged() => _ = InvokeAsync(() =>
+    {
+        _colors = LoadColorsSafe();
+        StateHasChanged();
+    });
+
     // ── 顶部 / 地图 ──
 
     private async Task BackToMenu()
     {
-        var confirm = await MessageBox.ShowAsync("返回主菜单",
-            "返回将丢失当前未开始的遭遇战配置。确认返回？",
+        var confirm = await MessageBox.ShowAsync(T("Common.BackToMenu", "Back to main menu"),
+            T("Skirmish.LeaveBody", "Returning will discard the current unstarted skirmish setup. Return?"),
             MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
         if (!confirm)
             return;
@@ -776,7 +792,9 @@ else
     {
         gmm.IsFavorite = UserINISettings.Instance.ToggleFavoriteMap(
             gmm.Map.SHA1, gmm.GameMode.Name, gmm.IsFavorite);
-        _ = JS.InvokeVoidAsync("cncnet.toast", gmm.IsFavorite ? $"已收藏：{gmm.Map.Name}" : $"已取消收藏：{gmm.Map.Name}");
+        _ = JS.InvokeVoidAsync("cncnet.toast", gmm.IsFavorite
+            ? F("Skirmish.FavoriteAdded", "Added to favorites: {0}", gmm.Map.Name)
+            : F("Skirmish.FavoriteRemoved", "Removed from favorites: {0}", gmm.Map.Name));
         CloseMapContextMenu();
 
         // 在“仅显示收藏”模式下取消收藏后，必须重新过滤列表，否则地图仍会留在结果里。
@@ -789,7 +807,7 @@ else
     private void CopyMapName(GameModeMap gmm, bool original = false)
     {
         _ = JS.InvokeVoidAsync("cncnet.copyText", original ? gmm.Map.UntranslatedName : gmm.Map.Name);
-        _ = JS.InvokeVoidAsync("cncnet.toast", "地图名已复制到剪贴板");
+        _ = JS.InvokeVoidAsync("cncnet.toast", T("Skirmish.MapNameCopied", "Map name copied to clipboard"));
         CloseMapContextMenu();
     }
 
@@ -797,8 +815,8 @@ else
     private async Task DeleteMap(GameModeMap gmm)
     {
         CloseMapContextMenu();
-        var confirm = await MessageBox.ShowAsync("删除地图",
-            $"确定删除自定义地图“{gmm.Map.UntranslatedName}”吗？该地图文件将被永久移除。",
+        var confirm = await MessageBox.ShowAsync(T("Skirmish.DeleteMap", "Delete map"),
+            F("Skirmish.DeleteBody", "Delete custom map \"{0}\"? The map file will be permanently removed.", gmm.Map.UntranslatedName),
             MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
         if (!confirm)
             return;
@@ -808,7 +826,7 @@ else
                 Svc.ClearSelectedMap();
             MapLoader.DeleteCustomMap(gmm);
             RefreshMaps();
-            _ = JS.InvokeVoidAsync("cncnet.toast", $"已删除：{gmm.Map.UntranslatedName}");
+            _ = JS.InvokeVoidAsync("cncnet.toast", F("Skirmish.Deleted", "Deleted: {0}", gmm.Map.UntranslatedName));
         }
         catch (Exception ex)
         {
@@ -836,8 +854,13 @@ else
     private bool _favOnly;
     private int _sortMode; // 0=默认 1=A–Z 2=Z–A
 
-    private static readonly string[] SortModeLabels = { "默认", "A–Z", "Z–A" };
-    private string SortModeLabel => SortModeLabels[Math.Clamp(_sortMode, 0, 2)];
+    /// <summary>排序模式显示名（0=默认 1=A–Z 2=Z–A，随语言切换动态取文案）。</summary>
+    private string SortModeLabel => _sortMode switch
+    {
+        1 => "A–Z",
+        2 => "Z–A",
+        _ => T("Skirmish.SortDefault", "Default"),
+    };
 
     private void OnMapSearchInput(ChangeEventArgs e)
     {
@@ -935,7 +958,7 @@ else
         var occupant = Svc.GetPlayerInfos().FirstOrDefault(p => p.StartingLocation == index);
         if (occupant is not null && !ReferenceEquals(occupant, target))
         {
-            _ = JS.InvokeVoidAsync("cncnet.toast", $"出生点 {index} 已被 {occupant.Name} 占用");
+            _ = JS.InvokeVoidAsync("cncnet.toast", F("Skirmish.SpawnOccupied", "Spawn {0} is already occupied by {1}", index, occupant.Name));
             return;
         }
 
@@ -1109,6 +1132,7 @@ else
         Svc.Changed -= OnChanged;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
+        TranslationSvc.LanguageChanged -= OnLanguageChanged;
     }
 
     private sealed record MapOption(GameModeMap Value, int Index, string Mode, string Display);
