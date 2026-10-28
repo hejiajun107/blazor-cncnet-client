@@ -60,7 +60,7 @@ else
                             {
                                 @foreach (var m in ModeOptions)
                                 {
-                                    <option value="@m">@m</option>
+                                    <option value="@m">@ModeDisplay(m)</option>
                                 }
                             }
                         </select>
@@ -304,7 +304,7 @@ else
                             <select class="gl-select" value="@dd.SelectedIndex" @onchange="(e) => OnDropDownOptionChange(dd, e)">
                                 @for (int i = 0; i < dd.Items.Count; i++)
                                 {
-                                    <option value="@i">@dd.Items[i]</option>
+                                    <option value="@i">@dd.DisplayItems[i]</option>
                                 }
                             </select>
                         </div>
@@ -464,11 +464,18 @@ else
     /// <summary>当前选择的游戏模式（原版 cmbGameMode，按 MapLoader.GameModes 的 INI 顺序）。</summary>
     private string _selectedMode = string.Empty;
 
-    /// <summary>模式下拉选项（只列出有地图的模式）。</summary>
+    /// <summary>
+    /// 模式下拉选项（只列出有地图的模式）。保存 <see cref="GameMode.Name"/>（INI 名）作为稳定标识，
+    /// 显示名按当前语言实时查 <see cref="GameMode.UIName"/>，切换语言后选中项与过滤都不受影响。
+    /// </summary>
     private List<string> ModeOptions => MapLoader.GameModes
-        .Where(gm => MapLoader.GameModeMaps.Any(gmm => gmm.GameMode.UIName == gm.UIName))
-        .Select(gm => gm.UIName)
+        .Where(gm => MapLoader.GameModeMaps.Any(gmm => gmm.GameMode.Name == gm.Name))
+        .Select(gm => gm.Name)
         .ToList();
+
+    /// <summary>模式 INI 名 → 当前语言下的显示名。</summary>
+    private string ModeDisplay(string modeName) =>
+        MapLoader.GameModes.FirstOrDefault(gm => gm.Name == modeName)?.UIName ?? modeName;
 
     /// <summary>地图加载完成前模式为空；加载后默认选中第一个模式。</summary>
     private void EnsureSelectedMode()
@@ -486,7 +493,7 @@ else
         // 当前选中地图不属于新模式时，自动选新模式第一张图（原版 cmbGameMode 切换语义）
         if (Svc.SelectedMap is not null
             && _selectedMode.Length > 0
-            && Svc.SelectedMap.GameMode.UIName != _selectedMode
+            && Svc.SelectedMap.GameMode.Name != _selectedMode
             && _mapOptions.Count > 0)
         {
             try
@@ -593,7 +600,7 @@ else
     private void RefreshMaps()
     {
         IEnumerable<MapOption> query = MapLoader.GameModeMaps
-            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()));
+            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.Name, gmm.Map.Name));
 
         // 工具条过滤/排序（原版 TbMapSearch_InputReceived / btnShowFavoriteMaps / btnMapSortAlphabetically）
         if (_favOnly)

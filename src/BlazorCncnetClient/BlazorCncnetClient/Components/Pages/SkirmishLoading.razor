@@ -38,7 +38,7 @@ else
 
             <div class="gload-info">
                 <div class="gi-row"><span>@T("Lobby.Mode", "Mode")</span><b>@(Svc.SelectedMap?.GameMode.UIName ?? "—")</b></div>
-                <div class="gi-row"><span>@T("Lobby.Map", "Map")</span><b>@(Svc.SelectedMap?.Map.UntranslatedName ?? "—")</b></div>
+                <div class="gi-row"><span>@T("Lobby.Map", "Map")</span><b>@(Svc.SelectedMap?.Map.Name ?? "—")</b></div>
                 <div class="gi-row"><span>@T("Lobby.Player", "Player")</span><b>@F("Loading.PlayersDetail", "{0} players (human {1} + AI {2})", TotalPlayers, 1, Svc.AIPlayers.Count)</b></div>
                 <div class="gi-row"><span>GameID</span><b>#@Svc.UniqueGameId</b></div>
             </div>

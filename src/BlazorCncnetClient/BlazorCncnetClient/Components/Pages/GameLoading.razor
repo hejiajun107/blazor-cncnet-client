@@ -42,7 +42,7 @@ else
             <div class="gload-info">
                 <div class="gi-row"><span>@T("Loading.Room", "Room")</span><b>@Room.RoomName</b></div>
                 <div class="gi-row"><span>GameID</span><b>#@Room.UniqueGameId</b></div>
-                <div class="gi-row"><span>@T("Lobby.Map", "Map")</span><b>@(Room.SelectedMap?.Map.UntranslatedName ?? "—")</b></div>
+                <div class="gi-row"><span>@T("Lobby.Map", "Map")</span><b>@(Room.SelectedMap?.Map.Name ?? "—")</b></div>
                 <div class="gi-row"><span>@T("Lobby.Mode", "Mode")</span><b>@(Room.SelectedMap?.GameMode.UIName ?? "—")</b></div>
                 <div class="gi-row"><span>@T("Lobby.Player", "Player")</span><b>@F("Lobby.NPlayers", "{0} players", Room.Players.Count)</b></div>
             </div>

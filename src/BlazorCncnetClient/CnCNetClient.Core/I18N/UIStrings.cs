@@ -20,6 +20,14 @@ public static class UIStrings
         new("CnCNetClient.Core.Resources.UI", typeof(UIStrings).Assembly);
 
     /// <summary>
+    /// 当前 UI 区域文化（由 TranslationService 在切换语言时设置）。为 null 时退回
+    /// <see cref="CultureInfo.CurrentUICulture"/>。
+    /// Blazor 的渲染批次可能跑在不同的线程上，线程文化会随线程变化（切语言后部分页面/弹窗仍用旧语言）；
+    /// 这里改用进程级显式文化，保证任何线程查表结果一致。
+    /// </summary>
+    public static CultureInfo? Culture { get; set; }
+
+    /// <summary>
     /// 按当前 UI 区域性查找 Resx 文案；缺失或异常时回退到 <paramref name="defaultValue"/>。
     /// </summary>
     public static string Lookup(string key, string defaultValue)
@@ -29,7 +37,7 @@ public static class UIStrings
 
         try
         {
-            string? value = Resources.GetString(key, CultureInfo.CurrentUICulture);
+            string? value = Resources.GetString(key, Culture ?? CultureInfo.CurrentUICulture);
             return string.IsNullOrEmpty(value) ? defaultValue : value;
         }
         catch (MissingManifestResourceException)

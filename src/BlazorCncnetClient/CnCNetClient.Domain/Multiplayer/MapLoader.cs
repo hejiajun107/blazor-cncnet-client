@@ -68,6 +68,76 @@ namespace CnCNetClient.Domain.Multiplayer
                 GameModes = gameModes;
                 GameModeMaps = gameModeMaps;
             }
+
+            // 房间列表每张卡片每次渲染都要做匹配，预先建索引避免反复 O(卡片×地图) 扫描。
+            // 用锁保证并发渲染时只建一次（字典发布前不可见）。
+            private readonly object _indexLock = new();
+            private Dictionary<string, Map>? _hashIndex;
+            private Dictionary<string, Map>? _nameIndex;
+            private Dictionary<string, Map>? _normalizedNameIndex;
+            private Dictionary<string, Map>? _stemIndex;
+
+            private void EnsureIndexes()
+            {
+                if (_hashIndex is not null)
+                    return;
+
+                lock (_indexLock)
+                {
+                    if (_hashIndex is not null)
+                        return;
+
+                    var hashIndex = new Dictionary<string, Map>(StringComparer.OrdinalIgnoreCase);
+                    var nameIndex = new Dictionary<string, Map>(StringComparer.OrdinalIgnoreCase);
+                    var normalizedNameIndex = new Dictionary<string, Map>(StringComparer.OrdinalIgnoreCase);
+                    var stemIndex = new Dictionary<string, Map>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var map in GameModeMaps.Select(gmm => gmm.Map))
+                    {
+                        if (!string.IsNullOrEmpty(map.SHA1))
+                            hashIndex.TryAdd(map.SHA1, map);
+
+                        if (!string.IsNullOrEmpty(map.UntranslatedName))
+                        {
+                            nameIndex.TryAdd(map.UntranslatedName, map);
+                            normalizedNameIndex.TryAdd(NormalizeMapName(map.UntranslatedName), map);
+                        }
+
+                        string stem = NormalizeMapName(GetPathStem(map.BaseFilePath));
+                        if (stem.Length > 0)
+                            stemIndex.TryAdd(stem, map);
+                    }
+
+                    _stemIndex = stemIndex;
+                    _normalizedNameIndex = normalizedNameIndex;
+                    _nameIndex = nameIndex;
+                    _hashIndex = hashIndex;
+                }
+            }
+
+            public Map? FindByHash(string hash)
+            {
+                EnsureIndexes();
+                return _hashIndex!.TryGetValue(hash, out var map) ? map : null;
+            }
+
+            public Map? FindByName(string name)
+            {
+                EnsureIndexes();
+                return _nameIndex!.TryGetValue(name, out var map) ? map : null;
+            }
+
+            public Map? FindByNormalizedName(string normalizedName)
+            {
+                EnsureIndexes();
+                return _normalizedNameIndex!.TryGetValue(normalizedName, out var map) ? map : null;
+            }
+
+            public Map? FindByStem(string normalizedStem)
+            {
+                EnsureIndexes();
+                return _stemIndex!.TryGetValue(normalizedStem, out var map) ? map : null;
+            }
         }
 
         private volatile Snapshot _snapshot = new Snapshot(Array.Empty<GameMode>(), new GameModeMapCollection(Array.Empty<GameMode>()));
@@ -78,6 +148,143 @@ namespace CnCNetClient.Domain.Multiplayer
         public IReadOnlyList<GameMode> GameModes => _snapshot.GameModes;
 
         public IReadOnlyGameModeMapCollection GameModeMaps => _snapshot.GameModeMaps;
+
+        /// <summary>
+        /// 取本机已安装地图在当前语言下的显示名。
+        /// 联机房间列表只有房主广播的未翻译原文（GAME 8 名字 / 13 哈希字段），本地装了同一张图时
+        /// 即可换成当前语言的名字。匹配顺序：SHA1 → 原始名 → 归一化名（忽略空格/标点/大小写）
+        /// → 文件名主干（房主广播文件名时）。未安装则原样返回（由缺失提示处理）。
+        /// </summary>
+        public string GetLocalizedMapName(string mapHash, string untranslatedName)
+        {
+            Snapshot snapshot = _snapshot;
+
+            if (!string.IsNullOrEmpty(mapHash))
+            {
+                var byHash = snapshot.FindByHash(mapHash.Trim());
+                if (byHash is not null)
+                    return byHash.Name;
+            }
+
+            if (!string.IsNullOrEmpty(untranslatedName))
+            {
+                var byName = snapshot.FindByName(untranslatedName);
+                if (byName is not null)
+                    return byName.Name;
+
+                // 不同地图包/服务端的 Description 常有细微差异（"(2) Dust Bowl" vs "(2) Dustbowl"），
+                // 去掉空格与标点后比较可覆盖绝大多数情况。
+                string normalized = NormalizeMapName(untranslatedName);
+                if (normalized.Length > 0)
+                {
+                    var byNormalized = snapshot.FindByNormalizedName(normalized);
+                    if (byNormalized is not null)
+                        return byNormalized.Name;
+
+                    var byStem = snapshot.FindByStem(NormalizeMapName(GetPathStem(untranslatedName)));
+                    if (byStem is not null)
+                        return byStem.Name;
+                }
+            }
+
+            LogUnresolvedRoomMap(mapHash, untranslatedName, snapshot);
+
+            // 本机没装这张图时只能显示房主广播的原文，但把 "[8] " 这类人数前缀去掉——
+            // 原版 UI 也不显示它，留着会显示成 "[8] Black Sea" 这种很怪的名字。
+            return string.IsNullOrWhiteSpace(untranslatedName)
+                ? untranslatedName
+                : StripPlayerCountPrefix(untranslatedName);
+        }
+
+        /// <summary>
+        /// 房间列表出现本机匹配不到的地图时记录一次（同一个「哈希|名字」只记一条）。
+        /// 房间列表是唯一无法离线复现的输入源，出问题时靠这条日志定位是本机缺图还是匹配规则不覆盖。
+        /// </summary>
+        private readonly HashSet<string> _loggedUnresolvedRoomMaps = new(StringComparer.OrdinalIgnoreCase);
+
+        private void LogUnresolvedRoomMap(string mapHash, string untranslatedName, Snapshot snapshot)
+        {
+            if (string.IsNullOrEmpty(untranslatedName) && string.IsNullOrEmpty(mapHash))
+                return;
+
+            string key = (mapHash ?? string.Empty) + "|" + (untranslatedName ?? string.Empty);
+            lock (_loggedUnresolvedRoomMaps)
+            {
+                if (!_loggedUnresolvedRoomMaps.Add(key))
+                    return;
+            }
+
+            Logger.Log($"房间列表地图名未匹配到本机地图：name=\"{untranslatedName}\" hash=\"{mapHash}\"（本机地图 {snapshot.GameModeMaps.Count} 条）");
+        }
+
+        /// <summary>取路径最后一段（兼容 / 与 \ 分隔符），不区分是否带扩展名。</summary>
+        private static string GetPathStem(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return string.Empty;
+
+            int separator = path.LastIndexOfAny(['\\', '/']);
+            return separator >= 0 ? path.Substring(separator + 1) : path;
+        }
+
+        /// <summary>
+        /// 去掉 "(8) " / "[2-8] " 这类人数前缀。本机 MPMaps.ini 用圆括号，房主的地图包常写成方括号，
+        /// 两种都要处理：否则同一张已安装的地图也会匹配失败
+        /// （实测日志：name="[8] Russian Roulette"，本机是 "(8) Russian Roulette"）。
+        /// 只剥短前缀（最多 6 字符），避免把名字里正常的括号内容吃掉。
+        /// </summary>
+        private static string StripPlayerCountPrefix(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return name ?? string.Empty;
+
+            string trimmed = name.Trim();
+
+            if (trimmed.Length > 2 && (trimmed[0] == '(' || trimmed[0] == '['))
+            {
+                char close = trimmed[0] == '(' ? ')' : ']';
+                int closeIndex = trimmed.IndexOf(close);
+                if (closeIndex > 0 && closeIndex <= 6)
+                    return trimmed[(closeIndex + 1)..].Trim();
+            }
+
+            return trimmed;
+        }
+
+        /// <summary>
+        /// 比较用的地图名归一化：剥掉人数前缀后只保留字母与数字并转小写。
+        /// 房主客户端的地图包与我们不完全一致时，名字常有括号样式、空格、大小写等差异。
+        /// </summary>
+        private static string NormalizeMapName(string name)
+        {
+            string trimmed = StripPlayerCountPrefix(name);
+            if (trimmed.Length == 0)
+                return string.Empty;
+
+            var builder = new System.Text.StringBuilder(trimmed.Length);
+            foreach (char c in trimmed)
+            {
+                if (char.IsLetterOrDigit(c))
+                    builder.Append(char.ToLowerInvariant(c));
+            }
+
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// 取游戏模式在当前语言下的显示名。房主广播的是未翻译的 UI 名
+        /// （GAME 9 字段，见 GameRoomService 组播），本地匹配到该模式后换成译文。
+        /// </summary>
+        public string GetLocalizedGameModeName(string untranslatedName)
+        {
+            if (string.IsNullOrEmpty(untranslatedName))
+                return untranslatedName;
+
+            var gameMode = _snapshot.GameModes.FirstOrDefault(
+                gm => string.Equals(gm.UntranslatedUIName, untranslatedName, StringComparison.OrdinalIgnoreCase));
+
+            return gameMode?.UIName ?? untranslatedName;
+        }
 
         /// <summary>
         /// An event that is fired when the maps have been loaded.

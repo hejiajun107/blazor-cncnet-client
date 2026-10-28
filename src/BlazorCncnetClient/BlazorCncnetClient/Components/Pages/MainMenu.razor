@@ -147,7 +147,7 @@ else
         if (!m.Key.StartsWith("plugin:", StringComparison.Ordinal))
             return UiText.T("MainMenu." + m.Key, m.En);
 
-        return System.Globalization.CultureInfo.CurrentUICulture.Name
+        return (CnCNetClient.Core.I18N.UIStrings.Culture ?? System.Globalization.CultureInfo.CurrentUICulture).Name
             .StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? m.Cn : m.En;
     }
 

@@ -74,6 +74,17 @@
   <data name="Client:UI:Startup.FailedLogHint" xml:space="preserve">
     <value>Details have been written to the log: logs\client-*.log</value>
   </data>
+  <!-- 禁止文件检查（ClientDefinitions.ini [Settings] ForbiddenFiles） -->
+  <data name="Client:UI:Startup.ForbiddenFilesTitle" xml:space="preserve">
+    <value>Forbidden files detected</value>
+  </data>
+  <data name="Client:UI:Startup.ForbiddenFilesMessage" xml:space="preserve">
+    <value>The following files must not be present in the game directory:
+
+{0}
+
+They interfere with the game/mod and must be removed before the client can start.</value>
+  </data>
   <!-- 设置页缺失键（nav/section 由 data 驱动，键名必须与 Settings.razor 的 key 一致） -->
   <data name="Client:UI:Settings.Nav.Components" xml:space="preserve">
     <value>Components</value>

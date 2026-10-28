@@ -3,8 +3,10 @@
 @using CnCNetClient.Core
 @using CnCNetClient.Online
 @using CnCNetClient.Domain.Multiplayer.CnCNet
+@using CnCNetClient.Domain.Multiplayer
 @using SixLabors.ImageSharp.PixelFormats
 @inject LobbyService LobbySvc
+@inject MapLoader MapLoader
 @inject GameRoomNavigation NavData
 @inject ConnectionMonitor Mon
 @inject IJSRuntime JS
@@ -85,9 +87,9 @@
                                 <span class="gc-name">@(g.Passworded ? "◈ " : "")@g.RoomName</span>
                                 <span class="gc-players @(g.IsFull ? "full" : "")">@g.PlayerCount/@g.MaxPlayers</span>
                             </div>
-                            <div class="gc-sub" title="@g.Map">@g.Map</div>
+                            <div class="gc-sub" title="@DisplayMap(g)">@DisplayMap(g)</div>
                             <div class="gc-meta">
-                                <span class="gc-mode">@g.GameMode</span>
+                                <span class="gc-mode">@DisplayMode(g)</span>
                                 <span class="gc-host">@g.HostName</span>
                                 <span class="gc-tag">@(g.IsLadder ? T("Lobby.Ladder", "Ladder") : g.Tunneled ? T("Lobby.Tunneled", "Tunnel") : T("Lobby.Dynamic", "Dynamic"))</span>
                             </div>
@@ -356,9 +358,9 @@
                 <MapThumbnail MapHash="@_selectedGame.MapHash" MapName="@_selectedGame.Map" />
             </div>
             <div class="gd-rows">
-                <div class="gd-row"><span>@T("Lobby.Map", "Map")</span><b>@_selectedGame.Map</b></div>
+                <div class="gd-row"><span>@T("Lobby.Map", "Map")</span><b>@DisplayMap(_selectedGame)</b></div>
                 <div class="gd-row"><span>@T("Lobby.Host", "Host")</span><b>@_selectedGame.HostName</b></div>
-                <div class="gd-row"><span>@T("Lobby.Mode", "Mode")</span><b>@_selectedGame.GameMode</b></div>
+                <div class="gd-row"><span>@T("Lobby.Mode", "Mode")</span><b>@DisplayMode(_selectedGame)</b></div>
                 <div class="gd-row"><span>@T("Lobby.Players", "Players")</span><b>@_selectedGame.PlayerCount / @_selectedGame.MaxPlayers</b></div>
                 <div class="gd-row"><span>@T("Lobby.Type", "Type")</span><b>@(_selectedGame.IsLadder ? T("Lobby.Ladder", "Ladder") : _selectedGame.Tunneled ? T("Lobby.Tunneled", "Tunnel") : T("Lobby.Dynamic", "Dynamic"))</b></div>
                 @if (_selectedGame.Passworded)
@@ -551,15 +553,27 @@
             var filter = _gameFilter.Trim();
             if (filter.Length > 0)
             {
+                // 搜索同时匹配显示名（译文）与原始广播值：玩家看到的是译文，按译文搜索必须能命中
                 query = query.Where(g => g.RoomName.Contains(filter, StringComparison.OrdinalIgnoreCase)
                                         || g.Map.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                                        || DisplayMap(g).Contains(filter, StringComparison.OrdinalIgnoreCase)
                                         || g.HostName.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                                        || g.GameMode.Contains(filter, StringComparison.OrdinalIgnoreCase));
+                                        || g.GameMode.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                                        || DisplayMode(g).Contains(filter, StringComparison.OrdinalIgnoreCase));
             }
 
             return query.ToList();
         }
     }
+
+    /// <summary>
+    /// 房间列表的地图名：房主广播的是未翻译原文，本机装了同一张图时换成当前语言的名字
+    /// （未安装则原样显示，由进入房间的缺失地图提示处理）。
+    /// </summary>
+    private string DisplayMap(LobbyGameItem game) => MapLoader.GetLocalizedMapName(game.MapHash, game.Map);
+
+    /// <summary>房间列表的模式名：房主广播的是未翻译 UI 名，按本机模式表换成当前语言的名字。</summary>
+    private string DisplayMode(LobbyGameItem game) => MapLoader.GetLocalizedGameModeName(game.GameMode);
 
     // M3.8 私聊中心：当前激活会话
     private PmSession? ActivePmSession =>
@@ -572,6 +586,10 @@
         LobbySvc.PmReceived += OnPmReceived;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
+        // 地图快照由 Program.cs 在启动时预热、异步发布。房间列表可能先于快照渲染完成，
+        // 此时 DisplayMap 匹配不到本机地图只能显示房主广播的英文原名；快照就绪后必须重渲染一次，
+        // 否则英文名会一直留在卡片上直到房间列表本身发生下一次变化。
+        MapLoader.MapLoadingComplete += OnMapLoadingComplete;
         // 连接状态变化时刷新左侧状态条（lt-conn），否则停留在进入页面时的旧值（顶栏/底栏已实时刷新）
         Mon.StateChanged += OnMonConnectionChanged;
 
@@ -659,6 +677,8 @@
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
     private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnMapLoadingComplete(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
 
     private void OnChannelChanged(ChangeEventArgs e)
     {
@@ -1080,6 +1100,7 @@
     {
         LobbySvc.Changed -= OnChanged;
         LobbySvc.PmChanged -= OnPmChanged;
+        MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
         LobbySvc.PmReceived -= OnPmReceived;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         TranslationSvc.LanguageChanged -= OnLanguageChanged;

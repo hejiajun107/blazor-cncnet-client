@@ -362,6 +362,75 @@ public class Translation : ICloneable
     }
 
     /// <summary>
+    /// 地图文本翻译（Description / Briefing）。
+    /// 先按完整相对路径查 <c>INI:Maps:&lt;路径&gt;:&lt;字段&gt;</c>（兼容 / 与 \ 两种分隔符）；
+    /// 未命中时按地图文件名词干回退：翻译文件里的路径是按某个地图包目录结构编写的，
+    /// 而实际安装的地图可能被重新归类到别的目录（如 Maps\Yuri's Revenge → Maps\Standard），
+    /// 只用完整路径会导致所有官方地图名都显示英文。
+    /// </summary>
+    /// <param name="baseFilePath">地图相对路径（不含扩展名），如 Maps/Standard/xmp29u2。</param>
+    /// <param name="field">字段名，如 Description、Briefing。</param>
+    /// <param name="defaultValue">无译文时的回退值。</param>
+    public string LookUpMap(string baseFilePath, string field, string defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(baseFilePath))
+            return defaultValue;
+
+        string normalized = baseFilePath.Replace('/', '\\').Trim('\\');
+
+        if (Values.TryGetValue(MAP_KEY_PREFIX + normalized + ":" + field, out string? value))
+            return value;
+
+        string forwardSlashKey = MAP_KEY_PREFIX + normalized.Replace('\\', '/') + ":" + field;
+        if (Values.TryGetValue(forwardSlashKey, out value))
+            return value;
+
+        int separator = normalized.LastIndexOf('\\');
+        string stem = separator >= 0 ? normalized.Substring(separator + 1) : normalized;
+
+        if (MapTextIndex.TryGetValue(stem + "|" + field, out string? fallback))
+            return fallback;
+
+        return defaultValue;
+    }
+
+    /// <summary>按“文件名词干|字段”索引地图翻译条目，供 <see cref="LookUpMap"/> 的路径回退使用。</summary>
+    private Dictionary<string, string>? _mapTextIndex;
+
+    private Dictionary<string, string> MapTextIndex
+    {
+        get
+        {
+            if (_mapTextIndex is not null)
+                return _mapTextIndex;
+
+            var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (key, value) in Values)
+            {
+                if (!key.StartsWith(MAP_KEY_PREFIX, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                int fieldSeparator = key.LastIndexOf(':');
+                if (fieldSeparator <= MAP_KEY_PREFIX.Length)
+                    continue;
+
+                string path = key.Substring(MAP_KEY_PREFIX.Length, fieldSeparator - MAP_KEY_PREFIX.Length);
+                string fieldName = key.Substring(fieldSeparator + 1);
+
+                int separator = path.LastIndexOfAny(['\\', '/']);
+                string stem = separator >= 0 ? path.Substring(separator + 1) : path;
+
+                index.TryAdd(stem + "|" + fieldName, value);
+            }
+
+            return _mapTextIndex = index;
+        }
+    }
+
+    private const string MAP_KEY_PREFIX = "INI:Maps:";
+
+    /// <summary>
     /// Looks up the translated value that corresponds to the given key.
     /// </summary>
     /// <param name="key">The translation key (identifier).</param>

@@ -39,6 +39,11 @@ else
             </div>
             <div class="gt-right">
                 <span class="gt-player">@ProgramConstants.PLAYERNAME</span>
+                @if (Room.IsHost)
+                {
+                    <!-- 房间设置改为弹窗：锁定等房主专属项不再混在「选项」面板里 -->
+                    <button type="button" class="mb-btn" @onclick="OpenRoomSettings">@T("GameLobby.RoomSettings", "Room settings")<span class="en">SETUP</span></button>
+                }
                 <button class="mb-btn danger" @onclick="OnLeave">@T("GameLobby.LeaveRoom", "Leave room")</button>
             </div>
         </header>
@@ -52,7 +57,7 @@ else
         }
         else
         {
-            <div class="groom-grid">
+            <div class="groom-grid groom-grid-room">
                 <section class="gl-panel gl-slots item-in" style="animation-delay:50ms">
                     <header class="gl-ph">
                         <span>@T("Lobby.Players", "Players") <em>@Room.Players.Count/@Room.MaxPlayers</em></span>
@@ -61,40 +66,135 @@ else
                         </span>
                     </header>
                     <div class="gl-body">
+                        <!-- 与遭遇战页统一：PLAYER / SIDE / COLOR / START / TEAM 五列表格，自己的行可改 -->
+                        <div class="gl-tr gl-tr-head">
+                            <span class="gl-tc-name">@T("Lobby.Player", "Player") <em>PLAYER</em></span>
+                            <span>@T("Skirmish.Side", "Side") <em>SIDE</em></span>
+                            <span>@T("Skirmish.Color", "Color") <em>COLOR</em></span>
+                            <span>@T("Skirmish.Start", "Start") <em>START</em></span>
+                            <span>@T("Skirmish.Team", "Team") <em>TEAM</em></span>
+                        </div>
                         @for (int i = 0; i < Room.MaxPlayers; i++)
                         {
                             var slotPlayer = i < Room.Players.Count ? Room.Players.ElementAt(i) : null;
-                            <div class="slot @(slotPlayer is null ? "empty" : IsSelf(slotPlayer) ? "self" : "")">
-                                <span class="slot-idx">@(i + 1)</span>
-                                @if (slotPlayer is null)
+                            var isSelf = slotPlayer is not null && IsSelf(slotPlayer);
+                            <div class="gl-tr @(slotPlayer is null ? "empty-slot" : isSelf ? "human sel" : "human")">
+                                <div class="gl-tc-name">
+                                    <span class="slot-idx">@(i + 1)</span>
+                                    @if (slotPlayer is null)
+                                    {
+                                        <span class="nm dim">@T("GameLobby.WaitingForPlayers", "Waiting for players…")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="slot-color" style="background:@ToCss(GetColor(slotPlayer.ColorId))"></span>
+                                        <span class="nm">@slotPlayer.Name</span>
+                                        @if (i == 0)
+                                        {
+                                            <em class="slot-host">HOST</em>
+                                        }
+                                        <span class="slot-ready @(slotPlayer.Ready ? "on" : "")">@(slotPlayer.Ready ? "READY" : "…")</span>
+                                    }
+                                </div>
+                                @if (slotPlayer is not null)
                                 {
-                                    <span class="slot-empty-text">@T("GameLobby.WaitingForPlayers", "Waiting for players…")</span>
+                                    <div class="gl-side">
+                                        <select class="gl-select" disabled="@(!isSelf)" value="@slotPlayer.SideId" @onchange="OnSideChange">
+                                            @for (int s = 0; s < Sides.Length; s++)
+                                            {
+                                                <option value="@s">@Sides[s]</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <select class="gl-select color-select" disabled="@(!isSelf)" value="@slotPlayer.ColorId"
+                                            @onchange="(e) => { if (int.TryParse(e.Value?.ToString(), out var picked)) SetColor(picked); }">
+                                        @foreach (var c in _colors)
+                                        {
+                                            <option value="@c.Index">@c.Name</option>
+                                        }
+                                    </select>
+                                    <select class="gl-select gl-start" disabled="@(!isSelf)" value="@slotPlayer.StartingLocation" @onchange="OnStartChange">
+                                        @for (int st = 1; st <= Room.MaxPlayers; st++)
+                                        {
+                                            <option value="@st">@st</option>
+                                        }
+                                    </select>
+                                    <select class="gl-select" disabled="@(!isSelf)" value="@slotPlayer.TeamId" @onchange="OnTeamChange">
+                                        @for (int t = 0; t <= 4; t++)
+                                        {
+                                            <option value="@t">@(t == 0 ? T("GameLobby.None", "None") : t.ToString())</option>
+                                        }
+                                    </select>
                                 }
                                 else
                                 {
-                                    <span class="slot-color" style="background:@ToCss(GetColor(slotPlayer.ColorId))"></span>
-                                    <div class="slot-info">
-                                        <span class="slot-name">
-                                            @slotPlayer.Name
-                                            @if (i == 0)
-                                            {
-                                                <em class="slot-host">HOST</em>
-                                            }
-                                        </span>
-                                        <span class="slot-meta">
-                                            @GetSideName(slotPlayer.SideId)@F("GameLobby.StartSuffix", " · Start {0}", slotPlayer.StartingLocation)@(slotPlayer.TeamId > 0 ? F("GameLobby.TeamSuffix", " · Team {0}", slotPlayer.TeamId) : "")
-                                        </span>
-                                    </div>
-                                    <span class="slot-ready @(slotPlayer.Ready ? "on" : "")">@(slotPlayer.Ready ? "READY" : "…")</span>
+                                    <span class="gl-tc-empty"></span>
+                                    <span class="gl-tc-empty"></span>
+                                    <span class="gl-tc-empty"></span>
+                                    <span class="gl-tc-empty"></span>
                                 }
                             </div>
                         }
                     </div>
                 </section>
 
-                <section class="gl-panel gl-config item-in" style="animation-delay:100ms">
+                @if (Room.IsHost)
+                {
+                    <!-- 地图列表按遭遇战页排法独立成一块（左列下半区），只留可滚动列表，
+                         不再挤在「地图与规则」里把预览、设置和选项一起顶出视野。 -->
+                    <section class="gl-panel gl-maplist item-in" style="animation-delay:80ms">
+                        <header class="gl-ph">
+                            <span>@T("Skirmish.Maps", "Maps") <em>MAPS</em></span>
+                        </header>
+                        <div class="gl-body">
+                            <!-- 游戏模式选择（原版 cmbGameMode：切换模式过滤地图列表） -->
+                            <div class="map-mode">
+                                <span class="mm-label">@T("Skirmish.GameMode", "Game mode")</span>
+                                <select class="gl-select" value="@_selectedMode" @onchange="OnModeChange">
+                                    @if (ModeOptions.Count == 0)
+                                    {
+                                        <option value="">@T("Common.Loading", "— Loading —")</option>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var m in ModeOptions)
+                                        {
+                                            <option value="@m">@ModeDisplay(m)</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <!-- 地图列表（原版 lbMapList：当前模式的地图直接呈现为可点选列表） -->
+                            <div class="map-list">
+                                @if (_mapOptions.Count == 0)
+                                {
+                                    <div class="map-list-empty">@(ModeOptions.Count == 0 ? T("Skirmish.MapsLoading", "— Loading maps —") : T("Skirmish.NoMatchingMaps", "— No matching maps —"))</div>
+                                }
+                                else
+                                {
+                                    @for (int i = 0; i < _mapOptions.Count; i++)
+                                    {
+                                        var opt = _mapOptions[i];
+                                        var idx = i; // for 循环变量为共享变量，须拷贝为局部变量供闭包捕获，否则点击时索引恒为 Count（越界）
+                                        var isSel = idx == SelectedMapIndex;
+                                        <div class="map-list-item @(isSel ? "sel" : "") @(opt.Value.IsFavorite ? "fav" : "")"
+                                             @onclick="() => SelectMap(idx)"
+                                             title="@opt.Display">
+                                            <span class="ml-star">★</span>
+                                            <span class="ml-name">@opt.Display</span>
+                                            <span class="ml-meta">@(opt.Value.MinPlayers)–@(opt.Value.MaxPlayers)</span>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </section>
+                }
+
+                <!-- 地图预览独占下方整行（跨中/右两列），与遭遇战页一致 -->
+                <section class="gl-panel gl-mapview item-in" style="animation-delay:100ms">
                     <header class="gl-ph">
-                        <span>@T("GameLobby.MapAndRules", "Map & rules") <em>MAP & RULES</em></span>
+                        <span>@T("Lobby.Map", "Map") <em>MAP</em></span>
                     </header>
                     <div class="gl-body">
                         <div class="cfg-map">
@@ -126,53 +226,6 @@ else
                                     </div>
                                 }
                             </div>
-                            @if (Room.IsHost)
-                            {
-                                <!-- 游戏模式选择（原版 cmbGameMode：切换模式过滤地图列表） -->
-                                <div class="map-mode">
-                                    <span class="mm-label">@T("Skirmish.GameMode", "Game mode")</span>
-                                    <select class="gl-select" value="@_selectedMode" @onchange="OnModeChange">
-                                        @if (ModeOptions.Count == 0)
-                                        {
-                                            <option value="">@T("Common.Loading", "— Loading —")</option>
-                                        }
-                                        else
-                                        {
-                                            @foreach (var m in ModeOptions)
-                                            {
-                                                <option value="@m">@m</option>
-                                            }
-                                        }
-                                    </select>
-                                </div>
-                                <!-- 地图列表（原版 lbMapList：当前模式的地图直接呈现为可点选列表） -->
-                                <div class="map-list">
-                                    @if (_mapOptions.Count == 0)
-                                    {
-                                        <div class="map-list-empty">@(ModeOptions.Count == 0 ? T("Skirmish.MapsLoading", "— Loading maps —") : T("Skirmish.NoMatchingMaps", "— No matching maps —"))</div>
-                                    }
-                                    else
-                                    {
-                                        @for (int i = 0; i < _mapOptions.Count; i++)
-                                        {
-                                            var opt = _mapOptions[i];
-                                            var idx = i; // for 循环变量为共享变量，须拷贝为局部变量供闭包捕获，否则点击时索引恒为 Count（越界）
-                                            var isSel = idx == SelectedMapIndex;
-                                            <div class="map-list-item @(isSel ? "sel" : "") @(opt.Value.IsFavorite ? "fav" : "")"
-                                                 @onclick="() => SelectMap(idx)"
-                                                 title="@opt.Display">
-                                                <span class="ml-star">★</span>
-                                                <span class="ml-name">@opt.Display</span>
-                                                <span class="ml-meta">@(opt.Value.MinPlayers)–@(opt.Value.MaxPlayers)</span>
-                                            </div>
-                                        }
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="cfg-map-name">@(Room.SelectedMap is not null ? Room.SelectedMap.ToUIString() : "—")</div>
-                            }
 
                             <div class="map-info">
                                 <div class="mi-row"><span>@T("Lobby.Game", "Game")</span><b>@LocalGameName</b></div>
@@ -193,23 +246,16 @@ else
                                 }
                             </div>
                         </div>
+                    </div>
+                </section>
 
-                        @if (Room.IsHost)
-                        {
-                            <div class="cfg-rules">
-                                <div class="cfg-row">
-                                    <button class="mb-btn @(Room.Locked ? "danger" : "")" @onclick="OnToggleLock">
-                                        @(Room.Locked ? T("GameLobby.UnlockRoom", "Unlock room") : T("GameLobby.LockRoom", "Lock room"))
-                                    </button>
-                                    <span class="cfg-hint">@T("LanGame.StartHint", "The room must be locked and all players ready to start")</span>
-                                </div>
-                            </div>
-                        }
+                <section class="gl-panel gl-options gl-config item-in" style="animation-delay:150ms">
+                    <header class="gl-ph">
+                        <span>@T("Skirmish.GameOptions", "Game options") <em>GAME OPTIONS</em></span>
+                    </header>
+                    <div class="gl-body">
 
                         <div class="cfg-options">
-                            <div class="cfg-self-title">@T("Skirmish.GameOptions", "Game options") <em>GAME OPTIONS</em>
-                                <span class="self-spec">@(Room.IsHost ? T("GameLobby.HostCanChange", "Host can change; synced to everyone") : T("GameLobby.HostSets", "Set by the host; shown to everyone"))</span>
-                            </div>
                             <div class="go-grid">
                                 @foreach (var opt in CheckBoxOptions)
                                 {
@@ -228,61 +274,25 @@ else
                                             @onchange="(e) => OnDropDownOptionChange(dd, e)">
                                         @for (int i = 0; i < dd.Items.Count; i++)
                                         {
-                                            <option value="@i">@dd.Items[i]</option>
+                                            <option value="@i">@dd.DisplayItems[i]</option>
                                         }
                                     </select>
                                 </div>
                             }
                         </div>
 
-                        <div class="cfg-self">
-                            <div class="cfg-self-title">@T("GameLobby.MyConfig", "My setup") <em>SELF</em></div>
-                            <div class="cfg-row">
-                                <label>@T("GameLobby.Side", "Side")</label>
-                                <select class="gl-select" value="@Self!.SideId" @onchange="OnSideChange">
-                                    @for (int s = 0; s < Sides.Length; s++)
-                                    {
-                                        <option value="@s">@Sides[s]</option>
-                                    }
-                                </select>
-                                <label>@T("GameLobby.Start", "Spawn")</label>
-                                <select class="gl-select" value="@Self!.StartingLocation" @onchange="OnStartChange">
-                                    @for (int st = 1; st <= Room.MaxPlayers; st++)
-                                    {
-                                        <option value="@st">@st</option>
-                                    }
-                                </select>
-                                <label>@T("GameLobby.Team", "Team")</label>
-                                <select class="gl-select" value="@Self!.TeamId" @onchange="OnTeamChange">
-                                    @for (int t = 0; t <= 4; t++)
-                                    {
-                                        <option value="@t">@(t == 0 ? T("GameLobby.None", "None") : t.ToString())</option>
-                                    }
-                                </select>
-                            </div>
-                            <div class="cfg-row">
-                                <label>@T("GameLobby.Color", "Color")</label>
-                                <div class="cfg-colors">
-                                    @foreach (var c in _colors)
-                                    {
-                                        <button type="button" class="swatch @(c.Index == Self!.ColorId ? "on" : "")"
-                                                style="background:@ToCss(c.Color)" title="@c.Name"
-                                                @onclick="() => SetColor(c.Index)"></button>
-                                    }
-                                </div>
-                            </div>
-                            <div class="cfg-actions">
-                                <button class="mb-btn @(Self!.Ready ? "primary" : "") ready-btn" @onclick="OnToggleReady">
-                                    @(Self!.Ready ? T("GameLobby.Ready", "Ready") : T("GameLobby.SetReady", "Set ready"))<span class="en">READY</span>
-                                </button>
-                                @if (Room.IsHost)
-                                {
-                                    <button class="mb-btn primary start-btn" disabled="@(Room.SelectedMap is null || !Room.Locked)" @onclick="OnStartGame">
-                                        @T("Skirmish.StartGame", "Start game")<span class="en">START</span>
-                                    </button>
-                                }
-                            </div>
-                        </div>
+                    </div>
+
+                    <div class="cfg-actions">
+                        <button class="mb-btn @(Self!.Ready ? "primary" : "") ready-btn" @onclick="OnToggleReady">
+                            @(Self!.Ready ? T("GameLobby.Ready", "Ready") : T("GameLobby.SetReady", "Set ready"))<span class="en">READY</span>
+                        </button>
+                        @if (Room.IsHost)
+                        {
+                            <button class="mb-btn primary start-btn" disabled="@(Room.SelectedMap is null || !Room.Locked)" @onclick="OnStartGame">
+                                @T("Skirmish.StartGame", "Start game")<span class="en">START</span>
+                            </button>
+                        }
                     </div>
                 </section>
 
@@ -323,6 +333,33 @@ else
                 </section>
             </div>
         }
+
+        <!-- 房间设置对话框（房主）：LAN 房间只有锁定/解锁与开始条件提示；
+             原先塞在「选项」面板最前面，把游戏选项推到看不见的位置。 -->
+        @if (_roomSettingsOpen)
+        {
+            <div class="ctx-backdrop" @onclick="CloseRoomSettings"></div>
+            <div class="cr-panel roomset-panel pop-in">
+                <div class="cr-head">
+                    <span>@T("GameLobby.RoomSettings", "Room settings")</span>
+                    <span class="cr-en">ROOM SETTINGS</span>
+                    <button type="button" class="gop-close" @onclick="CloseRoomSettings" title="@T("Common.Close", "Close")">✕</button>
+                </div>
+                <div class="roomset-body">
+                    <div class="cfg-row">
+                        <button class="mb-btn @(Room.Locked ? "danger" : "")" @onclick="OnToggleLock">
+                            @(Room.Locked ? T("GameLobby.UnlockRoom", "Unlock room") : T("GameLobby.LockRoom", "Lock room"))
+                        </button>
+                    </div>
+                    <p class="cfg-hint">@T("LanGame.StartHint", "The room must be locked and all players ready to start")</p>
+                </div>
+                <div class="cr-actions">
+                    <button type="button" class="mb-btn primary" @onclick="CloseRoomSettings">
+                        @T("Common.Close", "Close")<span class="en">CLOSE</span>
+                    </button>
+                </div>
+            </div>
+        }
     </div>
 }
 
@@ -338,6 +375,13 @@ else
 
     private string _draft = string.Empty;
     private ElementReference _chatEnd;
+
+    /// <summary>房间设置弹窗（房主）：LAN 房间只有锁定/解锁。</summary>
+    private bool _roomSettingsOpen;
+
+    private void OpenRoomSettings() => _roomSettingsOpen = true;
+
+    private void CloseRoomSettings() => _roomSettingsOpen = false;
     private bool _scrollToBottom;
     private int _lastMessageCount;
     private DotNetObjectReference<LanGame>? _dotNetRef;
@@ -396,11 +440,18 @@ else
     /// <summary>当前选择的游戏模式（原版 cmbGameMode，按 MapLoader.GameModes 的 INI 顺序）。</summary>
     private string _selectedMode = string.Empty;
 
-    /// <summary>模式下拉选项（只列出有地图的模式）。</summary>
+    /// <summary>
+    /// 模式下拉选项（只列出有地图的模式）。保存 <see cref="GameMode.Name"/>（INI 名）作为稳定标识，
+    /// 显示名按当前语言实时查 <see cref="GameMode.UIName"/>，切换语言后选中项与过滤都不受影响。
+    /// </summary>
     private List<string> ModeOptions => MapLoader.GameModes
-        .Where(gm => MapLoader.GameModeMaps.Any(gmm => gmm.GameMode.UIName == gm.UIName))
-        .Select(gm => gm.UIName)
+        .Where(gm => MapLoader.GameModeMaps.Any(gmm => gmm.GameMode.Name == gm.Name))
+        .Select(gm => gm.Name)
         .ToList();
+
+    /// <summary>模式 INI 名 → 当前语言下的显示名。</summary>
+    private string ModeDisplay(string modeName) =>
+        MapLoader.GameModes.FirstOrDefault(gm => gm.Name == modeName)?.UIName ?? modeName;
 
     /// <summary>地图加载完成前模式为空；加载后默认选中第一个模式。</summary>
     private void EnsureSelectedMode()
@@ -418,7 +469,7 @@ else
         // 当前选中地图不属于新模式时，自动选新模式第一张图（原版 cmbGameMode 切换语义）
         if (Room.SelectedMap is not null
             && _selectedMode.Length > 0
-            && Room.SelectedMap.GameMode.UIName != _selectedMode
+            && Room.SelectedMap.GameMode.Name != _selectedMode
             && _mapOptions.Count > 0)
         {
             try
@@ -534,7 +585,7 @@ else
     private void RefreshMaps()
     {
         IEnumerable<MapOption> query = MapLoader.GameModeMaps
-            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.UIName, gmm.ToUIString()));
+            .Select((gmm, i) => new MapOption(gmm, i, gmm.GameMode.Name, gmm.Map.Name));
 
         // 游戏模式过滤（原版 cmbGameMode：只显示当前模式的地图）
         EnsureSelectedMode();

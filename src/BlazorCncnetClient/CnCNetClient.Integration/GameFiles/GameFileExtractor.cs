@@ -12,7 +12,8 @@ namespace CnCNetClient.Integration.GameFiles;
 /// 尤里的复仇（YR）运行必要文件的检测与提取。
 /// 客户端目录（GamePath）缺失清单内任一文件时，引导用户选择完整 YR 安装目录，
 /// 并从该目录把缺失文件提取（拷贝）到客户端目录，使目录成为完整可玩的游戏根目录。
-/// 文件清单已与用户确认（2026-09-16，2026-09-30 补 multimd/mapsmd03）：核心 11 项 + ClientDefinitions 配置的启动加载器。
+/// 文件清单以 ClientDefinitions.ini [Settings] RequiredFiles 为准（MOD 可配置）；
+/// 该键缺失/为空时才退回内置清单（核心 11 项 + ClientDefinitions 配置的启动加载器）。
 /// </summary>
 public static class GameFileExtractor
 {
@@ -60,13 +61,80 @@ public static class GameFileExtractor
         }
     }
 
-    /// <summary>完整必要文件清单（核心 9 项 + 可选加载器，忽略大小写去重）。</summary>
-    public static string[] GetRequiredFiles()
+    /// <summary>内置兜底清单：核心 11 项 + 可选加载器，忽略大小写去重。</summary>
+    private static string[] FallbackRequiredFiles()
     {
         string? launcher = LauncherFile;
         return launcher is null
             ? CoreGameFiles
             : CoreGameFiles.Append(launcher).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    /// <summary>
+    /// ClientDefinitions.ini [Settings] RequiredFiles 配置的清单（遵循 ini 设置）；
+    /// 配置不可用或未定义时返回空数组，由调用方退回 <see cref="FallbackRequiredFiles"/>。
+    /// </summary>
+    private static string[] ConfiguredRequiredFiles()
+    {
+        try
+        {
+            return ClientConfiguration.Instance.RequiredFiles
+                .Where(file => !string.IsNullOrWhiteSpace(file))
+                .Select(file => file.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+        catch
+        {
+            // 配置未初始化（缺 ClientDefinitions.ini 等）：用内置清单兜底。
+            return Array.Empty<string>();
+        }
+    }
+
+    /// <summary>
+    /// 完整必要文件清单：优先取 ClientDefinitions.ini [Settings] RequiredFiles，
+    /// 未配置时退回内置 YR 清单（<see cref="CoreGameFiles"/> + 启动加载器）。
+    /// </summary>
+    public static string[] GetRequiredFiles()
+    {
+        string[] configured = ConfiguredRequiredFiles();
+        return configured.Length > 0 ? configured : FallbackRequiredFiles();
+    }
+
+    /// <summary>
+    /// ClientDefinitions.ini [Settings] ForbiddenFiles 配置的清单（非必填）：
+    /// 这些文件会干扰游戏/模组运行，存在即应提示用户移除。配置不可用时返回空数组。
+    /// </summary>
+    private static string[] ConfiguredForbiddenFiles()
+    {
+        try
+        {
+            return ClientConfiguration.Instance.ForbiddenFiles
+                .Where(file => !string.IsNullOrWhiteSpace(file))
+                .Select(file => file.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    /// <summary>返回游戏根目录下已存在、且被 [Settings] ForbiddenFiles 禁止的文件（相对文件名）。</summary>
+    public static string[] GetForbiddenFilesPresent(string gamePath)
+    {
+        try
+        {
+            return ConfiguredForbiddenFiles()
+                .Where(file => File.Exists(SafePath.CombineFilePath(gamePath, file)))
+                .ToArray();
+        }
+        catch
+        {
+            // 目录不可访问等异常：无法判定，交由环境检测提示。
+            return Array.Empty<string>();
+        }
     }
 
     /// <summary>返回游戏根目录下缺失的必要文件（相对文件名）。</summary>

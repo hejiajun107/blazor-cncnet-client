@@ -74,6 +74,17 @@
   <data name="Client:UI:Startup.FailedLogHint" xml:space="preserve">
     <value>详细错误已写入日志：logs\client-*.log</value>
   </data>
+  <!-- 禁止文件检查（ClientDefinitions.ini [Settings] ForbiddenFiles） -->
+  <data name="Client:UI:Startup.ForbiddenFilesTitle" xml:space="preserve">
+    <value>检测到禁止的文件</value>
+  </data>
+  <data name="Client:UI:Startup.ForbiddenFilesMessage" xml:space="preserve">
+    <value>游戏目录中存在以下被禁止的文件：
+
+{0}
+
+这些文件会干扰游戏/模组运行，请移除后重新启动客户端。</value>
+  </data>
   <data name="Client:UI:Settings.Nav.Components" xml:space="preserve">
     <value>组件 COMPONENTS</value>
   </data>

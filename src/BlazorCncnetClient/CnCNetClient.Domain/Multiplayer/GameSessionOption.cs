@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CnCNetClient.Core.I18N;
 using CnCNetClient.Tools;
 
 #nullable enable
@@ -33,23 +34,50 @@ public enum GameOptionWriteMode
 /// </summary>
 public abstract class GameSessionOption
 {
-    protected GameSessionOption(string name, string displayName)
+    protected GameSessionOption(string name, string displayName, string? displayNameKey = null)
     {
         Name = name;
-        DisplayName = displayName;
+        RawDisplayName = displayName;
+        DisplayNameKey = displayNameKey;
     }
 
     /// <summary>选项唯一名（spawn.ini / [GameOptions] 节键名，如 chkShortGame / cmbCredits）。</summary>
     public string Name { get; }
 
-    /// <summary>界面显示名（复选为 Text，下拉为 OptionName）。</summary>
-    public string DisplayName { get; }
+    /// <summary>未翻译的显示名（lobby ini 的 <c>Text</c> / <c>OptionName</c> 原值）。</summary>
+    public string RawDisplayName { get; }
+
+    /// <summary>显示名的原版翻译键（<c>INI:Controls:GameOptionsPanel:&lt;section&gt;:Text|OptionName</c>）。</summary>
+    public string? DisplayNameKey { get; }
+
+    /// <summary>
+    /// 界面显示名（复选为 Text，下拉为 OptionName）。按当前语言实时查表，
+    /// 切换语言后已加载的选项列表也能跟着变（选项列表按电路缓存，不会重新加载 ini）。
+    /// </summary>
+    public string DisplayName =>
+        DisplayNameKey is null ? RawDisplayName : Translation.Instance.LookUp(DisplayNameKey, RawDisplayName);
+
+    /// <summary>未翻译的悬浮说明（lobby ini 的 <c>ToolTip</c> 原值）。</summary>
+    public string? RawToolTip { get; set; }
+
+    /// <summary>悬浮说明的翻译键（<c>INI:Controls:GameOptionsPanel:&lt;section&gt;:ToolTip</c>）。</summary>
+    public string? ToolTipKey { get; set; }
 
     /// <summary>
     /// 悬浮说明（同原版 <c>[chk*]</c> / <c>[cmb*]</c> 的 <c>ToolTip</c> 键；无则 null）。
-    /// 由 <c>GameOptionsIniLoader</c> 从 ini 读入，UI 渲染为 <c>title</c>。
+    /// 由 <c>GameOptionsIniLoader</c> 从 ini 读入，UI 渲染为 <c>title</c>；同样按当前语言实时查表。
     /// </summary>
-    public string? ToolTip { get; set; }
+    public string? ToolTip
+    {
+        get
+        {
+            if (ToolTipKey is null)
+                return RawToolTip;
+
+            string translated = Translation.Instance.LookUp(ToolTipKey, RawToolTip ?? string.Empty);
+            return string.IsNullOrEmpty(translated) ? RawToolTip : translated;
+        }
+    }
 
     /// <summary>
     /// 是否广播到大厅（同原版 <c>IGameSessionSetting.BroadcastToLobby</c>）。
@@ -142,8 +170,9 @@ public sealed class GameSessionCheckBoxOption : GameSessionOption
         bool reversed = false,
         bool defaultChecked = false,
         string enabledSpawnIniValue = "True",
-        string disabledSpawnIniValue = "False")
-        : base(name, displayName)
+        string disabledSpawnIniValue = "False",
+        string? displayNameKey = null)
+        : base(name, displayName, displayNameKey)
     {
         SpawnIniOption = spawnIniOption;
         CustomIniPath = customIniPath;
@@ -214,8 +243,9 @@ public sealed class GameSessionDropDownOption : GameSessionOption
         IReadOnlyList<string> items,
         int defaultIndex = 0,
         string? spawnIniOption = null,
-        GameOptionWriteMode writeMode = GameOptionWriteMode.String)
-        : base(name, displayName)
+        GameOptionWriteMode writeMode = GameOptionWriteMode.String,
+        string? displayNameKey = null)
+        : base(name, displayName, displayNameKey)
     {
         Items = items;
         DefaultIndex = items.Count > 0 ? Math.Clamp(defaultIndex, 0, items.Count - 1) : 0;
@@ -224,8 +254,27 @@ public sealed class GameSessionDropDownOption : GameSessionOption
         WriteMode = writeMode;
     }
 
-    /// <summary>可选项（原始值，即写入 spawn.ini 的字符串 / 地图代码路径）。</summary>
+    /// <summary>可选项（原始值，即写入 spawn.ini 的字符串 / 地图代码路径）。不可翻译。</summary>
     public IReadOnlyList<string> Items { get; }
+
+    /// <summary>
+    /// 界面显示用选项文本：按原版键格式 <c>INI:Controls:GameOptionsPanel:&lt;section&gt;:Item&lt;n&gt;</c>
+    /// 实时查表，缺失时用原始值。写入 spawn.ini 仍用 <see cref="Items"/>（翻译不得进入游戏参数）。
+    /// </summary>
+    public IReadOnlyList<string> DisplayItems
+    {
+        get
+        {
+            var display = new string[Items.Count];
+            for (int i = 0; i < Items.Count; i++)
+            {
+                display[i] = Translation.Instance.LookUp(
+                    $"INI:Controls:GameOptionsPanel:{Name}:Item{i + 1}", Items[i]);
+            }
+
+            return display;
+        }
+    }
 
     /// <summary>默认选中索引（同原版 DefaultIndex，加载失败时回退）。</summary>
     public int DefaultIndex { get; }

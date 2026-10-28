@@ -2,8 +2,10 @@
 @implements IDisposable
 @using CnCNetClient.Core
 @using CnCNetClient.Domain.LAN
+@using CnCNetClient.Domain.Multiplayer
 @using CnCNetClient.Online
 @inject LanLobbyService LanSvc
+@inject MapLoader MapLoader
 @inject LanGameNavigation NavData
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -65,9 +67,9 @@
                                 <span class="gc-name">@g.RoomName</span>
                                 <span class="gc-players">@g.Players.Length/@g.MaxPlayers</span>
                             </div>
-                            <div class="gc-sub" title="@g.Map">@g.Map</div>
+                            <div class="gc-sub" title="@DisplayMap(g)">@DisplayMap(g)</div>
                             <div class="gc-meta">
-                                <span class="gc-mode">@g.GameMode</span>
+                                <span class="gc-mode">@DisplayMode(g)</span>
                                 <span class="gc-host">@g.HostName</span>
                                 <span class="gc-tag">@(g.IsLoadedGame ? T("LanLobby.SavedGame", "Saved game") : "LAN")@(g.Incompatible ? T("LanLobby.VersionMismatchSuffix", " · Version mismatch") : "")</span>
                             </div>
@@ -154,9 +156,9 @@
                 <MapThumbnail MapHash="@_selectedGame.MapHash" MapName="@_selectedGame.Map" />
             </div>
             <div class="gd-rows">
-                <div class="gd-row"><span>@T("Lobby.Map", "Map")</span><b>@_selectedGame.Map</b></div>
+                <div class="gd-row"><span>@T("Lobby.Map", "Map")</span><b>@DisplayMap(_selectedGame)</b></div>
                 <div class="gd-row"><span>@T("Lobby.Host", "Host")</span><b>@_selectedGame.HostName</b></div>
-                <div class="gd-row"><span>@T("Lobby.Mode", "Mode")</span><b>@_selectedGame.GameMode</b></div>
+                <div class="gd-row"><span>@T("Lobby.Mode", "Mode")</span><b>@DisplayMode(_selectedGame)</b></div>
                 <div class="gd-row"><span>@T("GameLobby.PlayerCount", "Players")</span><b>@_selectedGame.Players.Length / @_selectedGame.MaxPlayers</b></div>
                 <div class="gd-row"><span>@T("LanLobby.Address", "Address")</span><b>@_selectedGame.EndPoint</b></div>
                 @if (_selectedGame.Incompatible)
@@ -220,14 +222,25 @@
             return LanSvc.Games
                 .Where(g => g.RoomName.Contains(filter, StringComparison.OrdinalIgnoreCase)
                             || g.Map.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                            || DisplayMap(g).Contains(filter, StringComparison.OrdinalIgnoreCase)
                             || g.HostName.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                            || g.GameMode.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                            || g.GameMode.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                            || DisplayMode(g).Contains(filter, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
     }
 
     private bool IsSelf(string name)
         => string.Equals(name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 房间列表的地图名：房主广播的是未翻译原文，本机装了同一张图时换成当前语言的名字
+    /// （未安装则原样显示，由进入房间的缺失地图提示处理）。
+    /// </summary>
+    private string DisplayMap(HostedLANGame game) => MapLoader.GetLocalizedMapName(game.MapHash, game.Map);
+
+    /// <summary>房间列表的模式名：房主广播的是未翻译 UI 名，按本机模式表换成当前语言的名字。</summary>
+    private string DisplayMode(HostedLANGame game) => MapLoader.GetLocalizedGameModeName(game.GameMode);
 
     /// <summary>玩家昵称快照（Virtualize 需 ICollection）。</summary>
     private List<string> PlayerList => LanSvc.PlayerNames.ToList();
@@ -237,6 +250,8 @@
         LanSvc.StateChanged += OnStateChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
+        // 地图快照异步发布：快照就绪前房间列表只能显示广播的英文原名，就绪后需重渲染一次。
+        MapLoader.MapLoadingComplete += OnMapLoadingComplete;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -263,6 +278,8 @@
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
     private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnMapLoadingComplete(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
 
     private void OnDraftInput(ChangeEventArgs e) => _draft = e.Value?.ToString() ?? string.Empty;
 
@@ -345,6 +362,7 @@
     {
         LanSvc.StateChanged -= OnStateChanged;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
+        MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
         TranslationSvc.LanguageChanged -= OnLanguageChanged;
         LanSvc.Stop();
     }

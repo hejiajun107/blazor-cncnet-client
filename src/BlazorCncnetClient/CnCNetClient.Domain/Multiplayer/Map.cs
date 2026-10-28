@@ -10,6 +10,7 @@ using System.Text.Json.Serialization;
 
 using CnCNetClient.Core;
 using CnCNetClient.Core.Extensions;
+using CnCNetClient.Core.I18N;
 
 using CnCNetClient.Tools;
 
@@ -64,7 +65,7 @@ namespace CnCNetClient.Domain.Multiplayer
         [JsonIgnore]
         public string Name => !Official || string.IsNullOrEmpty(UntranslatedName) || string.IsNullOrEmpty(BaseFilePath)
             ? UntranslatedName
-            : UntranslatedName.L10N($"INI:Maps:{BaseFilePath}:Description");
+            : Translation.Instance.LookUpMap(BaseFilePath, "Description", UntranslatedName);
 
         /// <summary>
         /// The original untranslated name of the map.
@@ -253,9 +254,10 @@ namespace CnCNetClient.Domain.Multiplayer
                     PreviewPath = previewPath;
                 }
 
-                Briefing = section.GetStringValue("Briefing", string.Empty)
-                    .FromIniString()
-                    .L10N($"INI:Maps:{BaseFilePath}:Briefing");
+                Briefing = Translation.Instance.LookUpMap(
+                    BaseFilePath,
+                    "Briefing",
+                    section.GetStringValue("Briefing", string.Empty).FromIniString());
 
                 CalculateSHA();
 

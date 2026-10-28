@@ -31,8 +31,9 @@ namespace CnCNetClient.Domain.Multiplayer
 
         /// <summary>
         /// The user-interface name of the game mode.
+        /// 按当前语言实时查表（INI:GameModes:&lt;Name&gt;:UIName），切换语言后无需重新加载地图。
         /// </summary>
-        public string UIName { get; private set; }
+        public string UIName => UntranslatedUIName.L10N($"INI:GameModes:{Name}:UIName");
 
         /// <summary>
         /// The original user-interface name of the game mode before translation.
@@ -98,7 +99,6 @@ namespace CnCNetClient.Domain.Multiplayer
             IniSection section = forcedOptionsIni.GetSection(Name) ?? new IniSection(Name);
 
             UntranslatedUIName = section.GetStringValue("UIName", Name);
-            UIName = UntranslatedUIName.L10N($"INI:GameModes:{Name}:UIName");
 
             InitializeBaseSettingsFromIniSection(section, isCustomMap: false);
 
