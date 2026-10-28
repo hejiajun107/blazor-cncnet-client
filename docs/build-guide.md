@@ -32,6 +32,19 @@ tools/
 
 ## 构建
 
+### GitHub Actions 自动编译与下载
+
+仓库的 [Build and package 工作流](../.github/workflows/build.yml) 在每次 `push` 时运行，
+也可在 GitHub 的 Actions 页面手动触发。工作流使用 Windows runner 和 .NET 10 SDK，
+先还原依赖，再以 Release 配置编译 `CnCNetClient.sln`，覆盖主客户端、依赖库、Launcher
+及测试工程，然后调用 `tools/publish.ps1` 生成自包含的 Windows x64 发布包。
+编译或发布校验失败会使工作流失败；此流程不执行单元测试。
+
+下载位置：**Actions → Build and package → 对应运行记录 → Artifacts**，选择
+`BlazorCncnetClient-win-x64.zip`。ZIP 保留 `Launcher.exe` 和 `ClientApp/` 布局，
+包含 .NET 运行库、客户端资源与许可证，保留 30 天。仅发布目录进入压缩包，
+构建日志、校验报告和本机配置不随包提供。工作流仅在 runner 的仓库目录内生成和上传产物。
+
 ### 调试构建
 
 ```powershell
