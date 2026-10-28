@@ -1,4 +1,4 @@
-﻿﻿
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -20,6 +20,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Launcher", "CnCNetClient.Launcher\CnCNetClient.Launcher.csproj", "{66F991C3-B828-4B1C-B71D-0FC74FE91FC5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnCNetClient.Plugin.Abstractions", "CnCNetClient.Plugin.Abstractions\CnCNetClient.Plugin.Abstractions.csproj", "{5A9C2E1A-0008-4A11-9A11-000000000008}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCncnetClient", "BlazorCncnetClient\BlazorCncnetClient.csproj", "{A5BD323F-5920-466C-B18F-64CDC5E98354}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -139,6 +141,18 @@ Global
 		{5A9C2E1A-0008-4A11-9A11-000000000008}.Release|x64.Build.0 = Release|Any CPU
 		{5A9C2E1A-0008-4A11-9A11-000000000008}.Release|x86.ActiveCfg = Release|Any CPU
 		{5A9C2E1A-0008-4A11-9A11-000000000008}.Release|x86.Build.0 = Release|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Debug|x64.Build.0 = Debug|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Debug|x86.Build.0 = Debug|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Release|x64.ActiveCfg = Release|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Release|x64.Build.0 = Release|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Release|x86.ActiveCfg = Release|Any CPU
+		{A5BD323F-5920-466C-B18F-64CDC5E98354}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
