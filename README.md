@@ -9,6 +9,15 @@
 - 第三方依赖与素材许可：[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
 - 项目定位与测试说明：[docs/client-intro.md](docs/client-intro.md)
 
+## 下载最新构建
+
+**[下载 Windows x64 最新构建 ZIP](https://nightly.link/hejiajun107/blazor-cncnet-client/workflows/build/main/BlazorCncnetClient-win-x64.zip)**
+
+点击直接下载 `main` 分支最新成功构建的 `BlazorCncnetClient-win-x64.zip`。
+压缩包已包含 .NET 运行库、客户端资源与许可证，解压后保留 `Launcher.exe` 和 `ClientApp/` 的目录结构。
+
+构建与打包说明见 [docs/build-guide.md](docs/build-guide.md)。
+
 ## 环境要求
 
 | 用途 | 要求 |
