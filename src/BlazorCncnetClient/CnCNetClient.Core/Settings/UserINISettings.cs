@@ -49,11 +49,16 @@ namespace CnCNetClient.Core
 
             var userIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, userIniFileName));
 
+            // 游戏侧参数（分辨率/音量/滚屏/速度/难度）以游戏自身 INI 为准（YR 即 RA2MD.ini，
+            // 也是 gamemd 实际读取的文件），与官方 CnCNet 客户端共用，避免双方各存一份互相覆盖。
+            var gameIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, GetGameSettingsIniName(userIniFileName)));
+
             string userDefaultIniFilePath = SafePath.CombineFilePath(ProgramConstants.GetResourcePath(), "UserDefaults.ini");
 
             if (!File.Exists(userDefaultIniFilePath))
             {
-                _instance = new UserINISettings(userIni);
+                _instance = new UserINISettings(userIni, gameIni);
+                MigrateGameSettingsToGameIni(userIni, gameIni);
                 return;
             }
 
@@ -82,26 +87,93 @@ namespace CnCNetClient.Core
 
             combinedUserIni.FileName = userIni.FileName;
 
-            _instance = new UserINISettings(combinedUserIni);
+            _instance = new UserINISettings(combinedUserIni, gameIni);
+            MigrateGameSettingsToGameIni(userIni, gameIni);
         }
 
-        protected UserINISettings(IniFile iniFile)
+        /// <summary>
+        /// 游戏自身 INI 的文件名（ClientDefinitions [Settings] SettingsFile；YR/TS 为 RA2MD.ini，
+        /// 也就是 gamemd 实际读取的配置文件）。未配置时退回客户端设置文件名。
+        /// </summary>
+        private static string GetGameSettingsIniName(string userIniFileName)
+        {
+            string name = ClientConfiguration.Instance.SettingsIniName;
+
+            return string.IsNullOrWhiteSpace(name) ? userIniFileName : name;
+        }
+
+        /// <summary>
+        /// 游戏侧参数（分辨率/音量/滚屏/速度/难度）归属的键。
+        /// 这些键以游戏 INI 为准，客户端设置 INI 只保留客户端专有项。
+        /// </summary>
+        private static IEnumerable<(string Section, string Key)> GameOwnedSettingKeys()
+        {
+            bool isRA = ClientConfiguration.Instance.ClientGameType == ClientType.RA;
+            bool isTS = ClientConfiguration.Instance.ClientGameType == ClientType.TS;
+
+            yield return isRA ? (OPTIONS, "Width") : (VIDEO, "ScreenWidth");
+            yield return isRA ? (OPTIONS, "Height") : (VIDEO, "ScreenHeight");
+            yield return isTS ? (VIDEO, "UseGraphicsPatch") : (VIDEO, "VideoBackBuffer");
+            yield return isRA ? (OPTIONS, "Volume") : (AUDIO, "SoundVolume");
+            yield return (AUDIO, "VoiceVolume");
+            yield return isRA ? (OPTIONS, "ScoreVolume") : (AUDIO, "ScoreVolume");
+            yield return (AUDIO, "IsScoreShuffle");
+            yield return (OPTIONS, "ScrollRate");
+            yield return (OPTIONS, "DetailLevel");
+            yield return (OPTIONS, "GameSpeed");
+            yield return (OPTIONS, "Difficulty");
+        }
+
+        /// <summary>
+        /// 一次性迁移：旧版本把这些游戏侧参数存在客户端设置 INI 里，
+        /// 游戏 INI 缺对应键时按旧值补齐，避免升级后设置「看似丢失」。
+        /// </summary>
+        private static void MigrateGameSettingsToGameIni(IniFile userIni, IniFile gameIni)
+        {
+            if (ReferenceEquals(userIni, gameIni) ||
+                string.Equals(userIni.FileName, gameIni.FileName, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            bool changed = false;
+
+            foreach ((string section, string key) in GameOwnedSettingKeys())
+            {
+                if (gameIni.KeyExists(section, key))
+                    continue;
+
+                string value = userIni.GetStringValue(section, key, string.Empty);
+                if (string.IsNullOrWhiteSpace(value))
+                    continue;
+
+                gameIni.SetStringValue(section, key, value);
+                changed = true;
+            }
+
+            if (changed)
+                gameIni.WriteIniFile();
+        }
+
+        protected UserINISettings(IniFile iniFile, IniFile gameSettingsIni = null)
         {
             SettingsIni = iniFile;
 
+            // 游戏侧参数读写游戏自身 INI，客户端专有项仍留在 settings INI。
+            IniFile gameIni = gameSettingsIni ?? iniFile;
+            GameSettingsIni = gameIni;
+
             if (ClientConfiguration.Instance.ClientGameType == ClientType.TS)
-                BackBufferInVRAM = new BoolSetting(iniFile, VIDEO, "UseGraphicsPatch", true);
+                BackBufferInVRAM = new BoolSetting(gameIni, VIDEO, "UseGraphicsPatch", true);
             else
-                BackBufferInVRAM = new BoolSetting(iniFile, VIDEO, "VideoBackBuffer", false);
+                BackBufferInVRAM = new BoolSetting(gameIni, VIDEO, "VideoBackBuffer", false);
 
             IngameScreenWidth = new IntSetting(
-                iniFile,
+                gameIni,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? OPTIONS : VIDEO,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Width" : "ScreenWidth",
                 1024);
 
             IngameScreenHeight = new IntSetting(
-                iniFile,
+                gameIni,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? OPTIONS : VIDEO,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Height" : "ScreenHeight",
                 768);
@@ -111,7 +183,7 @@ namespace CnCNetClient.Core
             Translation = new StringSetting(iniFile, OPTIONS, "Translation", I18N.Translation.GetDefaultUiLocaleCode());
             TranslationGameFilesVersion = new StringSetting(iniFile, OPTIONS, nameof(TranslationGameFilesVersion), string.Empty);
 
-            DetailLevel = new IntSetting(iniFile, OPTIONS, "DetailLevel", 2);
+            DetailLevel = new IntSetting(gameIni, OPTIONS, "DetailLevel", 2);
             Renderer = new StringSetting(iniFile, COMPATIBILITY, "Renderer", string.Empty);
             WindowedMode = new BoolSetting(iniFile, VIDEO, ClientConfiguration.Instance.WindowedModeKey, false);
             BorderlessWindowedMode = new BoolSetting(iniFile, VIDEO, "NoWindowFrame", false);
@@ -125,25 +197,25 @@ namespace CnCNetClient.Core
             DisplayToggleableExtraTextures = new BoolSetting(iniFile, VIDEO, "DisplayToggleableExtraTextures", true);
 
             // RA1 reads MultiplayerScoreVolume instead of ScoreVolume. This value is handled when saving
-            ScoreVolume = new DoubleSetting(iniFile,
+            ScoreVolume = new DoubleSetting(gameIni,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? OPTIONS : AUDIO,
                 "ScoreVolume",
                 0.7);
 
-            SoundVolume = new DoubleSetting(iniFile,
+            SoundVolume = new DoubleSetting(gameIni,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? OPTIONS : AUDIO,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Volume" : "SoundVolume",
                 0.7);
 
-            VoiceVolume = new DoubleSetting(iniFile, AUDIO, "VoiceVolume", 0.7);
-            IsScoreShuffle = new BoolSetting(iniFile, AUDIO, "IsScoreShuffle", true);
+            VoiceVolume = new DoubleSetting(gameIni, AUDIO, "VoiceVolume", 0.7);
+            IsScoreShuffle = new BoolSetting(gameIni, AUDIO, "IsScoreShuffle", true);
             ClientVolume = new DoubleSetting(iniFile, AUDIO, "ClientVolume", 1.0);
             PlayMainMenuMusic = new BoolSetting(iniFile, AUDIO, "PlayMainMenuMusic", true);
             StopMusicOnMenu = new BoolSetting(iniFile, AUDIO, "StopMusicOnMenu", true);
             StopGameLobbyMessageAudio = new BoolSetting(iniFile, AUDIO, "StopGameLobbyMessageAudio", true);
             MessageSound = new BoolSetting(iniFile, AUDIO, "ChatMessageSound", true);
 
-            ScrollRate = new IntSetting(iniFile, OPTIONS, "ScrollRate", 3);
+            ScrollRate = new IntSetting(gameIni, OPTIONS, "ScrollRate", 3);
             DragDistance = new IntSetting(iniFile, OPTIONS, "DragDistance", 4);
             CustomDragDistance = new IntSetting(iniFile, OPTIONS, "CustomDragDistance", 0);
             DoubleTapInterval = new IntSetting(iniFile, OPTIONS, "DoubleTapInterval", 30);
@@ -176,9 +248,9 @@ namespace CnCNetClient.Core
             PrivacyPolicyAccepted = new BoolSetting(iniFile, OPTIONS, "PrivacyPolicyAccepted", false);
             IsFirstRun = new BoolSetting(iniFile, OPTIONS, "IsFirstRun", true);
             CustomComponentsDenied = new BoolSetting(iniFile, OPTIONS, "CustomComponentsDenied", false);
-            Difficulty = new IntSetting(iniFile, OPTIONS, "Difficulty", 1);
+            Difficulty = new IntSetting(gameIni, OPTIONS, "Difficulty", 1);
             ScrollDelay = new IntSetting(iniFile, OPTIONS, "ScrollDelay", 4);
-            GameSpeed = new IntSetting(iniFile, OPTIONS, "GameSpeed", 1);
+            GameSpeed = new IntSetting(gameIni, OPTIONS, "GameSpeed", 1);
             ForceLowestDetailLevel = new BoolSetting(iniFile, VIDEO, "ForceLowestDetailLevel", false);
             MinimizeWindowsOnGameStart = new BoolSetting(iniFile, OPTIONS, "MinimizeWindowsOnGameStart", true);
             AutoRemoveUnderscoresFromName = new BoolSetting(iniFile, OPTIONS, "AutoRemoveUnderscoresFromName", true);
@@ -198,6 +270,12 @@ namespace CnCNetClient.Core
         }
 
         public IniFile SettingsIni { get; private set; }
+
+        /// <summary>
+        /// 游戏自身 INI（YR/TS 为 RA2MD.ini）：分辨率/音量/滚屏/游戏速度/难度等游戏侧参数读写此文件。
+        /// 与官方 CnCNet 客户端共用，单一数据源。
+        /// </summary>
+        public IniFile GameSettingsIni { get; private set; }
 
         public event EventHandler SettingsSaved;
 
@@ -471,7 +549,13 @@ namespace CnCNetClient.Core
 
         private string FavoriteMapKey(string identifier, string gameModeName) => $"{identifier}:{gameModeName}";
 
-        public void ReloadSettings() => SettingsIni.Reload();
+        public void ReloadSettings()
+        {
+            SettingsIni.Reload();
+
+            if (!ReferenceEquals(GameSettingsIni, SettingsIni))
+                GameSettingsIni.Reload();
+        }
 
         public void ApplyDefaults()
         {
@@ -489,89 +573,62 @@ namespace CnCNetClient.Core
 
             // RA1 reads MultiplayerScoreVolume instead of ScoreVolume
             if (ClientConfiguration.Instance.ClientGameType == ClientType.RA)
-                SettingsIni.SetDoubleValue(OPTIONS, "MultiplayerScoreVolume", SettingsIni.GetDoubleValue(OPTIONS, "ScoreVolume", 0.7));
+                GameSettingsIni.SetDoubleValue(OPTIONS, "MultiplayerScoreVolume", ScoreVolume.Value);
 
+            // 客户端专有项写客户端设置 INI，游戏侧参数写游戏自身 INI（与官方客户端共用）。
             SettingsIni.WriteIniFile();
 
-            // M 设置对齐旧客户端：旧版 UserINISettings 即游戏自身 INI（RA2MD.ini），
-            // 全部设置（分辨率/音量/游戏速度/滚屏等）落在游戏 INI 供游戏启动读取。
-            // 移植版隔离到 ClientSettings.ini 后，只把「游戏启动必需」的键同步回游戏 INI；
-            // 其余客户端专有键（Handle/Theme/PrivacyPolicyAccepted…）不再写入，
-            // 以免覆盖游戏自己的 [MultiPlayer] Handle 等编码值。
+            if (!ReferenceEquals(GameSettingsIni, SettingsIni))
+                GameSettingsIni.WriteIniFile();
+
             SyncGameSettingsIni();
 
             SettingsSaved?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
-        /// 把 GUI 里对应的游戏参数写回游戏自身 INI（ClientDefinitions [Settings] SettingsFile）。
-        /// 旧版客户端把 UserINISettings 直接落在游戏 INI 上；移植版隔离到 ClientSettings.ini 后，
-        /// 启动前需要把这些 Setting 的当前值（即 GUI 显示/保存的值）按各自 section/key 传过去：
-        /// 否则游戏读到空文件或旧值——缺 [Video] 分辨率会以 0x0 建屏（GScreenClass::DoBlit 崩溃），
-        /// 音量、滚屏等设置也不会生效。这里不内置游戏骨架，只做「设置 → 游戏 INI」的参数传递；
-        /// 游戏自己的其它节（[Skirmish]、[SerialDefaults] 等）由游戏自行维护。
+        /// 启动前守卫：只补齐游戏启动必需、且游戏 INI 里缺失或非法（≤0）的键。
+        /// 游戏侧参数以游戏 INI 本身为准（与官方 CnCNet 客户端共用同一文件），
+        /// 这里不覆盖已有值——否则仅修改客户端设置也会把官方客户端写入的分辨率冲掉。
+        /// - 分辨率：缺失或 ≤0 会以 0×0 建屏，触发 GScreenClass::DoBlit 崩溃；
+        /// - [Intro] Play=no：本机 ddraw 环境下播开场/Logo 同样崩溃。
         /// </summary>
         public void SyncGameSettingsIni()
         {
             try
             {
-                string settingsIniName = ClientConfiguration.Instance.SettingsIniName;
-                if (string.IsNullOrWhiteSpace(settingsIniName))
-                    return;
+                IniFile gameIni = GameSettingsIni;
+                bool changed = false;
 
-                string gameIniPath = SafePath.CombineFilePath(ProgramConstants.GamePath, settingsIniName);
-                if (!File.Exists(gameIniPath))
-                    File.WriteAllText(gameIniPath, string.Empty);
+                string widthSection = IngameScreenWidth.IniSectionName;
+                string widthKey = IngameScreenWidth.IniKeyName;
+                if (gameIni.GetIntValue(widthSection, widthKey, 0) <= 0)
+                {
+                    gameIni.SetIntValue(widthSection, widthKey, 1024);
+                    changed = true;
+                }
 
-                var gameIni = new IniFile(gameIniPath);
+                string heightSection = IngameScreenHeight.IniSectionName;
+                string heightKey = IngameScreenHeight.IniKeyName;
+                if (gameIni.GetIntValue(heightSection, heightKey, 0) <= 0)
+                {
+                    gameIni.SetIntValue(heightSection, heightKey, 768);
+                    changed = true;
+                }
 
-                // 分辨率：≤0 时回退，避免游戏以 0×0 建屏。
-                WriteInt(gameIni, IngameScreenWidth, 1024);
-                WriteInt(gameIni, IngameScreenHeight, 768);
+                if (!string.Equals(gameIni.GetStringValue("Intro", "Play", string.Empty), "no", StringComparison.OrdinalIgnoreCase))
+                {
+                    gameIni.SetStringValue("Intro", "Play", "no");
+                    changed = true;
+                }
 
-                // 音量/滚屏/游戏选项：与 GUI 的滑条与下拉一致（OptionsClass::LoadSettings 读取的键）。
-                WriteDouble(gameIni, SoundVolume);
-                WriteDouble(gameIni, VoiceVolume);
-                WriteDouble(gameIni, ScoreVolume);
-                WriteBool(gameIni, IsScoreShuffle);
-                WriteInt(gameIni, ScrollRate);
-                WriteInt(gameIni, DetailLevel);
-                WriteInt(gameIni, GameSpeed);
-                WriteInt(gameIni, Difficulty);
-
-                // 启动必需的开关（不是客户端设置项）：游戏播开场/Logo 会在本机 ddraw 环境下崩溃。
-                gameIni.SetStringValue("Intro", "Play", "no");
-
-                gameIni.WriteIniFile();
+                if (changed)
+                    gameIni.WriteIniFile();
             }
             catch (Exception ex)
             {
                 Logger.Log("Failed to sync game settings INI: " + ex);
             }
-        }
-
-        /// <summary>把整型设置按它自己的 section/key 写入目标 INI；值 ≤0 时用 fallback。</summary>
-        private static void WriteInt(IniFile target, IntSetting setting, int fallbackIfNonPositive = int.MinValue)
-        {
-            int value = setting.Value;
-            if (value <= 0 && fallbackIfNonPositive != int.MinValue)
-                value = fallbackIfNonPositive;
-
-            target.SetStringValue(setting.IniSectionName, setting.IniKeyName,
-                value.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        }
-
-        /// <summary>把浮点设置按它自己的 section/key 写入目标 INI（游戏用 6 位小数）。</summary>
-        private static void WriteDouble(IniFile target, DoubleSetting setting)
-        {
-            target.SetStringValue(setting.IniSectionName, setting.IniKeyName,
-                setting.Value.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture));
-        }
-
-        /// <summary>把布尔设置按它自己的 section/key 写入目标 INI（游戏接受 yes/no）。</summary>
-        private static void WriteBool(IniFile target, BoolSetting setting)
-        {
-            target.SetStringValue(setting.IniSectionName, setting.IniKeyName, setting.Value ? "yes" : "no");
         }
 
         public bool IsGameFiltersApplied()

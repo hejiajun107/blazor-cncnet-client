@@ -518,7 +518,7 @@
     /// <summary>保存草稿：全部写回 UserINISettings + 渲染器应用 + 落盘；涉及重启项时 toast 提示。</summary>
     private void OnSave()
     {
-        // 分辨率（游戏 INI 回写在 UserINISettings.SaveSettings 内完成）
+        // 分辨率（游戏侧参数，直接落到游戏自身 INI，由 UserINISettings.SaveSettings 一并写盘）
         if (_draft.TryGetValue("ingameRes", out var ir) && ir is string ires && TryParseRes(ires, out int iw, out int ih))
         {
             SettingsSvc.Ini.IngameScreenWidth.Value = iw;
