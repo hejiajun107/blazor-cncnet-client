@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @implements IDisposable
+@using CnCNetClient.Core
 @inject IJSRuntime JS
 @inject IThemeProvider ThemeProvider
 @inject NavigationManager Nav
@@ -11,8 +12,8 @@
 <!-- HUD 顶栏（全局，TopBar 通用组件，spec §5.3；状态灯/文本由 ConnectionMonitor 驱动，M3.10）。
      主题切换已移至设置页（Settings.razor），此处仅保留版本/帧率读数 -->
 <TopBar StatusClass="@Mon.StatusClass" StatusText="@Mon.StateText">
-    <span>BUILD <b>0.3.0</b></span>
-    <span>FPS <b data-fps="1">—</b></span>
+    <span class="hud-build">BUILD <b>0.3.0</b></span>
+    <span class="hud-fps">FPS <b data-fps="1">—</b></span>
 </TopBar>
 
 <!-- 背景层（全局共享）：星粒 / 极光 / 网格 / 扫描线 / 暗角 -->
@@ -63,6 +64,8 @@
         Mon.StateChanged += OnMonStateChanged;
         Mon.Notification += OnMonNotification;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
+        // 主菜单音乐跟随路由：离开游戏房间恢复，进入游戏房间按 StopMusicOnMenu 停止
+        Nav.LocationChanged += OnLocationChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -71,6 +74,8 @@
         {
             // 主题系统：加载持久化主题并应用（M2.5）
             await ThemeProvider.InitializeAsync();
+            // 主菜单音乐（原版 [General] MainMenuTheme，贯穿客户端各页面播放）
+            await SyncMenuMusicAsync();
             // F4 插件资源（style/script）：首帧注入 WebView（幂等）
             await PluginAssets.InjectAllAsync();
             // 星粒背景动效（尊重 prefers-reduced-motion，内部处理）
@@ -78,7 +83,57 @@
         }
     }
 
-    private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(StateHasChanged);
+    private void OnThemeChanged(ThemeInfo theme) => InvokeAsync(() =>
+    {
+        // 主题换肤同时换主菜单音乐（各主题目录可有各自的 [General] MainMenuTheme）
+        _ = SyncMenuMusicAsync();
+        StateHasChanged();
+    });
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => InvokeAsync(
+        () => _ = SyncMenuMusicAsync());
+
+    /// <summary>
+    /// 主菜单音乐同步（原版 PlayMainMenuMusic / StopMusicOnMenu 语义）：
+    /// 音乐贯穿客户端各页面（主菜单、设置、统计等）循环播放，仅在游戏房间
+    /// （/online/game、/lan/game）且 StopMusicOnMenu 开启时停止。
+    /// 已关闭主菜单音乐或主题未配置音频时不播放。
+    /// </summary>
+    private async Task SyncMenuMusicAsync()
+    {
+        try
+        {
+            if (!UserINISettings.Instance.PlayMainMenuMusic.Value
+                || (IsGameRoomRoute() && UserINISettings.Instance.StopMusicOnMenu.Value))
+            {
+                await JS.InvokeVoidAsync("cncnet.stopMenuMusic", 300);
+                return;
+            }
+
+            string? url = ThemeProvider.Current.MusicUrl;
+            if (string.IsNullOrEmpty(url))
+                return;
+
+            double volume = UserINISettings.Instance.SoundVolume.Value;
+            await JS.InvokeVoidAsync("cncnet.playMenuMusic", url, Math.Clamp(volume, 0.0, 1.0));
+        }
+        catch
+        {
+            // 布局初始化的 JS 调用失败（如 WebView 未就绪）不阻塞页面渲染
+        }
+    }
+
+    /// <summary>当前路由是否处于游戏房间（联机房间 / LAN 房间 / 遭遇战设置）。</summary>
+    private bool IsGameRoomRoute()
+    {
+        string path = Nav.Uri;
+        int cut = path.IndexOfAny(['?', '#']);
+        if (cut >= 0)
+            path = path[..cut];
+        return path.EndsWith("/online/game", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("/lan/game", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("/skirmish", StringComparison.OrdinalIgnoreCase);
+    }
 
     private void OnMonStateChanged() => InvokeAsync(StateHasChanged);
 
@@ -107,5 +162,6 @@
         Mon.StateChanged -= OnMonStateChanged;
         Mon.Notification -= OnMonNotification;
         TranslationSvc.LanguageChanged -= OnLanguageChanged;
+        Nav.LocationChanged -= OnLocationChanged;
     }
 }

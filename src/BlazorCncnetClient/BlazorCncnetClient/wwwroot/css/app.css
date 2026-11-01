@@ -133,7 +133,8 @@ a,.btn-link{color:var(--cyan)}
 .shell{position:relative;z-index:5;height:100vh}
 
 /* ── HUD 顶栏（全局悬浮，原版 TopBar：默认藏在屏幕上方，鼠标移到顶部滑出，失焦 1s 收回） ── */
-.hud{position:fixed;top:0;left:0;right:0;z-index:90;display:flex;justify-content:space-between;
+.hud{position:fixed;top:0;left:0;right:0;z-index:90;display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:16px;
   padding:var(--lay-hud-pady) var(--lay-hud-padx);font-family:var(--font-orbitron);font-size:12px;letter-spacing:2px;color:var(--dim);
   border-bottom:1px solid var(--line);background:rgba(2,8,14,.92);
   transform:translateY(-130%);opacity:0;pointer-events:none;
@@ -141,7 +142,12 @@ a,.btn-link{color:var(--cyan)}
 .hud.show{transform:translateY(0);opacity:1;pointer-events:auto}
 .hud-peek{position:fixed;top:0;left:0;right:0;height:3px;z-index:89;pointer-events:none;
   background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.5}
-.hud .sys{display:flex;gap:22px;align-items:center}
+.hud .sys{display:flex;gap:22px;align-items:center;min-width:0}
+.hud .sys-left{justify-self:start}
+.hud .sys-right{justify-self:end}
+.hud .hud-player{display:flex;align-items:center;gap:6px;min-width:0}
+.hud .hud-player b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hud .hud-clock{white-space:nowrap}
 .hud b{color:var(--cyan);font-weight:700}
 .hud .live{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);animation:blink 1.8s infinite}
 .hud .live.retry{background:var(--gold);box-shadow:0 0 12px var(--gold);animation:blink 1.1s infinite}
@@ -151,12 +157,11 @@ a,.btn-link{color:var(--cyan)}
 @keyframes blink{50%{opacity:.25}}
 
 /* ── 悬浮顶栏菜单（原版 TopBar 按钮：主菜单/设置/登出） ─────────── */
-/* 绝对定位居中：按钮组位置与两侧 .sys 内容宽度解耦。
-   此前依赖 space-between 居中，右侧 FPS 读数/在线人数、左侧状态文本
-   宽度一变，中间按钮组就会被挤得整体左右漂移且不恢复。 */
-.hud-menu{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+/* 三栏 grid 的中间栏：按钮组在剩余空间内居中，空间不足时两侧信息按断点隐藏，
+   不再像绝对定位那样漂浮压住左右内容（窄窗口下重叠/错位的根因）。 */
+.hud-menu{justify-self:center;min-width:0;
   display:flex;gap:8px;align-items:center}
-.hud .hm{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:88px;
+.hud .hm{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:88px;white-space:nowrap;
   padding:4px 12px;background:rgba(4,12,20,.6);border:1px solid var(--line);color:var(--cyan-soft);
   font-family:var(--font-cn);font-size:13px;letter-spacing:1px;cursor:pointer;
   transition:border-color .15s var(--ease-out),color .15s var(--ease-out),box-shadow .15s var(--ease-out)}
@@ -1477,6 +1482,39 @@ input.set-text{width:210px;cursor:text}
   font-size:12px;letter-spacing:.14em;color:rgba(122,243,255,.6);font-family:var(--font-rajdhani)}
 @keyframes splashScan{from{transform:translateX(-130%)}to{transform:translateX(430%)}}
 @media(prefers-reduced-motion:reduce){.splash-bar-fill{animation:none}}
+
+/* ── HUD 顶栏宽度分级：空间不足时逐级隐藏次要读数，避免中间按钮组与两侧信息重叠 ── */
+/* ≤1320：隐藏日期（保留时间）、收紧右侧项间距 */
+@media(max-width:1320px){
+  .hud .sys{gap:16px}
+  .hud .hud-date{display:none}
+}
+/* ≤1200：去掉按钮英文副标题、按钮宽度随文字自适应、收紧内边距 */
+@media(max-width:1200px){
+  .hud{padding:var(--lay-hud-pady) 20px;column-gap:12px}
+  .hud .sys{gap:12px}
+  .hud .hm{min-width:0;padding:4px 10px}
+  .hud .hm .en{display:none}
+}
+/* ≤1120：省略「Player」字样，玩家名过长时截断 */
+@media(max-width:1120px){
+  .hud .hud-player-label{display:none}
+  .hud .hud-player b{max-width:110px}
+}
+/* ≤1000：隐藏 BUILD / FPS 读数 */
+@media(max-width:1000px){
+  .hud .hud-build,.hud .hud-fps{display:none}
+}
+/* ≤880：隐藏在线人数、按钮字号收一档 */
+@media(max-width:880px){
+  .hud .hud-online{display:none}
+  .hud .hm{font-size:12px}
+}
+/* ≤760：右侧只留玩家名，左侧只留状态灯 */
+@media(max-width:760px){
+  .hud .hud-clock{display:none}
+  .hud .live-txt{display:none}
+}
 
 @media(max-width:920px){
   /* 窄屏：覆盖令牌（主菜单纵向堆叠） */

@@ -522,6 +522,49 @@
   <data name="Client:UI:Skirmish.Random" xml:space="preserve">
     <value>随机</value>
   </data>
+  <!-- 遭遇战阵营下拉：随机选项（对齐 GameOptions.ini [RandomSelectors]）与各阵营显示名 -->
+  <data name="Client:UI:Skirmish.Side.Random" xml:space="preserve">
+    <value>随机阵营</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Spectator" xml:space="preserve">
+    <value>观战</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Random Allies" xml:space="preserve">
+    <value>随机盟军</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Random Soviets" xml:space="preserve">
+    <value>随机苏军</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.America" xml:space="preserve">
+    <value>美国</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Korea" xml:space="preserve">
+    <value>韩国</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.France" xml:space="preserve">
+    <value>法国</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Germany" xml:space="preserve">
+    <value>德国</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Great Britain" xml:space="preserve">
+    <value>英国</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Libya" xml:space="preserve">
+    <value>利比亚</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Iraq" xml:space="preserve">
+    <value>伊拉克</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Cuba" xml:space="preserve">
+    <value>古巴</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Russia" xml:space="preserve">
+    <value>俄罗斯</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Yuri" xml:space="preserve">
+    <value>尤里</value>
+  </data>
   <data name="Client:UI:Skirmish.Easy" xml:space="preserve">
     <value>简单</value>
   </data>
@@ -1047,6 +1090,9 @@
   </data>
   <data name="Client:UI:Settings.MainMenuMusic" xml:space="preserve">
     <value>主菜单音乐</value>
+  </data>
+  <data name="Client:UI:Settings.StopMusicOnMenu" xml:space="preserve">
+    <value>在游戏房间中不要播放音乐</value>
   </data>
   <data name="Client:UI:Settings.MessageSound" xml:space="preserve">
     <value>聊天消息音效</value>

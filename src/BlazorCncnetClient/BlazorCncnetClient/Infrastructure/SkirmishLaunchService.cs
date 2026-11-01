@@ -56,8 +56,10 @@ public sealed class SkirmishLaunchService : IDisposable
         {
             // 1. 生成含 AI 的 spawn.ini + spawnmap.ini（遭遇战为本地主机：无隧道、固定本机）
             //    players 仅含人类玩家，aiPlayers 紧随其后，由 SpawnIniGenerator 写入 AIPlayers 等节。
+            //    随机阵营选项（完全随机 / 随机某一阵营）在此解析为具体阵营索引（同原版 RandomizeSide）。
+            var (humanPlayer, aiPlayers) = _skirmish.CreateLaunchRoster();
             SpawnIniGenerator.WriteSpawnIni(
-                new[] { _skirmish.HumanPlayer! },
+                new[] { humanPlayer },
                 gameModeMap,
                 _skirmish.RandomSeed,
                 _skirmish.SideCount,
@@ -65,10 +67,10 @@ public sealed class SkirmishLaunchService : IDisposable
                 isHost: true,
                 tunnelIp: string.Empty,
                 tunnelPort: 0,
-                aiPlayers: _skirmish.AIPlayers,
+                aiPlayers: aiPlayers,
                 teamStartMappings: _skirmish.GetActiveTeamStartMappings(), // G6 自动结盟（出生点→队伍）
                 gameOptions: _skirmish.GameOptions); // G7 游戏选项（复选/下拉 → spawn.ini [Settings]）
-            SpawnIniGenerator.WriteMap(new[] { _skirmish.HumanPlayer! }, gameModeMap,
+            SpawnIniGenerator.WriteMap(new[] { humanPlayer }, gameModeMap,
                 _skirmish.GameOptions); // G7 游戏选项自定义地图代码（AlliesAllowed 等）
 
             // 2. 标记对局进行中并跳转加载等待页

@@ -137,13 +137,15 @@ else
                             <em class="slot-host">YOU</em>
                         </div>
                         <div class="gl-side">
-                            <img class="side-ic" src="@SideIconUrl(HumanSideId)" alt="" onerror="this.style.display='none'" />
+                            @if (SideIconUrl(HumanSideId) is { Length: > 0 } humanIcon)
+                            {
+                                <img class="side-ic" src="@humanIcon" alt="" onerror="this.style.display='none'" />
+                            }
                             <select class="gl-select" value="@HumanSideId" @onchange="OnHumanSideChange">
-                                @for (int s = 0; s < Sides.Length; s++)
+                                @foreach (var opt in HumanSideOptions)
                                 {
-                                    <option value="@s">@Sides[s]</option>
+                                    <option value="@opt.Id">@opt.Label</option>
                                 }
-                                <option value="@Sides.Length">Spectator</option>
                             </select>
                         </div>
                         <select class="gl-select color-select" value="@HumanColorId" @onchange="OnHumanColorChange">
@@ -198,14 +200,14 @@ else
                                 }
                             </div>
                             <div class="gl-side">
-                                @if (ai is not null)
+                                @if (ai is not null && SideIconUrl(ai.SideId) is { Length: > 0 } aiIcon)
                                 {
-                                    <img class="side-ic" src="@SideIconUrl(ai.SideId)" alt="" onerror="this.style.display='none'" />
+                                    <img class="side-ic" src="@aiIcon" alt="" onerror="this.style.display='none'" />
                                 }
                                 <select class="gl-select" disabled="@(ai is null)" value="@(ai?.SideId ?? 0)" @onchange="(e) => { if (ai is not null) OnAISideChange(ai, e); }">
-                                    @for (int s = 0; s < Sides.Length; s++)
+                                    @foreach (var opt in AiSideOptions)
                                     {
-                                        <option value="@s">@Sides[s]</option>
+                                        <option value="@opt.Id">@opt.Label</option>
                                     }
                                 </select>
                             </div>
@@ -455,6 +457,55 @@ else
     private string[] _sides = Array.Empty<string>();
     private string[] Sides => _sides;
 
+    /// <summary>阵营下拉项：Id 为状态值（负数=随机选项），Label 为当前语言显示名，IconSide 为图标用的真实阵营名（随机项为 null）。</summary>
+    private sealed record SideOption(int Id, string Label, string? IconSide);
+
+    /// <summary>
+    /// 人类可用阵营项（对齐原版）：完全随机 → GameOptions.ini [RandomSelectors] 自定义随机阵营
+    /// → 真实阵营 → 观战。
+    /// </summary>
+    private List<SideOption> HumanSideOptions => BuildSideOptions(includeSpectator: true);
+
+    /// <summary>AI 可用阵营项（AI 不可观战）。</summary>
+    private List<SideOption> AiSideOptions => BuildSideOptions(includeSpectator: false);
+
+    private List<SideOption> BuildSideOptions(bool includeSpectator)
+    {
+        var options = new List<SideOption>
+        {
+            new(SkirmishService.RandomSideId,
+                SideLabel("Client:Sides:RandomSide", "Skirmish.Side.Random", "Random"), null)
+        };
+
+        // 自定义随机选择器（如「随机盟军 / 随机苏军」），名称来自 GameOptions.ini
+        for (int i = 0; i < Svc.RandomSelectorCount; i++)
+        {
+            string name = Svc.RandomSelectors[i].Name;
+            options.Add(new(SkirmishService.RandomSelectorSideId(i),
+                SideLabel("INI:Sides:" + name, "Skirmish.Side." + name, name), null));
+        }
+
+        for (int s = 0; s < Sides.Length; s++)
+            options.Add(new(s, SideName(Sides[s]), Sides[s]));
+
+        if (includeSpectator)
+            options.Add(new(Svc.SpectatorSideIndex,
+                SideLabel("Client:Sides:SpectatorSide", "Skirmish.Side.Spectator", "Spectator"), "Spectator"));
+
+        return options;
+    }
+
+    /// <summary>阵营名本地化：优先原版 Translation.ini 键（<c>Client:Sides:RandomSide</c> /
+    /// <c>INI:Sides:&lt;阵营名&gt;</c>，第三方翻译包可直接生效），缺失回退内置 Resx（<c>Skirmish.Side.*</c>），最后回退英文。</summary>
+    private static string SideLabel(string translationKey, string resxKey, string fallback)
+    {
+        string translated = CnCNetClient.Core.I18N.Translation.Instance.LookUp(translationKey, string.Empty, notify: false);
+        return string.IsNullOrEmpty(translated) ? T(resxKey, fallback) : translated;
+    }
+
+    /// <summary>真实阵营名 → 当前语言显示名（译文键 Skirmish.Side.&lt;阵营名&gt;，缺失回退原名）。</summary>
+    private static string SideName(string side) => SideLabel("INI:Sides:" + side, "Skirmish.Side." + side, side);
+
     /// <summary>当前选中玩家（点击玩家行选中；在地图上点出生点即分配给它，同原版 SelectedPlayer 交互）。
     /// null = 未选中（地图点击默认分配人类玩家）。</summary>
     private PlayerInfo? _selectedPlayer;
@@ -638,8 +689,8 @@ else
         // r9-4：Discord 呈现同步（原版 SkirmishLobby 在选择地图/阵营时推送）
         if (Svc.SelectedMap is not null)
         {
-            // Spectator 时无阵营小图标（原版 SideIndex 为观察者时传空阵营名）
-            string side = HumanSideId < Sides.Length ? Sides[HumanSideId] : string.Empty;
+            // Spectator / 随机阵营时无阵营小图标（原版 SideIndex 为观察者时传空阵营名）
+            string side = HumanSideId >= 0 && HumanSideId < Sides.Length ? Sides[HumanSideId] : string.Empty;
             Discord.Skirmish(
                 map: Svc.SelectedMap.Map.UntranslatedName,
                 mode: Svc.SelectedMap.GameMode.UIName,
@@ -1114,7 +1165,10 @@ else
     /// 经 GameContentServer 伺服；图标缺失时浏览器触发 onerror 隐藏）。</summary>
     private string SideIconUrl(int index)
     {
-        string side = index >= 0 && index < Sides.Length ? Sides[index] : "Spectator";
+        if (index < 0)
+            return string.Empty; // 随机阵营选项（完全随机 / 随机某一阵营）无图标
+
+        string side = index < Sides.Length ? Sides[index] : "Spectator";
         try
         {
             return ContentServer.IsRunning

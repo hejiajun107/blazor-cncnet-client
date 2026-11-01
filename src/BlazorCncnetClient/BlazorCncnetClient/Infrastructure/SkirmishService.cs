@@ -67,11 +67,27 @@ namespace BlazorCncnetClient.Infrastructure
         public int SideCount =>
             Math.Max(1, ClientConfiguration.Instance.Sides.Split(',', StringSplitOptions.RemoveEmptyEntries).Length);
 
-        /// <summary>观战（Spectator）阵营索引 = 真实阵营数量（本端无 Random/随机选择器，Spectator 位于最后一个索引，同原版 GetSpectatorSideIndex 语义）。</summary>
+        /// <summary>观战（Spectator）阵营索引 = 真实阵营数量（随机选项用负数标识，故观战仍位于最后一个非负索引）。</summary>
         public int SpectatorSideIndex => SideCount;
 
         /// <summary>人类玩家是否选择了观战（Spectator）阵营（G5）。</summary>
         public bool IsHumanSpectator => HumanPlayer is not null && HumanPlayer.SideId == SpectatorSideIndex;
+
+        // ── 随机阵营选项（对齐原版 GameOptions.ini [RandomSelectors] + Random 语义） ──
+        // 真实阵营索引保持 0..SideCount-1（观战 = SideCount），随机项用负数标识，避免与真实索引冲突：
+        //   -1（RandomSideId）= 完全随机；-(i+2) = 第 i 个 [RandomSelectors] 选择器（如「随机盟军」）。
+
+        /// <summary>「完全随机阵营」标识（每个真实阵营等概率）。</summary>
+        public const int RandomSideId = -1;
+
+        /// <summary>自定义随机阵营选择器（GameOptions.ini [RandomSelectors]，名称 → Sides 索引集合）。</summary>
+        public IReadOnlyList<(string Name, int[] Sides)> RandomSelectors => ClientConfiguration.Instance.RandomSelectors;
+
+        /// <summary>自定义随机阵营选择器数量。</summary>
+        public int RandomSelectorCount => RandomSelectors.Count;
+
+        /// <summary>第 <paramref name="index"/> 个随机选择器（0 起）的标识。</summary>
+        public static int RandomSelectorSideId(int index) => -(index + 2);
 
         public SkirmishService(MapLoader mapLoader, GameCollection gameCollection, Random random)
         {
@@ -428,6 +444,54 @@ namespace BlazorCncnetClient.Infrastructure
         // ── 校验与开始 ──
 
         /// <summary>
+        /// 生成写 spawn.ini 用的玩家副本：把随机阵营选项（-1 完全随机 / -2 起自定义选择器）
+        /// 解析成具体阵营索引（同原版 PlayerHouseInfo.RandomizeSide；按本局随机种子，一局内固定）。
+        /// 界面上的选择保持原样，不改动。
+        /// </summary>
+        public (PlayerInfo Human, List<PlayerInfo> AIs) CreateLaunchRoster()
+        {
+            var random = new Random(RandomSeed);
+
+            int ResolveSideId(int sideId)
+            {
+                if (sideId >= 0)
+                    return sideId; // 真实阵营索引，或观战（SideCount）
+
+                if (sideId == RandomSideId)
+                    return random.Next(0, SideCount);
+
+                int selectorIndex = -sideId - 2;
+                if (selectorIndex >= 0 && selectorIndex < RandomSelectorCount)
+                {
+                    int[] positions = RandomSelectors[selectorIndex].Sides
+                        .Where(p => p >= 0 && p < SideCount)
+                        .ToArray();
+                    if (positions.Length > 0)
+                        return positions[random.Next(positions.Length)];
+                }
+
+                return random.Next(0, SideCount);
+            }
+
+            PlayerInfo CreateResolved(PlayerInfo source) =>
+                new(source.Name, ResolveSideId(source.SideId), source.StartingLocation, source.ColorId, source.TeamId)
+                {
+                    Ready = source.Ready,
+                    AutoReady = source.AutoReady,
+                    IsAI = source.IsAI,
+                    IsInGame = source.IsInGame,
+                    IPAddress = source.IPAddress,
+                    Port = source.Port,
+                    HashReceived = source.HashReceived,
+                    Index = source.Index,
+                    Ping = source.Ping,
+                    AILevel = source.AILevel
+                };
+
+            return (CreateResolved(HumanPlayer!), _aiPlayers.Select(CreateResolved).ToList());
+        }
+
+        /// <summary>
         /// 校验对局合法性，返回错误描述（null 表示合法）。
         /// 移植原版 SkirmishLobby.CheckGameValidity：模式单机限制、最小/最大玩家数、
         /// 出生点冲突（仅 EnforceMaxPlayers 时校验，同原版）。
@@ -666,14 +730,16 @@ namespace BlazorCncnetClient.Infrastructure
         // ── 工具方法 ──
 
         /// <summary>校验加载的玩家字段不越界（阵营/颜色/出生点），越界回退默认值（同原版）。
-        /// G5：人类允许阵营索引 == SideCount（观战 Spectator）；AI 减去观战索引（sideCount--，不可观战）。</summary>
+        /// G5：人类允许阵营索引 == SideCount（观战 Spectator）；AI 减去观战索引（sideCount--，不可观战）。
+        /// 随机阵营标识为负数（-1 完全随机、-2 起为随机选择器），下限为 -(选择器数量 + 1)。</summary>
         private void CheckLoadedPlayerVariableBounds(PlayerInfo pInfo, bool isAIPlayer = false)
         {
             int sideCount = SideCount;
             if (isAIPlayer)
                 sideCount--;
 
-            if (pInfo.SideId < 0 || pInfo.SideId > sideCount)
+            int minSide = -(RandomSelectorCount + 1);
+            if (pInfo.SideId < minSide || pInfo.SideId > sideCount)
                 pInfo.SideId = 0;
 
             if (pInfo.ColorId < 0 || pInfo.ColorId > MultiplayerColor.LoadColors().Count)

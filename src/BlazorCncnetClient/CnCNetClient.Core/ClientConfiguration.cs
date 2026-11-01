@@ -234,6 +234,40 @@ namespace CnCNetClient.Core
 
         public string Sides => gameOptions_ini.GetStringValue(GENERAL, nameof(Sides), "GDI,Nod,Allies,Soviet");
 
+        /// <summary>
+        /// 自定义随机阵营选择器（<c>GameOptions.ini</c> <c>[RandomSelectors]</c>：
+        /// <c>名称=逗号分隔的 Sides 索引</c>，如 <c>Random Allies=0,1,2,3,4</c>）。
+        /// 对应原版的「随机某一阵营」下拉项，运行时在该索引集合内随机。
+        /// </summary>
+        public IReadOnlyList<(string Name, int[] Sides)> RandomSelectors => _randomSelectors ??= LoadRandomSelectors();
+
+        private List<(string Name, int[] Sides)>? _randomSelectors;
+
+        private List<(string Name, int[] Sides)> LoadRandomSelectors()
+        {
+            var result = new List<(string Name, int[] Sides)>();
+            List<string> keys = gameOptions_ini.GetSectionKeys("RandomSelectors");
+            if (keys is null)
+                return result;
+
+            foreach (string key in keys)
+            {
+                var sides = new List<int>();
+                foreach (string token in gameOptions_ini.GetStringValue("RandomSelectors", key, string.Empty)
+                             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (int.TryParse(token, out int index))
+                        sides.Add(index);
+                }
+
+                if (sides.Count > 0)
+                    result.Add((key, sides.ToArray()));
+            }
+
+            return result;
+        }
+
+
         public string InternalSideIndices => gameOptions_ini.GetStringValue(GENERAL, nameof(InternalSideIndices), string.Empty);
 
         public string SpectatorInternalSideIndex => gameOptions_ini.GetStringValue(GENERAL, nameof(SpectatorInternalSideIndex), string.Empty);

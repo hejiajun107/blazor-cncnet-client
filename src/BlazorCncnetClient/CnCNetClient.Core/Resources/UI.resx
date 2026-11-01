@@ -527,6 +527,49 @@ They interfere with the game/mod and must be removed before the client can start
   <data name="Client:UI:Skirmish.Random" xml:space="preserve">
     <value>Random</value>
   </data>
+  <!-- 遭遇战阵营下拉：随机选项（对齐 GameOptions.ini [RandomSelectors]）与各阵营显示名 -->
+  <data name="Client:UI:Skirmish.Side.Random" xml:space="preserve">
+    <value>Random</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Spectator" xml:space="preserve">
+    <value>Spectator</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Random Allies" xml:space="preserve">
+    <value>Random Allies</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Random Soviets" xml:space="preserve">
+    <value>Random Soviets</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.America" xml:space="preserve">
+    <value>America</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Korea" xml:space="preserve">
+    <value>Korea</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.France" xml:space="preserve">
+    <value>France</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Germany" xml:space="preserve">
+    <value>Germany</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Great Britain" xml:space="preserve">
+    <value>Great Britain</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Libya" xml:space="preserve">
+    <value>Libya</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Iraq" xml:space="preserve">
+    <value>Iraq</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Cuba" xml:space="preserve">
+    <value>Cuba</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Russia" xml:space="preserve">
+    <value>Russia</value>
+  </data>
+  <data name="Client:UI:Skirmish.Side.Yuri" xml:space="preserve">
+    <value>Yuri</value>
+  </data>
   <data name="Client:UI:Skirmish.Easy" xml:space="preserve">
     <value>Easy</value>
   </data>
@@ -1052,6 +1095,9 @@ They interfere with the game/mod and must be removed before the client can start
   </data>
   <data name="Client:UI:Settings.MainMenuMusic" xml:space="preserve">
     <value>Main menu music</value>
+  </data>
+  <data name="Client:UI:Settings.StopMusicOnMenu" xml:space="preserve">
+    <value>Don't play music in game rooms</value>
   </data>
   <data name="Client:UI:Settings.MessageSound" xml:space="preserve">
     <value>Chat message sound</value>

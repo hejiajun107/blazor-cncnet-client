@@ -170,6 +170,12 @@ public class IniFile : IIniFile
         {
             currentLine = reader.ReadLine();
 
+            // 原版 INI 系统（CnCNet 客户端各主题的 DTACnCNetClient.ini）用行首反引号注释整行，
+            // 例如 "`MainMenuTheme=MainMenuTheme.mp3"。注释掉的行不应被当作键，否则会读到
+            // 名为 "`MainMenuTheme" 的键而漏掉 BasedOn 继承的真实值。
+            if (currentLine.TrimStart().StartsWith('`'))
+                continue;
+
             int commentStartIndex = currentLine.IndexOf(';');
             if (commentStartIndex > -1)
                 currentLine = currentLine.Substring(0, commentStartIndex);

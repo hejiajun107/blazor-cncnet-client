@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 using CnCNetClient.Core;
@@ -24,6 +25,14 @@ namespace BlazorCncnetClient.Infrastructure.Theme;
 /// </summary>
 public sealed class ThemeProvider : IThemeProvider
 {
+    /// <summary>原版主题配置文件（各主题目录内各一份，[General] MainMenuTheme 指定主菜单音乐）。</summary>
+    private const string THEME_INI_NAME = "DTACnCNetClient.ini";
+    private const string RESOURCES_DIRECTORY = "Resources";
+    private const string DEFAULT_THEME_DIRECTORY = "Resources/ThemeDefault";
+
+    /// <summary>浏览器可直接播放的音频扩展名（原版 .wma 不被 Chromium 支持，故按此顺序探测同名文件）。</summary>
+    private static readonly string[] WEB_AUDIO_EXTENSIONS = [".mp3", ".ogg", ".wav"];
+
     private static readonly ThemeInfo Menu = new("menu",
         UiText.T("Theme.MenuName", "Main menu"), UiText.T("Theme.MenuHint", "Monochrome teal HUD"));
     private static readonly ThemeInfo Inner = new("inner",
@@ -64,6 +73,9 @@ public sealed class ThemeProvider : IThemeProvider
         _initialized = true;
         try
         {
+            // 主菜单音乐：先解析内置主题（原版默认主题资源），再随外部主题目录逐个解析
+            ResolveBuiltInMenuMusic();
+
             // F1：加载外部主题目录（[Themes] 节）并把 CSS 地址表交给前端注入
             LoadExternalThemes();
             await _js.InvokeVoidAsync("cncnet.setThemeUrls", _externalCss);
@@ -75,7 +87,7 @@ public sealed class ThemeProvider : IThemeProvider
             if (string.IsNullOrEmpty(persisted))
                 persisted = _uiDefs.DefaultTheme;
             var theme = Resolve(persisted);
-            _current = Menu;
+            _current = Resolve(Menu.Key);
             if (theme.Key != Menu.Key)
             {
                 await ApplyAsync(theme.Key);
@@ -158,9 +170,130 @@ public sealed class ThemeProvider : IThemeProvider
                 hint = meta.GetStringValue("Theme", "Hint", dir).Trim();
             }
 
-            _themes.Add(new ThemeInfo(key, name, hint));
+            _themes.Add(new ThemeInfo(key, name, hint, ResolveMenuMusicUrl(dir)));
             _externalCss[key] = _content.MapUrl(SafePath.CombineFilePath(dir, "theme.css"));
             _logger.LogInformation("外部主题已加载：{Key} → {Dir}", key, dir);
         }
+    }
+
+    /// <summary>
+    /// 内置主题（menu/inner/ra）没有独立目录，统一取原版默认主题资源里的主菜单音乐。
+    /// </summary>
+    private void ResolveBuiltInMenuMusic()
+    {
+        string? url = ResolveMenuMusicUrl(null);
+        for (int i = 0; i < _themes.Count; i++)
+        {
+            if (_themes[i].MusicUrl is null)
+                _themes[i] = _themes[i] with { MusicUrl = url };
+        }
+
+        if (url is not null)
+            _logger.LogInformation("内置主题主菜单音乐：{Url}", url);
+    }
+
+    /// <summary>
+    /// 解析主菜单音乐（原版 [General] MainMenuTheme 语义）。
+    /// 搜索顺序：传入的主题目录 → Resources/ThemeDefault（原版默认主题）→ Resources 根，
+    /// 取第一个既有 DTACnCNetClient.ini 且 MainMenuTheme 能落到实际音频文件的配置。
+    /// 值可含多首（逗号分隔，原版随机取一首），路径相对配置文件所在目录。
+    /// </summary>
+    private string? ResolveMenuMusicUrl(string? themeDir)
+    {
+        string? root = _uiDefs.RootPath;
+        if (string.IsNullOrEmpty(root) || !_content.IsRunning)
+            return null;
+
+        var dirs = new List<string>();
+        if (!string.IsNullOrWhiteSpace(themeDir))
+            dirs.Add(themeDir.Trim('/', '\\'));
+        dirs.Add(DEFAULT_THEME_DIRECTORY);
+        dirs.Add(RESOURCES_DIRECTORY);
+
+        foreach (string dir in dirs)
+        {
+            string iniPath = SafePath.CombineFilePath(root, dir, THEME_INI_NAME);
+            if (!File.Exists(iniPath))
+                continue;
+
+            string raw = new IniFile(iniPath).GetStringValue("General", "MainMenuTheme", string.Empty).Trim();
+            if (raw.Length == 0)
+                continue;
+
+            var found = new List<string>();
+            string? wmaOnly = null;
+            foreach (string name in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                string? relative = ResolveAudioFile(root, dir, name, out string? wmaHint);
+                if (relative is not null)
+                    found.Add(relative);
+                else if (wmaHint is not null)
+                    wmaOnly ??= wmaHint;
+            }
+
+            if (found.Count > 0)
+            {
+                // 原版 [General] MainMenuTheme 支持逗号分隔多首并随机取一首，此处保持一致
+                string chosen = found[Random.Shared.Next(found.Count)];
+                _logger.LogInformation("主菜单音乐已解析：{Dir} / {Path}", dir, chosen);
+                return _content.MapUrl(chosen);
+            }
+
+            if (wmaOnly is not null)
+            {
+                // 原版默认资源就是 .wma，但 Chromium/WebView2 不带 WMA 解码器，无法播放
+                _logger.LogWarning("主菜单音乐只有 WMA，WebView2 无法解码：{Path}；请转换为同名 .mp3 或 .ogg", wmaOnly);
+            }
+            else
+            {
+                _logger.LogInformation("主菜单音乐未找到音频文件：{Ini} 的 MainMenuTheme={Raw}", iniPath, raw);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 把 MainMenuTheme 的值解析成游戏根相对的文件路径。
+    /// 原版用 .ogg/.wma，浏览器只认 mp3/ogg/wav，故忽略值里的扩展名，
+    /// 按 .mp3 → .ogg → .wav 顺序探测同名文件；都没有时把 .wma 路径通过 <paramref name="wmaHint"/>
+    /// 返回，供调用方给出「WMA 无法解码」的明确提示。
+    /// 搜索目录：配置文件所在目录 → Resources → 游戏根（原版主题 ini 的值常相对 Resources 根，
+    /// 例如 <c>Resources/MainMenuTheme.wma</c>）；值本身自带目录时直接按游戏根相对路径解析。
+    /// </summary>
+    private static string? ResolveAudioFile(string root, string configDir, string value, out string? wmaHint)
+    {
+        wmaHint = null;
+
+        string relative = value.Trim().Trim('/', '\\').Replace('\\', '/');
+        if (relative.Length == 0)
+            return null;
+
+        bool explicitDirectory = relative.Contains('/');
+        string withoutExtension = Path.HasExtension(relative)
+            ? relative[..relative.LastIndexOf('.')]
+            : relative;
+
+        string[] dirs = explicitDirectory
+            ? [string.Empty]
+            : [configDir, RESOURCES_DIRECTORY, string.Empty];
+
+        foreach (string dir in dirs)
+        {
+            string prefix = dir.Length == 0 ? string.Empty : dir.Replace('\\', '/').TrimEnd('/') + "/";
+
+            foreach (string extension in WEB_AUDIO_EXTENSIONS)
+            {
+                string candidate = prefix + withoutExtension + extension;
+                if (File.Exists(SafePath.CombineFilePath(root, candidate)))
+                    return candidate;
+            }
+
+            string wma = prefix + withoutExtension + ".wma";
+            if (wmaHint is null && File.Exists(SafePath.CombineFilePath(root, wma)))
+                wmaHint = wma;
+        }
+
+        return null;
     }
 }

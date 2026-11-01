@@ -37,7 +37,7 @@
             {
                 <button class="set-nav-item @(s.Key == Active ? "active" : "")" @onclick="() => Active = s.Key">
                     <span class="set-nav-ic">@s.Icon</span>
-                    <span class="set-nav-tx"><span class="cn">@Ui("Settings.Nav." + s.Key, s.En)</span><span class="en">@s.En</span></span>
+                    <span class="set-nav-tx"><span class="cn">@Ui(SectionKey("Settings.Nav.", s.Key), s.En)</span><span class="en">@s.En</span></span>
                 </button>
             }
             @* F4 追加型槽位：插件可在设置页侧栏追加自有内容（.plugin-slot 为 display:contents） *@
@@ -143,9 +143,16 @@
     private string CurrentSectionTitle()
     {
         return Sections.FirstOrDefault(s => s.Key == Active) is { } sec
-            ? Ui("Settings.Section." + Active, sec.En)
+            ? Ui(SectionKey("Settings.Section.", sec.Key), sec.En)
             : Active;
     }
+
+    /// <summary>
+    /// 分区标识（display/audio…）→ Resx 键名（Display/Audio…）。
+    /// Resx 键按 PascalCase 命名，直接用分区标识小写拼接会匹配不到而回退英文。
+    /// </summary>
+    private static string SectionKey(string prefix, string key)
+        => prefix + char.ToUpperInvariant(key[0]) + key[1..];
 
     /* ── 草稿读写 ── */
     private bool GetBool(string key, bool fallback)
@@ -603,7 +610,6 @@
                 setter(s);
         }
 
-        Int("clientFps", v => SettingsSvc.Ini.ClientFPS.Value = v);
         Bool("minimizeOnGameStart", v => SettingsSvc.Ini.MinimizeWindowsOnGameStart.Value = v);
         Bool("forceLowDetail", v => SettingsSvc.Ini.ForceLowestDetailLevel.Value = v);
 
@@ -611,6 +617,7 @@
         Double("scoreVolume", v => SettingsSvc.Ini.ScoreVolume.Value = v);
         Double("voiceVolume", v => SettingsSvc.Ini.VoiceVolume.Value = v);
         Bool("playMainMenuMusic", v => SettingsSvc.Ini.PlayMainMenuMusic.Value = v);
+        Bool("stopMusicOnMenu", v => SettingsSvc.Ini.StopMusicOnMenu.Value = v);
         Bool("messageSound", v => SettingsSvc.Ini.MessageSound.Value = v);
 
         Int("scrollRate", v => SettingsSvc.Ini.ScrollRate.Value = v);
@@ -730,15 +737,6 @@
                 </label>
             </div>
         </div>
-        <div class="set-row" data-setting="Video:ClientFPS">
-            <div class="set-info"><span class="set-name">@Ui("Settings.ClientFps", "Client frame rate")</span><span class="set-hint">CLIENT FPS</span></div>
-            <div class="set-ctl">
-                <input class="set-range" type="range" min="30" max="240" step="15"
-                       value="@(GetInt("clientFps", SettingsSvc.Ini.ClientFPS.Value))"
-                       @onchange="@(e => SetDraftInt("clientFps", e))" />
-                <span class="set-val">@GetInt("clientFps", SettingsSvc.Ini.ClientFPS.Value)</span>
-            </div>
-        </div>
         <div class="set-row" data-setting="Options:MinimizeWindowsOnGameStart">
             <div class="set-info"><span class="set-name">@Ui("Settings.MinimizeOnStart", "Minimize window when the game starts")</span><span class="set-hint">MINIMIZE ON GAME START</span></div>
             <div class="set-ctl">
@@ -819,6 +817,16 @@
                 <label class="set-toggle">
                     <input type="checkbox" checked="@(GetBool("playMainMenuMusic", SettingsSvc.Ini.PlayMainMenuMusic.Value))"
                            @onchange="@(e => SetDraftBool("playMainMenuMusic", e))" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <div class="set-row" data-setting="Audio:StopMusicOnMenu">
+            <div class="set-info"><span class="set-name">@Ui("Settings.StopMusicOnMenu", "Don't play music in game rooms")</span><span class="set-hint">STOP MUSIC IN GAME ROOMS</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@(GetBool("stopMusicOnMenu", SettingsSvc.Ini.StopMusicOnMenu.Value))"
+                           @onchange="@(e => SetDraftBool("stopMusicOnMenu", e))" />
                     <span class="tk"></span>
                 </label>
             </div>

@@ -1,6 +1,7 @@
 @page "/menu"
 @implements IDisposable
 @using CnCNetClient.Core
+@using CnCNetClient.Core.Settings
 @using CnCNetClient.Online
 @using CnCNetClient.Updater
 @using CnCNetClient.Domain.Multiplayer.CnCNet
@@ -388,6 +389,8 @@ else
         TranslationSvc.LanguageChanged -= OnLanguageChanged;
         CnCNetPlayerCountTask.CnCNetGameCountUpdated -= OnPlayerCountUpdated;
         UpdateSvc.StateChanged -= OnUpdateStateChanged;
+
+        // 主菜单音乐由布局（MainLayout）统一管理，离开主菜单时继续播放
         if (_dotNetRef is not null)
         {
             _ = JS.InvokeVoidAsync("cncnet.disposeMenuKeyNav");

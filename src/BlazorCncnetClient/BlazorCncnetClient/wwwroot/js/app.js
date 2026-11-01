@@ -523,5 +523,80 @@
         if (bar && bar._topBarCleanup) { bar._topBarCleanup(); delete bar._topBarCleanup; }
     }
 
-    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, injectCss, injectJs, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar };
+    /* ── 主菜单音乐（兼容原版 MainMenuTheme：主题目录 DTACnCNetClient.ini [General] MainMenuTheme，
+       原版 .ogg/.wma，web 端由宿主解析为 .mp3/.ogg/.wav 的可播放地址）。
+       · 单例 <audio>，循环播放，音量默认取游戏 [Audio] SoundVolume（宿主传入）。
+       · Chromium 自动播放策略：无用户手势时 play() 会被拒绝；此时挂一次性交互监听，
+         首次点击/按键后再启动，避免主菜单静音到用户手动点播放。
+       · 切换主题/进出主菜单用音量渐变，避免突兀。 */
+    let _menuMusic = null;
+    let _menuMusicFade = null;
+    let _menuMusicAwaitingGesture = false;
+
+    function menuMusic() {
+        if (!_menuMusic) {
+            _menuMusic = new Audio();
+            _menuMusic.loop = true;
+            _menuMusic.preload = 'auto';
+        }
+        return _menuMusic;
+    }
+
+    function menuMusicFadeTo(target, ms) {
+        const el = menuMusic();
+        if (_menuMusicFade) { cancelAnimationFrame(_menuMusicFade); _menuMusicFade = null; }
+        const from = el.volume;
+        const duration = Math.max(ms, 1);
+        const start = performance.now();
+        const step = (now) => {
+            const t = Math.min((now - start) / duration, 1);
+            el.volume = Math.max(0, Math.min(1, from + (target - from) * t));
+            _menuMusicFade = t < 1 ? requestAnimationFrame(step) : null;
+        };
+        _menuMusicFade = requestAnimationFrame(step);
+    }
+
+    function playMenuMusic(url, volume) {
+        if (!url) { stopMenuMusic(0); return; }
+        const v = typeof volume === 'number' ? Math.max(0, Math.min(1, volume)) : 0.6;
+        const el = menuMusic();
+
+        // 同一首已在播放：只调整音量
+        if (el.getAttribute('src') === url && !el.paused) { menuMusicFadeTo(v, 300); return; }
+
+        if (el.getAttribute('src') !== url) {
+            el.setAttribute('src', url);
+            el.volume = 0;
+        }
+        el.loop = true;
+
+        const started = () => menuMusicFadeTo(v, 900);
+        const blocked = () => {
+            if (_menuMusicAwaitingGesture) return;
+            _menuMusicAwaitingGesture = true;
+            const retry = () => {
+                document.removeEventListener('pointerdown', retry, true);
+                document.removeEventListener('keydown', retry, true);
+                _menuMusicAwaitingGesture = false;
+                const p = el.play();
+                if (p && p.then) p.then(started).catch(() => {});
+            };
+            document.addEventListener('pointerdown', retry, true);
+            document.addEventListener('keydown', retry, true);
+        };
+
+        const p = el.play();
+        if (p && p.then) p.then(started).catch(blocked);
+    }
+
+    function stopMenuMusic(fadeMs) {
+        const el = _menuMusic;
+        if (!el || el.paused) return;
+        const ms = typeof fadeMs === 'number' ? fadeMs : 300;
+        if (ms <= 0) { el.pause(); el.volume = 0; return; }
+        menuMusicFadeTo(0, ms);
+        setTimeout(() => { if (_menuMusic && !_menuMusicFade) _menuMusic.pause(); }, ms + 80);
+    }
+
+    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, injectCss, injectJs, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar, playMenuMusic, stopMenuMusic };
 })();

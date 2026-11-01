@@ -15,7 +15,7 @@
      按钮：主菜单 / 设置 / 登出；右侧状态：连接灯、玩家名、在线人数、日期时间。 -->
 <div class="hud-peek" aria-hidden="true"></div>
 <header class="hud" id="hud-topbar">
-    <div class="sys">
+    <div class="sys sys-left">
         <span class="live @StatusClass"></span>
         @if (!string.IsNullOrEmpty(StatusText))
         {
@@ -40,17 +40,17 @@
         <PluginSlot Key="layout.topbar" />
     </nav>
 
-    <div class="sys">
+    <div class="sys sys-right">
         @if (ChildContent is not null)
         {
             @ChildContent
         }
         @if (!string.IsNullOrEmpty(PlayerName))
         {
-            <span>@UiText.T("TopBar.Player", "Player") <b>@PlayerName</b></span>
+            <span class="hud-player"><span class="hud-player-label">@UiText.T("TopBar.Player", "Player")</span> <b>@PlayerName</b></span>
         }
-        <span class="online">@UiText.T("TopBar.Online", "Online") @(_onlineTotal > 0 ? _onlineTotal.ToString() : "—")</span>
-        <span class="clock">@DateText · @Clock</span>
+        <span class="online hud-online">@UiText.T("TopBar.Online", "Online") @(_onlineTotal > 0 ? _onlineTotal.ToString() : "—")</span>
+        <span class="clock hud-clock"><span class="hud-date">@DateText · </span>@Clock</span>
     </div>
 </header>
 
