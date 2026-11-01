@@ -159,6 +159,11 @@ public static class GameOptionsIniLoader
 
         string optionName = ini.GetStringValue(section, "OptionName", string.Empty);
 
+        // 同原版 GameSessionDropDown：ItemLabels 与 Items 逐项对应、0 基，只作显示；
+        // 空项/缺项时由 GameSessionDropDownOption 回退到 Items。保留空元素以免索引错位。
+        string[] itemLabels = ini.GetStringValue(section, "ItemLabels", string.Empty)
+            .Split(',', StringSplitOptions.TrimEntries);
+
         return new GameSessionDropDownOption(
             section,
             string.IsNullOrWhiteSpace(optionName) ? section : optionName,
@@ -166,7 +171,8 @@ public static class GameOptionsIniLoader
             defaultIndex: ini.GetIntValue(section, "DefaultIndex", 0),
             spawnIniOption: NullIfEmpty(ini.GetStringValue(section, "SpawnIniOption", string.Empty)),
             writeMode: ParseWriteMode(ini, section, iniPath),
-            displayNameKey: TranslationKey(section, "OptionName"))
+            displayNameKey: TranslationKey(section, "OptionName"),
+            itemLabels: itemLabels)
         {
             RawToolTip = NullIfEmpty(ini.GetStringValue(section, "ToolTip", string.Empty)),
             ToolTipKey = TranslationKey(section, "ToolTip")

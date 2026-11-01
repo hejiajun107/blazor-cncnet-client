@@ -244,10 +244,12 @@ public sealed class GameSessionDropDownOption : GameSessionOption
         int defaultIndex = 0,
         string? spawnIniOption = null,
         GameOptionWriteMode writeMode = GameOptionWriteMode.String,
-        string? displayNameKey = null)
+        string? displayNameKey = null,
+        IReadOnlyList<string>? itemLabels = null)
         : base(name, displayName, displayNameKey)
     {
         Items = items;
+        ItemLabels = itemLabels ?? Array.Empty<string>();
         DefaultIndex = items.Count > 0 ? Math.Clamp(defaultIndex, 0, items.Count - 1) : 0;
         SelectedIndex = DefaultIndex;
         SpawnIniOption = spawnIniOption;
@@ -258,8 +260,15 @@ public sealed class GameSessionDropDownOption : GameSessionOption
     public IReadOnlyList<string> Items { get; }
 
     /// <summary>
+    /// 界面标签（同原版 <c>GameLobbyDropDown</c> 的 <c>ItemLabels</c>）：与 <see cref="Items"/> 逐项对应、
+    /// <b>0 基</b>；缺项或空项时回退到该项的 <see cref="Items"/> 原值。只影响显示，不写入 spawn.ini。
+    /// </summary>
+    public IReadOnlyList<string> ItemLabels { get; }
+
+    /// <summary>
     /// 界面显示用选项文本：按原版键格式 <c>INI:Controls:GameOptionsPanel:&lt;section&gt;:Item&lt;n&gt;</c>
-    /// 实时查表，缺失时用原始值。写入 spawn.ini 仍用 <see cref="Items"/>（翻译不得进入游戏参数）。
+    /// 实时查表（<b>n 从 0 开始</b>，与 <c>ItemLabels</c> 同为 0 基），缺译时回退 <see cref="ItemLabels"/>，
+    /// 缺标签时回退 <see cref="Items"/>。写入 spawn.ini 仍用 <see cref="Items"/>（翻译不得进入游戏参数）。
     /// </summary>
     public IReadOnlyList<string> DisplayItems
     {
@@ -268,8 +277,12 @@ public sealed class GameSessionDropDownOption : GameSessionOption
             var display = new string[Items.Count];
             for (int i = 0; i < Items.Count; i++)
             {
+                string label = i < ItemLabels.Count && !string.IsNullOrWhiteSpace(ItemLabels[i])
+                    ? ItemLabels[i]
+                    : Items[i];
+
                 display[i] = Translation.Instance.LookUp(
-                    $"INI:Controls:GameOptionsPanel:{Name}:Item{i + 1}", Items[i]);
+                    $"INI:Controls:GameOptionsPanel:{Name}:Item{i}", label);
             }
 
             return display;

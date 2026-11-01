@@ -83,7 +83,8 @@ CNCNet 客户端的设计初衷是**客户端与 mod 解耦**：mod 作者提供
 | 键 | 语义 | 移植版对应 |
 |---|---|---|
 | `OptionName` | 逻辑名 | 现构造参数 |
-| `Items` | 逗号分隔选项 | 现 `Items` |
+| `Items` | 逗号分隔选项（写入 spawn.ini 的原始值） | 现 `Items` |
+| `ItemLabels` | 逗号分隔显示标签（**0 基**，与 `Items` 逐项对应；缺项回退 `Items`，翻译键 `…:Item<n>` 同为 0 基） | 现 `ItemLabels` / `DisplayItems` |
 | `DefaultIndex` | 默认选中项 | 现 `defaultIndex` |
 | `SpawnIniOption` | spawn.ini 键名 | 同左 |
 | `DataWriteMode` | 写入格式（实测出现 `String` / `Index`） | 现 `dataWriteMode` |
