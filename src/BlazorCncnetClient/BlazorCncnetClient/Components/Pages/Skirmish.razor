@@ -293,7 +293,7 @@ else
                         @foreach (var opt in CheckBoxOptions)
                         {
                             <label class="gl-check go-check" title="@opt.ToolTip" data-option="@opt.Name">
-                                <input type="checkbox" checked="@opt.Checked"
+                                <input type="checkbox" checked="@opt.Checked" disabled="@Svc.IsGameOptionForced(opt)"
                                        @onchange="(e) => OnCheckBoxOptionChange(opt, e)" />
                                 <span>@opt.DisplayName</span>
                             </label>
@@ -303,7 +303,7 @@ else
                     {
                         <div class="go-dd" title="@dd.ToolTip" data-option="@dd.Name">
                             <label>@dd.DisplayName</label>
-                            <select class="gl-select" value="@dd.SelectedIndex" @onchange="(e) => OnDropDownOptionChange(dd, e)">
+                            <select class="gl-select" value="@dd.SelectedIndex" disabled="@Svc.IsGameOptionForced(dd)" @onchange="(e) => OnDropDownOptionChange(dd, e)">
                                 @for (int i = 0; i < dd.Items.Count; i++)
                                 {
                                     <option value="@i">@dd.DisplayItems[i]</option>

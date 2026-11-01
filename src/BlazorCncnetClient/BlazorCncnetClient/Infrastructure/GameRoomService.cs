@@ -1045,6 +1045,7 @@ namespace BlazorCncnetClient.Infrastructure
                 if (gmm is null)
                     return;
                 SelectedMap = gmm;
+                ApplyForcedGameOptions();
                 _gameChannel?.AddMessage(new ChatMessage(ColorConstants.Cyan,
                     string.Format(UiText.T("Room.MapDownloadedSelected", "Map \"{0}\" downloaded and selected automatically."), e.Map.Name)));
                 MissingMapSHA1 = null;
@@ -1062,6 +1063,9 @@ namespace BlazorCncnetClient.Infrastructure
             if (SelectedMap == gameModeMap)
                 return;
             SelectedMap = gameModeMap;
+            // 换图后应用新地图 / 模式的强制游戏选项（原版 ChangeMap 的强制选项语义），
+            // 先于 GO 广播，保证下发的选项值即强制值
+            ApplyForcedGameOptions();
             BroadcastGameOptions();
             BroadcastGame();
             // 换图后附加选项按新地图重置（coop 图强制关闭自动结盟/无队伍，同原版 ChangeMap）
@@ -1164,20 +1168,28 @@ namespace BlazorCncnetClient.Infrastructure
 
         // ── 2-4 游戏选项（复选/下拉：房主修改 → GO 广播同步；加入者只读展示） ──
 
-        /// <summary>房主设置复选框游戏选项并广播 GO。</summary>
+        /// <summary>选项是否被当前地图 / 游戏模式强制（UI 据此禁用控件，房主也不可改）。</summary>
+        public bool IsGameOptionForced(GameSessionOption option) =>
+            ForcedGameOptions.IsForced(SelectedMap, option);
+
+        /// <summary>将当前地图 / 游戏模式的强制选项值写入选项当前值（原版 GameLobbyBase
+        /// 的 ForcedCheckBoxValues / ForcedDropDownValues 语义：换图后锁定为强制值，地图覆盖模式）。</summary>
+        private void ApplyForcedGameOptions() => ForcedGameOptions.Apply(SelectedMap, GameOptions);
+
+        /// <summary>房主设置复选框游戏选项并广播 GO（强制选项不可改）。</summary>
         public void SetCheckBoxOption(GameSessionCheckBoxOption option, bool isChecked)
         {
-            if (!IsHost || _gameChannel is null || !GameOptions.Contains(option))
+            if (!IsHost || _gameChannel is null || !GameOptions.Contains(option) || IsGameOptionForced(option))
                 return;
             option.Checked = isChecked;
             BroadcastGameOptions();
             NotifyChanged();
         }
 
-        /// <summary>房主设置下拉游戏选项选中索引并广播 GO。</summary>
+        /// <summary>房主设置下拉游戏选项选中索引并广播 GO（强制选项不可改）。</summary>
         public void SetDropDownOption(GameSessionDropDownOption option, int selectedIndex)
         {
-            if (!IsHost || _gameChannel is null || !GameOptions.Contains(option))
+            if (!IsHost || _gameChannel is null || !GameOptions.Contains(option) || IsGameOptionForced(option))
                 return;
             option.SelectedIndex = option.Items.Count > 0 ? Math.Clamp(selectedIndex, 0, option.Items.Count - 1) : 0;
             BroadcastGameOptions();
@@ -1189,6 +1201,8 @@ namespace BlazorCncnetClient.Infrastructure
         {
             if (!IsHost || _gameChannel is null)
                 return;
+            // 预设不得覆盖强制选项：先重新应用当前地图 / 模式的强制值
+            ApplyForcedGameOptions();
             BroadcastGameOptions();
             BroadcastGame();
             NotifyChanged();
@@ -1847,6 +1861,10 @@ namespace BlazorCncnetClient.Infrastructure
             if (parts.Length < 9)
                 return;
 
+            // 收到房主值前先退出本地强制状态：GO 中的值写入“用户值”快照，
+            // 随后按新地图 / 模式重新应用强制（避免旧地图的强制快照覆盖房主新值）
+            ForcedGameOptions.Apply(null, GameOptions);
+
             // 2-4：应用房主打包的复选框选项（位序与 CreateDefaultGameOptions 一致）
             if (int.TryParse(parts[0], out int optionCode))
                 ApplyGameOptionsCode(optionCode);
@@ -1872,6 +1890,8 @@ namespace BlazorCncnetClient.Infrastructure
                 string.Equals(g.GameMode.Name, gameMode, StringComparison.OrdinalIgnoreCase)
                 && string.Equals(g.Map.SHA1, mapHash, StringComparison.OrdinalIgnoreCase));
             SelectedMap = gmm;
+            // 加入者本地重放强制选项：与房主 GO 下发的值一致（双保险，强制值不依赖广播内容）
+            ApplyForcedGameOptions();
             if (gmm is null && !string.IsNullOrEmpty(mapHash))
             {
                 // P1 地图下载：本机缺少房主所选地图 → 记录共享状态并发起缺图流程（下载提示 / MAPSDISABLED）

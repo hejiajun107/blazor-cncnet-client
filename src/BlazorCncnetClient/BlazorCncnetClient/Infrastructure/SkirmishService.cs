@@ -109,44 +109,32 @@ namespace BlazorCncnetClient.Infrastructure
         public IReadOnlyList<GameSessionOption> GameOptions { get; } =
             GameOptionsIniLoader.Load(GameOptionsIniLoader.SKIRMISH_INI);
 
-        /// <summary>设置复选框游戏选项状态（仅接受 GameOptions 中的选项，避免外部对象）。</summary>
+        /// <summary>设置复选框游戏选项状态（仅接受 GameOptions 中的选项；强制选项不可改）。</summary>
         public void SetCheckBoxOption(GameSessionCheckBoxOption option, bool isChecked)
         {
-            if (!GameOptions.Contains(option))
+            if (!GameOptions.Contains(option) || IsGameOptionForced(option))
                 return;
             option.Checked = isChecked;
             NotifyChanged();
         }
 
-        /// <summary>设置下拉游戏选项选中索引（仅接受 GameOptions 中的选项，越界回退到边界值）。</summary>
+        /// <summary>设置下拉游戏选项选中索引（仅接受 GameOptions 中的选项，越界回退到边界值；强制选项不可改）。</summary>
         public void SetDropDownOption(GameSessionDropDownOption option, int selectedIndex)
         {
-            if (!GameOptions.Contains(option))
+            if (!GameOptions.Contains(option) || IsGameOptionForced(option))
                 return;
             option.SelectedIndex = option.Items.Count > 0 ? Math.Clamp(selectedIndex, 0, option.Items.Count - 1) : 0;
             NotifyChanged();
         }
 
-        /// <summary>选项是否被游戏模式/地图强制（原版 LoadSettings：强制选项忽略已保存值，避免 UI 显示不一致）。</summary>
-        private bool IsGameOptionForced(GameSessionOption option)
-        {
-            if (SelectedMap is null)
-                return false;
+        /// <summary>选项是否被游戏模式/地图强制（原版 LoadSettings：强制选项忽略已保存值；
+        /// UI 据此禁用控件）。</summary>
+        public bool IsGameOptionForced(GameSessionOption option) =>
+            ForcedGameOptions.IsForced(SelectedMap, option);
 
-            if (option is GameSessionCheckBoxOption)
-            {
-                return SelectedMap.GameMode.ForcedCheckBoxValues.Any(p => p.Key == option.Name)
-                    || SelectedMap.Map.ForcedCheckBoxValues.Any(p => p.Key == option.Name);
-            }
-
-            if (option is GameSessionDropDownOption)
-            {
-                return SelectedMap.GameMode.ForcedDropDownValues.Any(p => p.Key == option.Name)
-                    || SelectedMap.Map.ForcedDropDownValues.Any(p => p.Key == option.Name);
-            }
-
-            return false;
-        }
+        /// <summary>将当前地图 / 游戏模式的强制选项值写入选项当前值（原版 ChangeMap 的
+        /// ForcedCheckBoxValues / ForcedDropDownValues 语义：换图后锁定为强制值，地图覆盖模式）。</summary>
+        public void ApplyForcedGameOptions() => ForcedGameOptions.Apply(SelectedMap, GameOptions);
 
         /// <summary>进入 /skirmish 页面时初始化：加载持久化设置（或默认配置）并生成随机种子。</summary>
         public void Initialize()
@@ -205,6 +193,9 @@ namespace BlazorCncnetClient.Infrastructure
             // 换图后自动结盟仍启用（原版 ForceNoTeams 语义）：全员队伍清零，保证映射生效
             if (ExtraOptions.IsUseTeamStartMappings)
                 ResetAllPlayerTeams();
+
+            // 换图后应用新地图 / 模式的强制游戏选项（原版 ChangeMap 的强制选项语义）
+            ApplyForcedGameOptions();
 
             NotifyChanged();
         }
@@ -697,17 +688,17 @@ namespace BlazorCncnetClient.Infrastructure
                 _aiPlayers.Add(aiPlayer);
             }
 
-            // G7：加载游戏选项（同原版 LoadSettings：SaveSkirmishGameOptions 开启时读取 [GameOptions]，
-            // 被游戏模式/地图强制的选项忽略已保存值）
+            // G7：加载游戏选项（同原版 LoadSettings：SaveSkirmishGameOptions 开启时读取 [GameOptions]）。
+            // 被强制的选项同样读入保存值——它作为“玩家自己的选择”记入快照，随后由
+            // ApplyForcedGameOptions 覆盖显示值为当前地图的强制值；换到不强制该选项的地图后恢复。
             if (ClientConfiguration.Instance.SaveSkirmishGameOptions)
             {
                 foreach (GameSessionOption option in GameOptions)
-                {
-                    if (IsGameOptionForced(option))
-                        continue;
                     option.SetPersistedValue(ini.GetStringValue("GameOptions", option.Name, string.Empty));
-                }
             }
+
+            // 应用当前地图 / 模式的强制值（强制期间不影响已记入快照的用户选择）
+            ApplyForcedGameOptions();
         }
 
         /// <summary>默认配置：人类玩家（阵营 0/颜色 0/无出生点）+ 1 个 Easy AI（同原版 InitDefaultSettings）。</summary>
@@ -725,6 +716,7 @@ namespace BlazorCncnetClient.Infrastructure
             _aiPlayers.Add(aiPlayer);
 
             SelectedMap = _mapLoader.GameModeMaps.FirstOrDefault();
+            ApplyForcedGameOptions();
         }
 
         // ── 工具方法 ──
@@ -805,8 +797,13 @@ namespace BlazorCncnetClient.Infrastructure
             NotifyChanged();
         }
 
-        /// <summary>游戏选项预设载入后通知 UI 刷新（同原版 LoadGameOptionPreset 后的变更通知）。</summary>
-        public void NotifyGameOptionsChanged() => NotifyChanged();
+        /// <summary>游戏选项预设载入后通知 UI 刷新（同原版 LoadGameOptionPreset 后的变更通知）。
+        /// 预设不得覆盖强制选项：先重新应用当前地图 / 模式的强制值。</summary>
+        public void NotifyGameOptionsChanged()
+        {
+            ApplyForcedGameOptions();
+            NotifyChanged();
+        }
 
         /// <summary>按 AI 序号取默认名称（AI 难度命名，与原版一致）。</summary>
         private static string GetAIName(int index) =>

@@ -595,6 +595,12 @@ namespace CnCNetClient.Domain.Multiplayer
         {
             List<string> spawnIniKeys = forcedOptionsIni.GetSectionKeys(spawnIniOptionsSection);
 
+            if (spawnIniKeys == null)
+            {
+                Logger.Log("Invalid ForcedSpawnIniOptions section \"" + spawnIniOptionsSection + "\" in map " + BaseFilePath);
+                return;
+            }
+
             foreach (string key in spawnIniKeys)
             {
                 ForcedSpawnIniOptions.Add(new KeyValuePair<string, string>(key,

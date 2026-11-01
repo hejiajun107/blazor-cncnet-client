@@ -317,6 +317,9 @@ namespace BlazorCncnetClient.Infrastructure
             if (SelectedMap == gameModeMap)
                 return;
             SelectedMap = gameModeMap;
+            // 换图后应用新地图 / 模式的强制游戏选项（原版 ChangeMap 的强制选项语义），
+            // 先于 OPTS 广播，保证下发的选项值即强制值
+            ApplyForcedGameOptions();
             OnGameOptionChanged();
             BroadcastGame();
             NotifyChanged();
@@ -829,6 +832,10 @@ namespace BlazorCncnetClient.Infrastructure
             string mapHash = parts[1];
             string modeName = parts[2];
 
+            // 收到房主值前先退出本地强制状态：OPTS 中的值写入“用户值”快照，
+            // 随后按新地图 / 模式重新应用强制（避免旧地图的强制快照覆盖房主新值）
+            ForcedGameOptions.Apply(null, _gameOptions);
+
             // 应用房主打包的复选框选项（位序与 GameOptions 一致；旧格式缺省时保留当前值）
             if (parts.Length > 5 && int.TryParse(parts[5], out int optionCode))
                 ApplyGameOptionsCode(optionCode);
@@ -849,6 +856,8 @@ namespace BlazorCncnetClient.Infrastructure
                 && string.Equals(g.Map.SHA1, mapHash, StringComparison.OrdinalIgnoreCase));
 
             SelectedMap = gmm;
+            // 加入者本地重放强制选项：与房主 OPTS 下发的值一致（双保险，强制值不依赖广播内容）
+            ApplyForcedGameOptions();
             if (gmm is null && !string.IsNullOrEmpty(mapHash))
             {
                 AddChatMessage(new ChatMessage(ColorConstants.Yellow,
@@ -869,20 +878,28 @@ namespace BlazorCncnetClient.Infrastructure
 
         // ── 游戏选项（复选/下拉：房主修改 → OPTS 广播同步；加入者只读展示，同在线房间 GO 语义） ──
 
-        /// <summary>房主设置复选框游戏选项并广播 OPTS（加入者只读展示）。</summary>
+        /// <summary>选项是否被当前地图 / 游戏模式强制（UI 据此禁用控件，房主也不可改）。</summary>
+        public bool IsGameOptionForced(GameSessionOption option) =>
+            ForcedGameOptions.IsForced(SelectedMap, option);
+
+        /// <summary>将当前地图 / 游戏模式的强制选项值写入选项当前值（原版 GameLobbyBase
+        /// 的 ForcedCheckBoxValues / ForcedDropDownValues 语义：换图后锁定为强制值，地图覆盖模式）。</summary>
+        private void ApplyForcedGameOptions() => ForcedGameOptions.Apply(SelectedMap, _gameOptions);
+
+        /// <summary>房主设置复选框游戏选项并广播 OPTS（加入者只读展示；强制选项不可改）。</summary>
         public void SetCheckBoxOption(GameSessionCheckBoxOption option, bool isChecked)
         {
-            if (!IsHost || !_gameOptions.Contains(option))
+            if (!IsHost || !_gameOptions.Contains(option) || IsGameOptionForced(option))
                 return;
             option.Checked = isChecked;
             OnGameOptionChanged();
             NotifyChanged();
         }
 
-        /// <summary>房主设置下拉游戏选项选中索引并广播 OPTS。</summary>
+        /// <summary>房主设置下拉游戏选项选中索引并广播 OPTS（强制选项不可改）。</summary>
         public void SetDropDownOption(GameSessionDropDownOption option, int selectedIndex)
         {
-            if (!IsHost || !_gameOptions.Contains(option))
+            if (!IsHost || !_gameOptions.Contains(option) || IsGameOptionForced(option))
                 return;
             option.SelectedIndex = option.Items.Count > 0 ? Math.Clamp(selectedIndex, 0, option.Items.Count - 1) : 0;
             OnGameOptionChanged();

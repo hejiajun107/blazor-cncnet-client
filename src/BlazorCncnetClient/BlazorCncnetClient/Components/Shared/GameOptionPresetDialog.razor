@@ -149,9 +149,10 @@
             return error;
 
         var preset = new GameOptionPreset(name);
-        foreach (var cb in Options.OfType<GameSessionCheckBoxOption>())
+        // 强制选项保存的是当前地图的强制值而非玩家选择，不进预设（避免换图后恢复出错误值）
+        foreach (var cb in Options.OfType<GameSessionCheckBoxOption>().Where(o => !o.IsForced))
             preset.AddCheckBoxValue(cb.Name, cb.Checked);
-        foreach (var dd in Options.OfType<GameSessionDropDownOption>())
+        foreach (var dd in Options.OfType<GameSessionDropDownOption>().Where(o => !o.IsForced))
             preset.AddDropDownValue(dd.Name, dd.SelectedIndex);
         GameOptionPresets.Instance.AddPreset(preset);
         return null;
@@ -167,13 +168,13 @@
         foreach (var kvp in preset.GetCheckBoxValues())
         {
             var cb = Options.OfType<GameSessionCheckBoxOption>().FirstOrDefault(o => o.Name == kvp.Key);
-            if (cb is not null)
+            if (cb is not null && !cb.IsForced)
                 cb.Checked = kvp.Value;
         }
         foreach (var kvp in preset.GetDropDownValues())
         {
             var dd = Options.OfType<GameSessionDropDownOption>().FirstOrDefault(o => o.Name == kvp.Key);
-            if (dd is not null && kvp.Value >= 0 && kvp.Value < dd.Items.Count)
+            if (dd is not null && !dd.IsForced && kvp.Value >= 0 && kvp.Value < dd.Items.Count)
                 dd.SelectedIndex = kvp.Value;
         }
         return true;

@@ -98,6 +98,38 @@ public abstract class GameSessionOption
     /// <summary>将选项当前值作为地图代码应用到 mapIni（同原版 ApplyMapCode）。</summary>
     public abstract void ApplyMapCode(IniFile mapIni, GameMode gameMode);
 
+    /// <summary>
+    /// 当前选项是否处于“被 GameMode/Map 强制”状态。强制期间 <see cref="GameSessionCheckBoxOption.Checked"/> /
+    /// <see cref="GameSessionDropDownOption.SelectedIndex"/> 显示强制值，用户自己的选择保存在快照中，
+    /// 换到不强制该选项的地图 / 模式时由 <see cref="EndForced"/> 恢复（对齐原版：强制只作用于当前地图，
+    /// 不污染玩家的选择）。
+    /// </summary>
+    public bool IsForced { get; private set; }
+
+    /// <summary>进入强制状态：首次进入时把当前值作为用户值快照（已在强制状态中则保持原快照）。</summary>
+    public void BeginForced()
+    {
+        if (IsForced)
+            return;
+        CaptureUserValue();
+        IsForced = true;
+    }
+
+    /// <summary>退出强制状态并恢复用户值（未被强制时无动作）。</summary>
+    public void EndForced()
+    {
+        if (!IsForced)
+            return;
+        RestoreUserValue();
+        IsForced = false;
+    }
+
+    /// <summary>保存当前值作为用户值快照（仅在首次进入强制状态时调用）。</summary>
+    protected abstract void CaptureUserValue();
+
+    /// <summary>把用户值快照写回当前值（仅在退出强制状态时调用）。</summary>
+    protected abstract void RestoreUserValue();
+
     /// <summary>返回持久化值（写入 [GameOptions] 节：下拉为选中索引字符串，复选为 True/False）。</summary>
     public abstract string GetPersistedValue();
 
@@ -204,6 +236,13 @@ public sealed class GameSessionCheckBoxOption : GameSessionOption
     /// <summary>当前勾选状态。</summary>
     public bool Checked { get; set; }
 
+    /// <summary>强制期间保存的用户勾选值（退出强制时恢复，不污染玩家的选择）。</summary>
+    private bool _userChecked;
+
+    protected override void CaptureUserValue() => _userChecked = Checked;
+
+    protected override void RestoreUserValue() => Checked = _userChecked;
+
     public override bool AffectsSpawnIni => !string.IsNullOrWhiteSpace(SpawnIniOption);
 
     public override bool AffectsMapCode => !string.IsNullOrWhiteSpace(CustomIniPath);
@@ -225,7 +264,7 @@ public sealed class GameSessionCheckBoxOption : GameSessionOption
         MapCodeHelper.ApplyMapCode(mapIni, CustomIniPath, gameMode);
     }
 
-    public override string GetPersistedValue() => Checked.ToString();
+    public override string GetPersistedValue() => (IsForced ? _userChecked : Checked).ToString();
 
     public override void SetPersistedValue(string value) =>
         Checked = bool.TryParse(value, out bool b) ? b : DefaultChecked;
@@ -295,6 +334,13 @@ public sealed class GameSessionDropDownOption : GameSessionOption
     /// <summary>当前选中索引。</summary>
     public int SelectedIndex { get; set; }
 
+    /// <summary>强制期间保存的用户选中索引（退出强制时恢复，不污染玩家的选择）。</summary>
+    private int _userSelectedIndex;
+
+    protected override void CaptureUserValue() => _userSelectedIndex = SelectedIndex;
+
+    protected override void RestoreUserValue() => SelectedIndex = _userSelectedIndex;
+
     /// <summary>写入 spawn.ini [Settings] 的选项键。</summary>
     public string? SpawnIniOption { get; }
 
@@ -336,7 +382,7 @@ public sealed class GameSessionDropDownOption : GameSessionOption
         MapCodeHelper.ApplyMapCode(mapIni, Items[SelectedIndex], gameMode);
     }
 
-    public override string GetPersistedValue() => SelectedIndex.ToString();
+    public override string GetPersistedValue() => (IsForced ? _userSelectedIndex : SelectedIndex).ToString();
 
     public override void SetPersistedValue(string value)
     {
