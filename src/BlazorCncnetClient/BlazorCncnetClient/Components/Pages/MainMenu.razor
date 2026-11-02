@@ -18,6 +18,7 @@
 @inject DiscordPresenceService Discord
 @inject PluginCatalog Plugins
 @inject ITranslationService TranslationSvc
+@inject MainMenuVideoService MainMenuVideo
 
 @* F4 可替换主页：插件可通过 ReplaceSlot("page.mainmenu", …) 接管整个主菜单主体。
    宿主逻辑（自动连接、ESC、更新检查、隐私声明）仍在本页代码中执行，不受覆盖影响。 *@
@@ -43,24 +44,15 @@ else
         </div>
 
         <div class="viewport item-in">
-            <canvas id="globe"></canvas>
-            <!-- 雷达扫描光效（PixiJS 渲染，本地 lib/pixi.min.js；2026-09-12 由 CSS conic 改为 canvas，避免扇形/三角形伪形） -->
-            <canvas id="radar-scan" class="radar-scan"></canvas>
-            <span class="corner c-tl"></span><span class="corner c-tr"></span>
-            <span class="corner c-bl"></span><span class="corner c-br"></span>
-            <div class="label">GLOBAL NETWORK // SECTOR-07</div>
-            <div class="label2">SCAN: ACTIVE</div>
-        </div>
-
-        <div class="readout item-in" style="animation-delay:80ms">
-            <div class="ro"><div class="k">@UiText.T("MainMenu.OnlinePlayers", "Online players")</div><div class="v" id="r1">—</div></div>
-            <div class="ro"><div class="k">@UiText.T("MainMenu.ActiveRooms", "Active rooms")</div><div class="v" id="r2">327</div></div>
-            <div class="ro"><div class="k">@UiText.T("MainMenu.FrameRate", "Frame rate")</div><div class="v"><span data-fps="1">—</span><small>FPS</small></div></div>
-            <div class="ro"><div class="k">@UiText.T("MainMenu.ThreatLevel", "Threat level")</div><div class="v" style="color:var(--gold);text-shadow:0 0 14px rgba(255,176,59,.5)">▲ @UiText.T("MainMenu.ThreatLow", "Low")</div></div>
+            @* 视口视频：自动播放、循环、静音、无控件（默认嵌入 YR，可通过 ClientDefinitions.ini 更换） *@
+            @if (!string.IsNullOrEmpty(_videoUrl))
+            {
+                <video class="mm-video" src="@_videoUrl" autoplay muted loop playsinline preload="auto"></video>
+            }
         </div>
 
         <!-- r9-1：更新状态链接（原版 lblUpdateStatus：点击检查/查看更新；OUTDATED 跳设置更新页）。
-             新客户端把版本/更新状态/在线人数放进了常驻 HUD 与读数区，已脱离旧主菜单列表，
+             新客户端把版本/更新状态/在线人数放进了常驻 HUD，已脱离旧主菜单列表，
              暂按新客户端硬编码常显；只有列表项（按钮）跟随 MainMenu.ini。 -->
         <div class="updstrip item-in" style="animation-delay:140ms">
             <span class="us-dot @_updateDot"></span>
@@ -185,16 +177,20 @@ else
         return builtins.ToArray();
     }
 
+    /// <summary>视口视频 URL（默认嵌入 YR，可由 ClientDefinitions.ini [MainMenu] Video 更换）；
+    /// 内容服务器未启动时为空，视口保持纯色底。</summary>
+    private string _videoUrl = string.Empty;
+
     protected override void OnInitialized()
     {
         // F4：插件可替换主菜单主体（内部渲染仍沿用宿主服务，自动连接/ESC/更新检查不受影响）
         _mainMenuOverride = Plugins.TryGetReplacement("page.mainmenu", out var overrideType) ? overrideType : null;
+        // 视口视频地址需在首帧渲染前确定（OnAfterRenderAsync 里赋值不会触发重渲染）
+        _videoUrl = MainMenuVideo.ResolveUrl();
         // 品牌文案随主题切换刷新（红警 → RED ALERT）
         ThemeProvider.ThemeChanged += OnThemeChanged;
         // 原版 PrivacyNotification：未接受隐私政策前，每次进入主菜单弹底部提示
         _privacyOpen = !UserINISettings.Instance.PrivacyPolicyAccepted.Value;
-        // r9-1：CnCNet 在线人数（任务由全局悬浮顶栏 TopBar 启动，本页仅订阅刷新 #r1）
-        CnCNetPlayerCountTask.CnCNetGameCountUpdated += OnPlayerCountUpdated;
         // 语言切换：文案走 Resx / Translation.ini，切换后整体重渲染
         TranslationSvc.LanguageChanged += OnLanguageChanged;
         // r9-1：更新状态链接（原版 lblUpdateStatus，启动检查结果由 TryStartupUpdateCheck 触发）
@@ -202,21 +198,6 @@ else
         RefreshUpdateStatus();
         // r9-4：Discord 呈现恢复为「客户端内」（原版 MainMenu 构造后为默认 In Client）
         Discord.MainMenu();
-    }
-
-    // ── r9-1：CnCNet 在线人数（原版 CnCNetPlayerCountTask + lblCnCNetPlayerCount） ──
-
-    private int _onlinePlayers = -1;
-
-    /// <summary>在线人数刷新（后台线程触发，InvokeAsync 编回 UI 上下文后更新 #r1）。</summary>
-    private void OnPlayerCountUpdated(object? sender, PlayerCountEventArgs e)
-    {
-        int n = e.TotalPlayerCount > 0 ? e.TotalPlayerCount : e.PlayerCount;
-        _ = InvokeAsync(() =>
-        {
-            _onlinePlayers = n;
-            _ = JS.InvokeVoidAsync("cncnet.setPlayerCount", n);
-        });
     }
 
     // ── r9-1：更新状态链接（原版 lblUpdateStatus 各状态文案与点击行为） ──
@@ -316,10 +297,6 @@ else
     {
         if (firstRender)
         {
-            // 全息地球 + 雷达扫描（PixiJS）+ 读数模拟（尊重 prefers-reduced-motion，内部处理）
-            await JS.InvokeVoidAsync("cncnet.initGlobe", "globe");
-            await JS.InvokeVoidAsync("cncnet.initRadarScan", "radar-scan");
-            await JS.InvokeVoidAsync("cncnet.initReadout");
             // ESC 返回首页（实现「可退」）
             _dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("cncnet.initMenuKeyNav", _dotNetRef);
@@ -387,7 +364,6 @@ else
     {
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         TranslationSvc.LanguageChanged -= OnLanguageChanged;
-        CnCNetPlayerCountTask.CnCNetGameCountUpdated -= OnPlayerCountUpdated;
         UpdateSvc.StateChanged -= OnUpdateStateChanged;
 
         // 主菜单音乐由布局（MainLayout）统一管理，离开主菜单时继续播放

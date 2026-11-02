@@ -161,6 +161,8 @@ namespace BlazorCncnetClient
             // 启动闪屏（M5 2.3 LoadingScreen）：ClientDefinitions.ini [LoadingScreen] 配置 +
             // 进程内本地内容服务器（独立文件 URL 加载游戏目录媒体，视频支持 Range，不打包 base64）
             appBuilder.Services.AddScoped<LoadingScreenService>();
+            // 主菜单视口视频（默认嵌入 YR；ClientDefinitions.ini [MainMenu] Video 可切内置 RA2 或目录自定义视频）
+            appBuilder.Services.AddScoped<MainMenuVideoService>();
             // 内容伺服：按实例注册并在 Build 前启动（幂等），使插件上下文 ContentUrl 在
             // RegisterServices 阶段即可生成可用 URL（启动闪屏/主题注入同一实例时 IsRunning 短路）。
             // 注：Start 内部对空 root 会抛（Path.GetFullPath），故此处守卫；失败不影响启动。

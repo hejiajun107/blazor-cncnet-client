@@ -15,6 +15,7 @@ namespace BlazorCncnetClient.Infrastructure;
 public sealed class GameContentServer : IDisposable
 {
     private readonly object _lock = new();
+    private readonly Dictionary<string, byte[]> _embedded = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource _cts = new();
     private TcpListener? _listener;
     private Thread? _thread;
@@ -31,6 +32,20 @@ public sealed class GameContentServer : IDisposable
     /// <summary>按游戏根目录相对路径生成可加载 URL（如 Resources/splash.mp4）。</summary>
     public string MapUrl(string relativePath)
         => BaseUrl + relativePath.TrimStart('/', '\\').Replace('\\', '/');
+
+    /// <summary>
+    /// 嵌入式资源（打包进程序集的视频等，默认主菜单视频）的可加载 URL。
+    /// 与游戏目录路由共用同一端口/Range 实现，WebView 可直接 &lt;video src&gt; 播放。
+    /// </summary>
+    public string MapEmbeddedUrl(string name)
+        => BaseUrl + "__embedded/" + Uri.EscapeDataString(name.TrimStart('/', '\\'));
+
+    /// <summary>注册嵌入程序集的媒体（键为 <see cref="MapEmbeddedUrl"/> 中的文件名，如 yr.mp4）。</summary>
+    public void RegisterEmbedded(string name, byte[] content)
+    {
+        lock (_lock)
+            _embedded[name.TrimStart('/', '\\')] = content;
+    }
 
     /// <summary>启动（幂等）：伺服指定根目录；根目录未变化且已在运行则直接复用。失败时不抛出，保持不可用。</summary>
     public void Start(string root)
@@ -165,6 +180,14 @@ public sealed class GameContentServer : IDisposable
     private void ServeFile(NetworkStream stream, string requestPath, string rangeHeader, bool headOnly)
     {
         string raw = Uri.UnescapeDataString(requestPath);
+
+        // 嵌入程序集的媒体（__embedded/xxx.mp4）：不落磁盘、按内存字节伺服，同样支持 Range。
+        if (raw.StartsWith("/__embedded/", StringComparison.OrdinalIgnoreCase))
+        {
+            ServeEmbedded(stream, raw["/__embedded/".Length..], rangeHeader, headOnly);
+            return;
+        }
+
         string rel = raw.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
         string full = Path.GetFullPath(Path.Combine(_root ?? string.Empty, rel));
 
@@ -213,6 +236,44 @@ public sealed class GameContentServer : IDisposable
             stream.Write(buf, 0, read);
             remaining -= read;
         }
+    }
+
+    /// <summary>按名字从已注册的嵌入资源中伺服字节（支持 Range，供 &lt;video&gt; 分段/循环播放）。</summary>
+    private void ServeEmbedded(NetworkStream stream, string name, string rangeHeader, bool headOnly)
+    {
+        byte[]? content;
+        lock (_lock)
+            content = _embedded.TryGetValue(name, out byte[]? data) ? data : null;
+
+        if (content is null)
+        {
+            WriteHead(stream, 404, "Not Found", 0, "text/plain");
+            return;
+        }
+
+        long length = content.LongLength;
+        string contentType = ContentTypeFor(name);
+
+        long start = 0;
+        long end = length - 1;
+        int status = 200;
+        string statusText = "OK";
+        string extraHeader = string.Empty;
+
+        if (!string.IsNullOrEmpty(rangeHeader) && TryParseRange(rangeHeader, length, out start, out end))
+        {
+            status = 206;
+            statusText = "Partial Content";
+            extraHeader = $"Content-Range: bytes {start}-{end}/{length}\r\n";
+        }
+
+        long bodyLength = end - start + 1;
+        WriteHead(stream, status, statusText, bodyLength, contentType, extraHeader);
+
+        if (headOnly || bodyLength == 0)
+            return;
+
+        stream.Write(content, (int)start, (int)bodyLength);
     }
 
     private static void WriteHead(NetworkStream stream, int status, string statusText, long contentLength, string contentType, string extraHeader = "")

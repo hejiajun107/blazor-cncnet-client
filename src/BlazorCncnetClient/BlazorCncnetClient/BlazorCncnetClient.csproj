@@ -16,6 +16,12 @@
 
 	</ItemGroup>
 
+	<!-- 主菜单视口视频：默认 YR，RA2 版供 [MainMenu] Video=ra2 切换（嵌入程序集，不落 wwwroot） -->
+	<ItemGroup>
+		<EmbeddedResource Include="Assets\MainMenu\yr.mp4" LogicalName="BlazorCncnetClient.Assets.MainMenu.yr.mp4" />
+		<EmbeddedResource Include="Assets\MainMenu\ra2.mp4" LogicalName="BlazorCncnetClient.Assets.MainMenu.ra2.mp4" />
+	</ItemGroup>
+
 
 	<ItemGroup>
 	  <PackageReference Include="InfiniLore.InfiniFrame" Version="0.60.0" />

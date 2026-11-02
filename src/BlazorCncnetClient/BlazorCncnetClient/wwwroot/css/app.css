@@ -218,27 +218,12 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .logobar .rec{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);animation:blink 1.4s infinite}
 .logobar .ver{color:var(--dim);letter-spacing:2px;font-family:var(--font-cn);font-size:12px}
 
-.viewport{position:relative;width:100%;aspect-ratio:1.35/1;max-height:60vh;
+/* 视口比例与内置视频一致（1264×1140），去掉读数行后整块可占满左栏高度 */
+.viewport{position:relative;width:100%;aspect-ratio:1264/1140;
   border:1px solid var(--line);background:rgba(4,16,24,.4);overflow:hidden;
   clip-path:polygon(0 22px,22px 0,100% 0,100% calc(100% - 22px),calc(100% - 22px) 100%,0 100%)}
-.viewport canvas{position:absolute;inset:0;width:100%;height:100%}
-/* 2026-09-12：雷达扫描光效改由 PixiJS canvas 渲染（#radar-scan，本地 lib/pixi.min.js）。
-   CSS 仅负责定位/层级/指针；光束绘制与旋转在 app.js initRadarScan。 */
-.radar-scan{pointer-events:none;z-index:1}
-.viewport .corner{position:absolute;width:26px;height:26px;border:2px solid var(--cyan);opacity:.8}
-.c-tl{top:8px;left:8px;border-right:none;border-bottom:none}
-.c-tr{top:8px;right:8px;border-left:none;border-bottom:none}
-.c-bl{bottom:8px;left:8px;border-right:none;border-top:none}
-.c-br{bottom:8px;right:8px;border-left:none;border-top:none}
-.viewport .label{position:absolute;top:14px;left:42px;font-family:var(--font-orbitron);font-size:11px;letter-spacing:2px;color:var(--cyan);opacity:.85}
-.viewport .label2{position:absolute;bottom:14px;right:42px;font-family:var(--font-orbitron);font-size:11px;letter-spacing:2px;color:var(--dim)}
-
-.readout{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.ro{border:1px solid var(--line);background:rgba(6,20,30,.45);padding:12px 14px;position:relative;overflow:hidden}
-.ro .k{font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:var(--font-orbitron)}
-.ro .v{font-size:22px;font-weight:800;color:#fff;margin-top:4px;font-family:var(--font-orbitron);text-shadow:0 0 14px rgba(33,230,255,.4)}
-.ro .v small{font-size:11px;color:var(--cyan);font-weight:400}
-.ro::after{content:"";position:absolute;left:0;top:0;width:3px;height:100%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+/* 视口视频（自动播放/循环/静音、无控件）：contain 保证画面完整显示，多余区域留黑边 */
+.viewport .mm-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#02101a}
 
 /* r9-1：更新状态链接（原版 lblUpdateStatus：指示灯 + 可点击文案 + 版本号） */
 .updstrip{display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--line);
@@ -1430,9 +1415,7 @@ input.set-text{width:210px;cursor:text}
     --lay-settings-cols:180px minmax(0,1fr);
     --lay-setnav-pad:6px;
   }
-  .viewport{max-height:40vh}
   .logobar{font-size:12px}.logobar .ver{font-size:11px}
-  .readout{gap:10px}.ro{padding:9px 12px}.ro .v{font-size:19px}.ro .k{font-size:9px}
   .panel .ph{margin-bottom:12px}
   .mbtn{padding:9px 14px;margin-bottom:7px}
   .mbtn .cn{font-size:15px}.mbtn .ic{width:30px;height:30px;font-size:14px}
