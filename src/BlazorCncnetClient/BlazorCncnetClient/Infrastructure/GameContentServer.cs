@@ -335,7 +335,8 @@ public sealed class GameContentServer : IDisposable
         {
             ".mp4" => "video/mp4",
             ".webm" => "video/webm",
-            ".ogg" or ".ogv" => "video/ogg",
+            ".ogg" => "audio/ogg",
+            ".ogv" => "video/ogg",
             // 主菜单音乐（原版 .ogg/.wma，web 端为 .mp3/.ogg/.wav）
             ".mp3" => "audio/mpeg",
             ".wav" => "audio/wav",

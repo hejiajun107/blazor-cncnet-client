@@ -217,8 +217,9 @@ public sealed class ThemeProvider : IThemeProvider
                 continue;
 
             string raw = new IniFile(iniPath).GetStringValue("General", "MainMenuTheme", string.Empty).Trim();
+            // 对齐上游：键缺失/为空时回退 "mainmenu"（ClientConfiguration.GetMainMenuMusicName 的默认值）
             if (raw.Length == 0)
-                continue;
+                raw = "mainmenu";
 
             var found = new List<string>();
             string? wmaOnly = null;
@@ -275,7 +276,9 @@ public sealed class ThemeProvider : IThemeProvider
             : relative;
 
         string[] dirs = explicitDirectory
-            ? [string.Empty]
+            // 对齐上游：含目录的值以 Resources 为基准（如 Default Theme\MainMenuTheme）；
+            // 同时保留相对游戏根的形式，兼容把主题资源直接放在安装根的资源包。
+            ? [RESOURCES_DIRECTORY, string.Empty]
             : [configDir, RESOURCES_DIRECTORY, string.Empty];
 
         foreach (string dir in dirs)
