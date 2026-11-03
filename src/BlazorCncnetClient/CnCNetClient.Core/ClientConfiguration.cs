@@ -296,6 +296,9 @@ namespace CnCNetClient.Core
 
         public string ReplayFileExtension => clientDefinitionsIni.GetStringValue(SETTINGS, "ReplayFileExtension", "yrrp");
 
+        /// <summary>客户端发布页地址（回放页“打开目录/获取兼容客户端”等链接用，可为空）。</summary>
+        public string ReleasesURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ReleasesURL", string.Empty);
+
         public bool SidebarHack => clientDefinitionsIni.GetBooleanValue(SETTINGS, "SidebarHack", false);
 
         public int MinimumRenderWidth => clientDefinitionsIni.GetIntValue(SETTINGS, "MinimumRenderWidth", 1280);

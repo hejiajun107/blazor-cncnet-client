@@ -286,6 +286,7 @@ namespace BlazorCncnetClient
 
             // 加载单机存档（原版 GameLoadingWindow）：枚举 Saved Games/*.SAV → 生成加载 spawn.ini → 启动/删除。
             appBuilder.Services.AddScoped<LoadGameService>();
+            appBuilder.Services.AddScoped<ReplayLaunchService>();
 
             // 统计窗口（M4.8 spec §5.3，原版 StatisticsWindow）：包装 StatisticsManager 读取 dscore.dat，
             // 提供对局列表过滤（类别/模式/观战）、玩家明细、总统计汇总、清空统计，供 /stats 页面读取。

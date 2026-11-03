@@ -265,6 +265,16 @@ namespace CnCNetClient.Core
             MaxPlayerCount = new IntRangeSetting(iniFile, GAME_FILTERS, "MaxPlayerCount", DEFAULT_MAX_PLAYER_COUNT, 2, 8);
 
             RecordReplays = new BoolSetting(iniFile, REPLAYS, "RecordReplays", true);
+            MaxKeptReplays = new IntSetting(iniFile, REPLAYS, "MaxKeptReplays", 50);
+            MaxReplayFolderSizeMB = new IntSetting(iniFile, REPLAYS, "MaxReplayFolderSizeMB", 2048);
+            ReplayKeyframeStorageLimitMB = new IntSetting(iniFile, REPLAYS, "ReplayKeyframeStorageLimitMB", 512);
+            ReplayPlaybackShroudEnabled = new BoolSetting(iniFile, REPLAYS, "PlaybackShroudEnabled", false);
+            ReplayPlaybackFollowCamera = new BoolSetting(iniFile, REPLAYS, "PlaybackFollowCamera", true);
+            ReplayPlaybackShowSelections = new BoolSetting(iniFile, REPLAYS, "PlaybackShowSelections", true);
+            ReplayPlaybackSpectator = new BoolSetting(iniFile, REPLAYS, "PlaybackSpectator", true);
+            ReplayPlaybackShowChatAndBeacons = new BoolSetting(iniFile, REPLAYS, "PlaybackShowChatAndBeacons", true);
+            ReplayPlaybackGameSpeed = new IntSetting(iniFile, REPLAYS, "PlaybackGameSpeed", 0);
+            ReplayPlaybackKeyframeInterval = new IntSetting(iniFile, REPLAYS, "PlaybackKeyframeInterval", 750);
 
             LoadFavoriteMaps(iniFile);
         }
@@ -369,6 +379,31 @@ namespace CnCNetClient.Core
 
         /// <summary>是否录制对局到复盘文件（旧版 UserINISettings.RecordReplays，[Replays] 节）。</summary>
         public BoolSetting RecordReplays { get; private set; }
+
+        /// <summary>最多保留的复盘文件数量（0 = 不限制）。</summary>
+        public IntSetting MaxKeptReplays { get; private set; }
+
+        /// <summary>复盘目录容量上限（MB，0 = 不限制）。</summary>
+        public IntSetting MaxReplayFolderSizeMB { get; private set; }
+
+        /// <summary>回放关键帧存储上限（MB）。</summary>
+        public IntSetting ReplayKeyframeStorageLimitMB { get; private set; }
+
+        public BoolSetting ReplayPlaybackShroudEnabled { get; private set; }
+
+        public BoolSetting ReplayPlaybackFollowCamera { get; private set; }
+
+        public BoolSetting ReplayPlaybackShowSelections { get; private set; }
+
+        public BoolSetting ReplayPlaybackSpectator { get; private set; }
+
+        public BoolSetting ReplayPlaybackShowChatAndBeacons { get; private set; }
+
+        /// <summary>回放默认速度（0 = 正常速度）。</summary>
+        public IntSetting ReplayPlaybackGameSpeed { get; private set; }
+
+        /// <summary>回放关键帧间隔（帧）。</summary>
+        public IntSetting ReplayPlaybackKeyframeInterval { get; private set; }
 
         /*********************/
         /* GAME LIST FILTERS */

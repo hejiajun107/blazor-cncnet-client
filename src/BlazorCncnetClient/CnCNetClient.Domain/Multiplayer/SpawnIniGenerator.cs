@@ -394,6 +394,9 @@ public static class SpawnIniGenerator
     /// <summary>游戏进程退出后清理自定义任务补充文件（公开包装 internal 的 CustomMissionHelper）。</summary>
     public static void DeleteMissionSupplementalFiles() => CustomMissionHelper.DeleteSupplementalMissionFiles();
 
+    /// <summary>复制自定义任务补充文件（回放播放等需要恢复任务文件时使用；公开包装 internal 的 CustomMissionHelper）。</summary>
+    public static void CopyMissionSupplementalFiles(Mission mission) => CustomMissionHelper.CopySupplementalMissionFiles(mission);
+
     /// <summary>
     /// 生成单机任务（战役）的 spawn.ini / spawnmap.ini：
     /// [Settings]（Scenario / CampaignID / GameSpeed / Ra2Mode·Firestorm / CustomLoadScreen /
@@ -483,6 +486,9 @@ public static class SpawnIniGenerator
                 spawnIni.SetStringValue("Settings", key,
                     gameOptionsIni.GetStringValue("CampaignForcedSpawnIniOptions", key, string.Empty));
         }
+
+        // 战役录制回放（原版 CampaignSelector 在写 spawn.ini 时调用 PrepareRecording）
+        ReplayManager.PrepareRecording(spawnIni, mission.UntranslatedGUIName);
 
         spawnIni.WriteIniFile();
 

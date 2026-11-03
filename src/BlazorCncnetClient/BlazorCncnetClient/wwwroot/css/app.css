@@ -1507,3 +1507,26 @@ input.set-text{width:210px;cursor:text}
   .viewport{max-height:42vh}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}}
+
+/* ── 存档/回放页签（LoadGame.razor） ─────────────────────────── */
+.load-tabs{display:flex;gap:8px;margin:10px 0 0 2px}
+.load-tab{position:relative;padding:8px 16px;border:1px solid rgba(0,229,255,.25);border-radius:4px;background:rgba(2,16,26,.55);color:var(--ink-dim,#8fb8c8);font:600 12px/1 'Orbitron',sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:.15s}
+.load-tab em{display:block;margin-top:4px;font:400 9px/1 'Orbitron',sans-serif;font-style:normal;opacity:.55;letter-spacing:.12em}
+.load-tab:hover{border-color:rgba(0,229,255,.55);color:var(--ink,#d7f4ff)}
+.load-tab.on{border-color:rgba(0,229,255,.85);background:rgba(0,229,255,.12);color:var(--ink,#d7f4ff);box-shadow:0 0 12px rgba(0,229,255,.25)}
+.load-item.off{opacity:.45}
+.replay-actions{display:flex;gap:8px;padding:10px 12px;border-top:1px solid rgba(0,229,255,.12)}
+.import-btn{position:relative;overflow:hidden;cursor:pointer}
+.import-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.replay-players{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.replay-player{padding:2px 8px;border:1px solid rgba(0,229,255,.2);border-radius:3px;font-size:11px;color:var(--ink-dim,#8fb8c8)}
+.replay-player.rec{border-color:rgba(255,196,64,.6);color:#ffc440}
+.replay-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin:12px 0 4px;padding:12px;border:1px solid rgba(0,229,255,.14);border-radius:4px;background:rgba(2,16,26,.35)}
+.ro-row{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--ink-dim,#8fb8c8)}
+.ro-row select{padding:5px 6px;border:1px solid rgba(0,229,255,.25);border-radius:3px;background:rgba(2,16,26,.75);color:var(--ink,#d7f4ff);font-size:11px}
+.ro-check{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-dim,#8fb8c8)}
+.ro-check input{accent-color:#00e5ff}
+.set-num{width:90px;padding:6px 8px;border:1px solid rgba(0,229,255,.25);border-radius:3px;background:rgba(2,16,26,.75);color:var(--ink,#d7f4ff);font-size:12px}
+
+/* ── 主菜单拖放回放文件提示 ─────────────────────────────────── */
+body.replay-drop::after{content:"DROP REPLAY FILE";position:fixed;inset:12px;z-index:9999;display:flex;align-items:center;justify-content:center;border:2px dashed rgba(0,229,255,.75);border-radius:6px;background:rgba(2,16,26,.55);color:#d7f4ff;font:600 18px/1 'Orbitron',sans-serif;letter-spacing:.2em;pointer-events:none}

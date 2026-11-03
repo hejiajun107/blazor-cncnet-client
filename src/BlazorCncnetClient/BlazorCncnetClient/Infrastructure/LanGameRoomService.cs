@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using CnCNetClient.Core;
+using CnCNetClient.Domain;
 using CnCNetClient.Domain.LAN;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Domain.Multiplayer.CnCNet;

@@ -1,5 +1,6 @@
 using System;
 using CnCNetClient.Core;
+using CnCNetClient.Domain;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Integration;
 using CnCNetClient.Integration.Threading;
@@ -110,6 +111,9 @@ public sealed class SkirmishLaunchService : IDisposable
 
             // G1：原版 GameProcessExited 在每局结束后重生成随机种子，避免下一局复用相同 Seed
             _skirmish.RegenerateSeed();
+
+            // 对局结束后按数量/容量上限清理旧回放。
+            ReplayManager.Prune();
 
             _nav.NavigateTo("/skirmish");
         });

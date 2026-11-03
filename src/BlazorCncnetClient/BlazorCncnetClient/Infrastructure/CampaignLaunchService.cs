@@ -96,6 +96,9 @@ public sealed class CampaignLaunchService : IDisposable
             // 原版 GameProcessExited：清理复制到游戏目录的自定义任务补充文件（.shp/.pal 等）
             SpawnIniGenerator.DeleteMissionSupplementalFiles();
 
+            // 对局结束后按数量/容量上限清理旧回放。
+            ReplayManager.Prune();
+
             if (UserINISettings.Instance.MinimizeWindowsOnGameStart.Value)
                 _window.Features.State.SetMinimized(false);
 

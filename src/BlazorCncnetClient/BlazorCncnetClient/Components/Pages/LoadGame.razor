@@ -1,8 +1,13 @@
 @page "/load"
 @implements IDisposable
+@using System.IO
+@using System.Linq
 @using CnCNetClient.Core
 @using CnCNetClient.Domain
+@using Microsoft.AspNetCore.Components.Forms
 @inject LoadGameService Svc
+@inject ReplayLaunchService ReplaySvc
+@inject MessageBoxService Box
 @inject NavigationManager Nav
 @inject IThemeProvider ThemeProvider
 @inject ITranslationService TranslationSvc
@@ -12,8 +17,17 @@
         <div class="gt-left">
             <span class="gt-badge host">@T("MainMenu.load", "Load Game")<span class="en">LOAD GAME</span></span>
             <div class="gt-tbox">
-                <span class="gt-title">@T("LoadGame.Title", "Load save game")</span>
-                <span class="gt-en">@F("LoadGame.HeaderMeta", "SINGLEPLAYER · {0} save games", _saves.Count)</span>
+                <span class="gt-title">@(_tab == LoadTab.Saves ? T("LoadGame.Title", "Load save game") : T("Replays.Title", "Replays"))</span>
+                <span class="gt-en">
+                    @if (_tab == LoadTab.Saves)
+                    {
+                        @F("LoadGame.HeaderMeta", "SINGLEPLAYER · {0} save games", _saves.Count)
+                    }
+                    else
+                    {
+                        @F("Replays.HeaderMeta", "SINGLEPLAYER · {0} replays", _replays.Count)
+                    }
+                </span>
             </div>
         </div>
         <div class="gt-right">
@@ -22,70 +36,226 @@
         </div>
     </header>
 
-    <div class="groom-grid camp-grid">
-        <!-- 左列：存档列表（参考原版 lbSaveGameList：名称 + 日期时间两列） -->
-        <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
-            <header class="gl-ph">
-                <span>@T("LoadGame.SaveList", "Saved games") <em>SAVED GAMES</em></span>
-            </header>
-            <div class="gl-body">
-                @if (_saves.Count == 0)
-                {
-                    <div class="camp-empty">@T("LoadGame.NoSaves", "No save games found (no Saved Games directory or *.SAV files in the game directory)")</div>
-                }
-                else
-                {
-                    <div class="load-list">
-                        @foreach (var sg in _saves)
-                        {
-                            <button type="button" class="load-item @(sg == _selected ? "on" : "")"
-                                    @onclick="() => Select(sg)">
-                                <span class="load-name">@sg.GUIName</span>
-                                <span class="load-meta">@sg.FileName · @sg.LastModified.ToString("yyyy-MM-dd HH:mm")</span>
-                            </button>
-                        }
-                    </div>
-                }
-            </div>
-        </section>
+    <div class="load-tabs item-in">
+        <button type="button" class="load-tab @(_tab == LoadTab.Saves ? "on" : "")" @onclick="() => SwitchTab(LoadTab.Saves)">
+            @T("LoadGame.SaveList", "Saved games")<em>SAVED GAMES</em>
+        </button>
+        @if (ReplaySvc.IsSupported)
+        {
+            <button type="button" class="load-tab @(_tab == LoadTab.Replays ? "on" : "")" @onclick="() => SwitchTab(LoadTab.Replays)">
+                @T("Replays.List", "Replays")<em>REPLAYS</em>
+            </button>
+        }
+    </div>
 
-        <!-- 右列：选中详情 + 加载/删除/取消 -->
-        <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
-            <header class="gl-ph">
-                <span>@T("LoadGame.Actions", "Actions") <em>ACTIONS</em></span>
-            </header>
-            <div class="gl-body">
-                @if (_selected is { } sel)
-                {
-                    <div class="load-detail">
-                        <div class="cd-title">@sel.GUIName</div>
-                        <div class="load-meta">@sel.FileName</div>
-                        <div class="load-meta">@sel.LastModified.ToString("yyyy-MM-dd HH:mm")</div>
-                        @if (sel.CustomMissionID != 0)
-                        {
-                            <div class="load-tag">@T("LoadGame.CustomMissionSave", "Custom mission save")</div>
-                        }
+    <div class="groom-grid camp-grid">
+        @if (_tab == LoadTab.Saves)
+        {
+            <!-- 左列：存档列表（参考原版 lbSaveGameList：名称 + 日期时间两列） -->
+            <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
+                <header class="gl-ph">
+                    <span>@T("LoadGame.SaveList", "Saved games") <em>SAVED GAMES</em></span>
+                </header>
+                <div class="gl-body">
+                    @if (_saves.Count == 0)
+                    {
+                        <div class="camp-empty">@T("LoadGame.NoSaves", "No save games found (no Saved Games directory or *.SAV files in the game directory)")</div>
+                    }
+                    else
+                    {
+                        <div class="load-list">
+                            @foreach (var sg in _saves)
+                            {
+                                <button type="button" class="load-item @(sg == _selected ? "on" : "")"
+                                        @onclick="() => Select(sg)">
+                                    <span class="load-name">@sg.GUIName</span>
+                                    <span class="load-meta">@sg.FileName · @sg.LastModified.ToString("yyyy-MM-dd HH:mm")</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- 右列：选中详情 + 加载/删除/取消 -->
+            <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
+                <header class="gl-ph">
+                    <span>@T("LoadGame.Actions", "Actions") <em>ACTIONS</em></span>
+                </header>
+                <div class="gl-body">
+                    @if (_selected is { } sel)
+                    {
+                        <div class="load-detail">
+                            <div class="cd-title">@sel.GUIName</div>
+                            <div class="load-meta">@sel.FileName</div>
+                            <div class="load-meta">@sel.LastModified.ToString("yyyy-MM-dd HH:mm")</div>
+                            @if (sel.CustomMissionID != 0)
+                            {
+                                <div class="load-tag">@T("LoadGame.CustomMissionSave", "Custom mission save")</div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="camp-empty">@T("LoadGame.SelectHint", "Select a save game above")</div>
+                    }
+                    <div class="cfg-actions">
+                        <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")<span class="en">CANCEL</span></button>
+                        <button class="mb-btn primary start-btn" disabled="@(_selected is null)" @onclick="OnLoad">
+                            @T("LoadGame.Load", "Load")<span class="en">LOAD</span>
+                        </button>
+                        <button class="mb-btn" disabled="@(_selected is null)" @onclick="OnDelete">
+                            @T("LoadGame.Delete", "Delete")<span class="en">DELETE</span>
+                        </button>
                     </div>
-                }
-                else
-                {
-                    <div class="camp-empty">@T("LoadGame.SelectHint", "Select a save game above")</div>
-                }
-                <div class="cfg-actions">
-                    <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")<span class="en">CANCEL</span></button>
-                    <button class="mb-btn primary start-btn" disabled="@(_selected is null)" @onclick="OnLoad">
-                        @T("LoadGame.Load", "Load")<span class="en">LOAD</span>
-                    </button>
-                    <button class="mb-btn" disabled="@(_selected is null)" @onclick="OnDelete">
-                        @T("LoadGame.Delete", "Delete")<span class="en">DELETE</span>
+                </div>
+            </section>
+        }
+        else
+        {
+            <!-- 左列：回放列表（参考原版 ReplaysPanel 列表：地图/模式/时间/时长） -->
+            <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
+                <header class="gl-ph">
+                    <span>@T("Replays.List", "Replays") <em>REPLAYS</em></span>
+                </header>
+                <div class="gl-body">
+                    @if (_replays.Count == 0)
+                    {
+                        <div class="camp-empty">@F("Replays.NoReplays", "No replays found in the {0} directory", ReplaySvc.DirectoryName)</div>
+                    }
+                    else
+                    {
+                        <div class="load-list">
+                            @foreach (var replay in _replays)
+                            {
+                                <button type="button" class="load-item @(replay == _selectedReplay ? "on" : "") @(replay.IsPlayable ? "" : "off")"
+                                        @onclick="() => SelectReplay(replay)">
+                                    <span class="load-name">@replay.GUIName</span>
+                                    <span class="load-meta">
+                                        @replay.RecordedAt.ToString("yyyy-MM-dd HH:mm") · @replay.UIGameMode ·
+                                        @(replay.IsPlayable ? FormatDuration(replay.Duration) : T("Replays.Unsupported", "unsupported version"))
+                                    </span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="cfg-actions replay-actions">
+                    <label class="mb-btn import-btn">
+                        @T("Replays.Import", "Import")<span class="en">IMPORT</span>
+                        <InputFile OnChange="OnImportReplay" accept="@("." + ReplaySvc.FileExtension)" />
+                    </label>
+                    <button class="mb-btn" @onclick="() => ReplaySvc.OpenDirectory()">
+                        @T("Replays.OpenFolder", "Open folder")<span class="en">OPEN</span>
                     </button>
                 </div>
-            </div>
-        </section>
+            </section>
+
+            <!-- 右列：选中回放详情 + 播放选项 -->
+            <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
+                <header class="gl-ph">
+                    <span>@T("Replays.Details", "Replay details") <em>DETAILS</em></span>
+                </header>
+                <div class="gl-body">
+                    @if (_selectedReplay is { } rp)
+                    {
+                        <div class="load-detail">
+                            <div class="cd-title">@rp.GUIName</div>
+                            <div class="load-meta">@rp.UIGameMode · @rp.FileName</div>
+                            <div class="load-meta">@F("Replays.Recorded", "Recorded {0}", rp.RecordedAt.ToString("yyyy-MM-dd HH:mm"))</div>
+                            @if (rp.IsPlayable)
+                            {
+                                <div class="load-meta">@F("Replays.Length", "Length {0} at {1} fps", FormatDuration(rp.Duration), rp.FramesPerSecond)</div>
+                                @if (!rp.IsComplete)
+                                {
+                                    <div class="load-tag">@T("Replays.Incomplete", "Recording was not closed cleanly")</div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="load-tag">@F("Replays.UnsupportedVersion", "Unsupported replay format version {0}", rp.FormatVersion)</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(rp.GamePackageVersion))
+                            {
+                                <div class="load-meta">@rp.GamePackageVersion</div>
+                            }
+
+                            @if (rp.Players.Count > 0)
+                            {
+                                <div class="replay-players">
+                                    @foreach (var p in rp.Players)
+                                    {
+                                        <span class="replay-player @(p.IsRecorder ? "rec" : "")">
+                                            @p.Name@(p.IsRecorder ? " ●" : "")
+                                        </span>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        @if (rp.IsPlayable)
+                        {
+                            <div class="replay-options">
+                                <label class="ro-row">
+                                    <span>@T("Replays.Perspective", "Perspective")</span>
+                                    <select @bind="_viewSlot">
+                                        <option value="-1">@T("Replays.Spectator", "Spectator")</option>
+                                        @foreach (var p in rp.Players)
+                                        {
+                                            <option value="@p.SpawnIniIndex">@p.Name</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="ro-row">
+                                    <span>@T("Replays.Speed", "Speed (fps)")</span>
+                                    <select @bind="_playbackFps">
+                                        @foreach (int fps in YRReplayGame.PlaybackSpeedLadder)
+                                        {
+                                            <option value="@fps">@fps</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="ro-row">
+                                    <span>@T("Replays.Keyframes", "Keyframe interval")</span>
+                                    <select @bind="_keyframeInterval">
+                                        @foreach (int interval in KeyframeIntervals)
+                                        {
+                                            <option value="@interval">@interval</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="ro-check"><input type="checkbox" @bind="_shroudEnabled" /> @T("Replays.Shroud", "Show shroud")</label>
+                                <label class="ro-check"><input type="checkbox" @bind="_followCamera" /> @T("Replays.FollowCamera", "Follow recorded camera")</label>
+                                <label class="ro-check"><input type="checkbox" @bind="_showSelections" /> @T("Replays.ShowSelections", "Show unit selections")</label>
+                                <label class="ro-check"><input type="checkbox" @bind="_showChatAndBeacons" /> @T("Replays.ShowChat", "Show chat and beacons")</label>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="camp-empty">@T("Replays.SelectHint", "Select a replay above")</div>
+                    }
+
+                    <div class="cfg-actions">
+                        <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")<span class="en">CANCEL</span></button>
+                        <button class="mb-btn primary start-btn" disabled="@(_selectedReplay is null || !_selectedReplay.IsPlayable)" @onclick="OnPlayReplay">
+                            @T("Replays.Play", "Play")<span class="en">PLAY</span>
+                        </button>
+                        <button class="mb-btn" disabled="@(_selectedReplay is null)" @onclick="OnDeleteReplay">
+                            @T("LoadGame.Delete", "Delete")<span class="en">DELETE</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        }
     </div>
 </div>
 
 @code {
+    private enum LoadTab { Saves, Replays }
+
+    private static readonly int[] KeyframeIntervals = { 250, 500, 750, 1000, 1500 };
+
     /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
     private static string T(string key, string fallback) => UiText.T(key, fallback);
 
@@ -96,14 +266,58 @@
     private IReadOnlyList<SavedGame> _saves = Array.Empty<SavedGame>();
     private SavedGame? _selected;
 
+    private LoadTab _tab = LoadTab.Saves;
+    private IReadOnlyList<YRReplayGame> _replays = Array.Empty<YRReplayGame>();
+    private YRReplayGame? _selectedReplay;
+
+    // 播放选项
+    private int _viewSlot = -1;
+    private int _playbackFps = 60;
+    private int _keyframeInterval = 750;
+    private bool _shroudEnabled;
+    private bool _followCamera = true;
+    private bool _showSelections = true;
+    private bool _showChatAndBeacons = true;
+
     protected override void OnInitialized()
     {
         _saves = Svc.ListSaves();
+        if (ReplaySvc.IsSupported)
+            _replays = ReplaySvc.ListReplays();
+
+        var settings = UserINISettings.Instance;
+        _shroudEnabled = settings.ReplayPlaybackShroudEnabled.Value;
+        _followCamera = settings.ReplayPlaybackFollowCamera.Value;
+        _showSelections = settings.ReplayPlaybackShowSelections.Value;
+        _showChatAndBeacons = settings.ReplayPlaybackShowChatAndBeacons.Value;
+        _keyframeInterval = settings.ReplayPlaybackKeyframeInterval.Value;
+
         ThemeProvider.ThemeChanged += OnThemeChanged;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
     }
 
+    private void SwitchTab(LoadTab tab)
+    {
+        _tab = tab;
+
+        if (tab == LoadTab.Replays)
+            _replays = ReplaySvc.ListReplays();
+        else
+            _saves = Svc.ListSaves();
+    }
+
     private void Select(SavedGame saveGame) => _selected = saveGame;
+
+    private void SelectReplay(YRReplayGame replay)
+    {
+        _selectedReplay = replay;
+
+        // 默认以观战视角、录制时的速度播放。
+        _viewSlot = -1;
+        _playbackFps = replay.FramesPerSecond;
+        if (Array.IndexOf(YRReplayGame.PlaybackSpeedLadder, _playbackFps) < 0)
+            _playbackFps = 60;
+    }
 
     private async Task OnLoad()
     {
@@ -122,6 +336,85 @@
         await Svc.DeleteAsync(saveGame);
         _saves = Svc.ListSaves();
         _selected = null;
+    }
+
+    private async Task OnPlayReplay()
+    {
+        if (_selectedReplay is null)
+            return;
+
+        var options = new ReplayPlaybackOptions
+        {
+            Spectator = _viewSlot < 0,
+            ViewPlayerIndex = Math.Max(0, _viewSlot),
+            PlaybackSpeed = _playbackFps,
+            ShroudEnabled = _shroudEnabled,
+            FollowCamera = _followCamera,
+            ShowSelections = _showSelections,
+            ShowChatAndBeacons = _showChatAndBeacons,
+            KeyframeInterval = _keyframeInterval
+        };
+
+        await ReplaySvc.LaunchAsync(_selectedReplay, options);
+    }
+
+    private async Task OnDeleteReplay()
+    {
+        if (_selectedReplay is null)
+            return;
+
+        var replay = _selectedReplay;
+        await ReplaySvc.DeleteAsync(replay);
+        _replays = ReplaySvc.ListReplays();
+        _selectedReplay = null;
+    }
+
+    private async Task OnImportReplay(InputFileChangeEventArgs e)
+    {
+        string? tempPath = null;
+
+        try
+        {
+            var file = e.File;
+            tempPath = Path.Combine(Path.GetTempPath(), Path.GetFileName(file.Name));
+
+            await using (FileStream fs = File.Create(tempPath))
+                await file.OpenReadStream(512L * 1024L * 1024L).CopyToAsync(fs);
+
+            string? imported = ReplaySvc.ImportReplay(tempPath);
+
+            if (imported != null)
+            {
+                _replays = ReplaySvc.ListReplays();
+                _selectedReplay = _replays.FirstOrDefault(r => string.Equals(r.FileName, imported, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                await Box.ShowAsync(
+                    T("Replays.ImportFailedTitle", "Import failed"),
+                    F("Replays.ImportFailedText", "{0} is not a readable replay file.", file.Name),
+                    MessageBoxButtons.Ok, MessageBoxKind.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            await Box.ShowAsync(
+                T("Replays.ImportFailedTitle", "Import failed"),
+                ex.Message, MessageBoxButtons.Ok, MessageBoxKind.Error);
+        }
+        finally
+        {
+            if (tempPath != null && File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 1)
+            return string.Format("{0}:{1:00}:{2:00}", (int)duration.TotalHours, duration.Minutes, duration.Seconds);
+
+        return string.Format("{0:00}:{1:00}", duration.Minutes, duration.Seconds);
     }
 
     private void BackToMenu() => Nav.NavigateTo("/menu");

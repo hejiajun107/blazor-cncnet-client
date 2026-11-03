@@ -630,6 +630,11 @@
         Int("difficulty", v => SettingsSvc.Ini.Difficulty.Value = v);
         Bool("autoTrimUnderscores", v => SettingsSvc.Ini.AutoRemoveUnderscoresFromName.Value = v);
 
+        Bool("recordReplays", v => SettingsSvc.Ini.RecordReplays.Value = v);
+        Int("maxKeptReplays", v => SettingsSvc.Ini.MaxKeptReplays.Value = v);
+        Int("maxReplayFolderSizeMB", v => SettingsSvc.Ini.MaxReplayFolderSizeMB.Value = v);
+        Int("replayKeyframeStorageLimitMB", v => SettingsSvc.Ini.ReplayKeyframeStorageLimitMB.Value = v);
+
         Str("playerName", v => SettingsSvc.Ini.PlayerName.Value = v);
         Bool("skipConnectDialog", v => SettingsSvc.Ini.SkipConnectDialog.Value = v);
         Bool("persistentMode", v => SettingsSvc.Ini.PersistentMode.Value = v);
@@ -900,6 +905,43 @@
                 </label>
             </div>
         </div>
+        @if (ReplayManager.IsSupported)
+        {
+            <div class="set-row" data-setting="Replays:RecordReplays">
+                <div class="set-info"><span class="set-name">@Ui("Settings.RecordReplays", "Record replays")</span><span class="set-hint">RECORD REPLAYS</span></div>
+                <div class="set-ctl">
+                    <label class="set-toggle">
+                        <input type="checkbox" checked="@(GetBool("recordReplays", SettingsSvc.Ini.RecordReplays.Value))"
+                               @onchange="@(e => SetDraftBool("recordReplays", e))" />
+                        <span class="tk"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="set-row" data-setting="Replays:MaxKeptReplays">
+                <div class="set-info"><span class="set-name">@Ui("Settings.MaxKeptReplays", "Maximum kept replays")</span><span class="set-hint">0 = UNLIMITED</span></div>
+                <div class="set-ctl">
+                    <input class="set-num" type="number" min="0" max="10000" step="1"
+                           value="@(GetInt("maxKeptReplays", SettingsSvc.Ini.MaxKeptReplays.Value))"
+                           @onchange="@(e => SetDraftInt("maxKeptReplays", e))" />
+                </div>
+            </div>
+            <div class="set-row" data-setting="Replays:MaxReplayFolderSizeMB">
+                <div class="set-info"><span class="set-name">@Ui("Settings.MaxReplayFolderSize", "Replay folder size limit (MB)")</span><span class="set-hint">0 = UNLIMITED</span></div>
+                <div class="set-ctl">
+                    <input class="set-num" type="number" min="0" max="100000" step="1"
+                           value="@(GetInt("maxReplayFolderSizeMB", SettingsSvc.Ini.MaxReplayFolderSizeMB.Value))"
+                           @onchange="@(e => SetDraftInt("maxReplayFolderSizeMB", e))" />
+                </div>
+            </div>
+            <div class="set-row" data-setting="Replays:ReplayKeyframeStorageLimitMB">
+                <div class="set-info"><span class="set-name">@Ui("Settings.ReplayKeyframeStorage", "Replay keyframe storage limit (MB)")</span><span class="set-hint">PLAYBACK KEYFRAMES</span></div>
+                <div class="set-ctl">
+                    <input class="set-num" type="number" min="0" max="100000" step="1"
+                           value="@(GetInt("replayKeyframeStorageLimitMB", SettingsSvc.Ini.ReplayKeyframeStorageLimitMB.Value))"
+                           @onchange="@(e => SetDraftInt("replayKeyframeStorageLimitMB", e))" />
+                </div>
+            </div>
+        }
         @Extras("game")
     };
 

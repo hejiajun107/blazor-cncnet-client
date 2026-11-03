@@ -1,5 +1,6 @@
 using System;
 using CnCNetClient.Core;
+using CnCNetClient.Domain;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Integration;
 using CnCNetClient.Integration.Threading;
@@ -98,6 +99,9 @@ public sealed class GameLaunchService : IDisposable
             if (!_launchInProgress)
                 return;
             _launchInProgress = false;
+
+            // 对局结束后按数量/容量上限清理旧回放。
+            ReplayManager.Prune();
 
             if (UserINISettings.Instance.MinimizeWindowsOnGameStart.Value)
                 _window.Features.State.SetMinimized(false);

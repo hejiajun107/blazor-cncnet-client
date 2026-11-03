@@ -600,3 +600,92 @@
 
     window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, injectCss, injectJs, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar, playMenuMusic, stopMenuMusic };
 })();
+
+// ── 回放文件拖放导入（主菜单）─────────────────────────────────
+// WebView 无法拿到本地文件路径，故把文件分块转 Base64 交给 .NET 落盘后走 ReplayManager.Import。
+(function () {
+    'use strict';
+    let ref = null;
+    let ext = 'yrrp';
+
+    function hasReplayExtension(name) {
+        return name.toLowerCase().endsWith('.' + ext.toLowerCase());
+    }
+
+    function onDragOver(e) {
+        if (!ref) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    }
+
+    function onDragEnter(e) {
+        if (!ref) return;
+        e.preventDefault();
+        document.body.classList.add('replay-drop');
+    }
+
+    function onDragLeave(e) {
+        // relatedTarget 为 null 表示真正离开了窗口
+        if (e.relatedTarget === null) document.body.classList.remove('replay-drop');
+    }
+
+    function readChunk(blob) {
+        return new Promise(function (resolve, reject) {
+            const reader = new FileReader();
+            reader.onload = function () { resolve(String(reader.result)); };
+            reader.onerror = function () { reject(reader.error); };
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function onDrop(e) {
+        document.body.classList.remove('replay-drop');
+        if (!ref) return;
+        e.preventDefault();
+
+        const files = e.dataTransfer ? Array.from(e.dataTransfer.files) : [];
+        if (files.length === 0) return;
+
+        const file = files.find(function (f) { return hasReplayExtension(f.name); });
+
+        if (!file) {
+            try { await ref.invokeMethodAsync('ReplayDropInvalid', files[0].name); } catch (_) { }
+            return;
+        }
+
+        try {
+            await ref.invokeMethodAsync('ReplayDropBegin', file.name);
+
+            const CHUNK = 256 * 1024;
+            for (let pos = 0; pos < file.size; pos += CHUNK) {
+                const dataUrl = await readChunk(file.slice(pos, pos + CHUNK));
+                const comma = dataUrl.indexOf(',');
+                await ref.invokeMethodAsync('ReplayDropChunk', dataUrl.substring(comma + 1));
+            }
+
+            await ref.invokeMethodAsync('ReplayDropEnd');
+        } catch (err) {
+            try { await ref.invokeMethodAsync('ReplayDropFailed', file.name, String(err)); } catch (_) { }
+        }
+    }
+
+    window.replayDrop = {
+        register: function (dotNetRef, extension) {
+            window.replayDrop.unregister();
+            ref = dotNetRef;
+            ext = extension || 'yrrp';
+            document.addEventListener('dragover', onDragOver, true);
+            document.addEventListener('dragenter', onDragEnter, true);
+            document.addEventListener('dragleave', onDragLeave, true);
+            document.addEventListener('drop', onDrop, true);
+        },
+        unregister: function () {
+            document.removeEventListener('dragover', onDragOver, true);
+            document.removeEventListener('dragenter', onDragEnter, true);
+            document.removeEventListener('dragleave', onDragLeave, true);
+            document.removeEventListener('drop', onDrop, true);
+            ref = null;
+            document.body.classList.remove('replay-drop');
+        }
+    };
+})();
