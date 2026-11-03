@@ -86,10 +86,10 @@
 这些文件会干扰游戏/模组运行，请移除后重新启动客户端。</value>
   </data>
   <data name="Client:UI:Settings.Nav.Components" xml:space="preserve">
-    <value>组件 COMPONENTS</value>
+    <value>组件</value>
   </data>
   <data name="Client:UI:Settings.Section.Components" xml:space="preserve">
-    <value>组件 COMPONENTS</value>
+    <value>组件</value>
   </data>
   <data name="Client:UI:Settings.Cancel" xml:space="preserve">
     <value>取消</value>
