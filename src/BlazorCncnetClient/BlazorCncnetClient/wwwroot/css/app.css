@@ -1124,7 +1124,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mi-divider{border-top:1px dashed var(--line);margin:6px 0}
 .mi-briefing{font-size:11px;color:var(--text-3);line-height:1.5;margin-top:6px;
-  max-height:46px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+  white-space:pre-line;max-height:46px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 .mi-star{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border:1px solid var(--line);  background:var(--bg-2);color:var(--text-3);cursor:pointer;font-size:11px;letter-spacing:1px;
   transition:color var(--t-micro) var(--ease-out-back),border-color var(--t-micro) var(--ease-out-back),
   transform var(--t-micro) var(--ease-out-back)}
@@ -1182,7 +1182,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .cm-chip{flex:none;font-size:10px;letter-spacing:1px;color:#fff;padding:2px 8px;
   border:1px solid rgba(255,255,255,.25)}
 .cd-desc{font-size:12px;color:var(--text-2);line-height:1.7;letter-spacing:.5px;
-  padding:10px 12px;border:1px dashed var(--line);background:rgba(5,16,24,.32)}
+  white-space:pre-line;padding:10px 12px;border:1px dashed var(--line);background:rgba(5,16,24,.32)}
 .camp-launch .gl-body{display:flex;flex-direction:column;gap:10px}
 /* 加载单机存档（/load，原版 GameLoadingWindow） */
 .load-list{display:flex;flex-direction:column;gap:6px}

@@ -460,6 +460,10 @@
             if (OptionsIni.Attributes(control.Name) is not { } attrs)
                 continue;
 
+            // Visible=false：与原版一致，注册了也不渲染（如 MOD 关闭某扩展选项）
+            if (!attrs.Visible)
+                continue;
+
             string hint = control.Type == SettingControlType.FileSettingCheckBox
                 ? "FILE OPTION · " + control.Name
                 : "CUSTOM OPTION · " + control.Name;
