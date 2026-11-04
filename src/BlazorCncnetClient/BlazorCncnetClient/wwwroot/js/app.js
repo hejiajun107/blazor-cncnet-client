@@ -598,7 +598,55 @@
         setTimeout(() => { if (_menuMusic && !_menuMusicFade) _menuMusic.pause(); }, ms + 80);
     }
 
-    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, injectCss, injectJs, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar, playMenuMusic, stopMenuMusic };
+    /* ── 自绘下拉（IconSelect）─────────────────────────────────────
+       原生 <option> 无法渲染图片，故用按钮 + 列表自绘。列表走 Popover API 进 top layer：
+       面板（.gl-panel）的 backdrop-filter 会成为 fixed 子元素的包含块、overflow:hidden 又将其裁剪，
+       top layer 里的元素以视口为包含块，定位与裁剪问题一并消失。 */
+    let selOpen = null; // { list, trigger }
+
+    function selHide() {
+        if (!selOpen) return;
+        const state = selOpen;
+        selOpen = null;
+        document.removeEventListener('pointerdown', selOnPointerDown, true);
+        document.removeEventListener('keydown', selOnKeyDown, true);
+        window.removeEventListener('resize', selHide);
+        try { state.list.hidePopover(); } catch (e) { /* 已关闭则忽略 */ }
+    }
+
+    // 点击列表与触发器之外即收起（触发器自身交给 Blazor 的切换逻辑处理，保证再次点击可关闭）
+    function selOnPointerDown(e) {
+        if (!selOpen) return;
+        if (selOpen.list.contains(e.target) || selOpen.trigger.contains(e.target)) return;
+        selHide();
+    }
+
+    function selOnKeyDown(e) {
+        if (e.key === 'Escape') selHide();
+    }
+
+    function iconSelectToggle(trigger, list) {
+        if (!trigger || !list || typeof list.showPopover !== 'function') return;
+        if (selOpen && selOpen.list === list) { selHide(); return; }
+        selHide();
+
+        const r = trigger.getBoundingClientRect();
+        const up = window.innerHeight - r.bottom < 260 && r.top > 260;
+        list.style.left = r.left + 'px';
+        list.style.top = (up ? r.top : r.bottom + 2) + 'px';
+        list.style.minWidth = r.width + 'px';
+        list.style.maxWidth = (window.innerWidth - r.left - 8) + 'px';
+        list.style.transform = up ? 'translateY(-100%)' : 'none';
+        list.showPopover();
+        selOpen = { list, trigger };
+        document.addEventListener('pointerdown', selOnPointerDown, true);
+        document.addEventListener('keydown', selOnKeyDown, true);
+        window.addEventListener('resize', selHide);
+    }
+
+    function iconSelectHide() { selHide(); }
+
+    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, injectCss, injectJs, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar, playMenuMusic, stopMenuMusic, iconSelectToggle, iconSelectHide };
 })();
 
 // ── 回放文件拖放导入（主菜单）─────────────────────────────────

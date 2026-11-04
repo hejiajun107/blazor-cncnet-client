@@ -59,12 +59,18 @@ public sealed class LanGameLaunchService : IDisposable
             // 1. 生成 spawn.ini + spawnmap.ini（LAN 无隧道：tunnelIp/tunnelPort 为空 → 不写 [Tunnel] 节；
             //    各玩家 Port 已在 LANPlayerInfo 固定为 1234，OtherN.Ip 为玩家真实 LAN 地址；
             //    gameOptions 写入 [Settings] 并应用自定义地图代码，随 OPTS 广播与房主一致）
+            // 房间内保留“随机”选项（SideId/ColorId 的上游索引语义），开局时按共享随机种子
+            // 在各客户端本地解析为具体阵营/颜色（对齐上游 GameLobbyBase.Randomize）。
+            // LAN 的 GetPlayerInfos 已包含 AI 玩家，故不再单列 aiPlayers。
+            var roster = MultiplayerOptionResolver.Resolve(
+                players, null, _room.SideCount, _room.RandomSeed, gameModeMap);
+
             SpawnIniGenerator.WriteSpawnIni(
-                players, gameModeMap, _room.RandomSeed, _room.SideCount,
+                roster.Players, gameModeMap, _room.RandomSeed, _room.SideCount,
                 _room.UniqueGameId, _room.IsHost,
                 tunnelIp: string.Empty, tunnelPort: 0,
                 gameOptions: _room.GameOptions);
-            SpawnIniGenerator.WriteMap(players, gameModeMap, _room.GameOptions);
+            SpawnIniGenerator.WriteMap(roster.Players, gameModeMap, _room.GameOptions);
 
             // 2. 标记对局进行中并跳转加载等待页
             _launchInProgress = true;

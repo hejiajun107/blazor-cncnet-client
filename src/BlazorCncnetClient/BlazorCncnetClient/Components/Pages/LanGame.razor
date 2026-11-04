@@ -15,6 +15,7 @@
 @inject MessageBoxService MessageBox
 @inject LanGameLaunchService GameLauncher
 @inject ITranslationService TranslationSvc
+@inject GameContentServer ContentServer
 
 @if (!Room.IsInGameRoom)
 {
@@ -99,20 +100,11 @@ else
                                 @if (slotPlayer is not null)
                                 {
                                     <div class="gl-side">
-                                        <select class="gl-select" disabled="@(!isSelf)" value="@slotPlayer.SideId" @onchange="OnSideChange">
-                                            @for (int s = 0; s < Sides.Length; s++)
-                                            {
-                                                <option value="@s">@Sides[s]</option>
-                                            }
-                                        </select>
+                                        <IconSelect CssClass="gl-select" Disabled="@(!isSelf)"
+                                                    Value="slotPlayer.SideId" ValueChanged="OnSidePicked" Items="SideItems" />
                                     </div>
-                                    <select class="gl-select color-select" disabled="@(!isSelf)" value="@slotPlayer.ColorId"
-                                            @onchange="(e) => { if (int.TryParse(e.Value?.ToString(), out var picked)) SetColor(picked); }">
-                                        @foreach (var c in _colors)
-                                        {
-                                            <option value="@c.Index">@c.Name</option>
-                                        }
-                                    </select>
+                                    <IconSelect CssClass="gl-select color-select" Disabled="@(!isSelf)" ShowLabelOnButton="false"
+                                                Value="slotPlayer.ColorId" ValueChanged="SetColor" Items="ColorItems" />
                                     <select class="gl-select gl-start" disabled="@(!isSelf)" value="@slotPlayer.StartingLocation" @onchange="OnStartChange">
                                         @for (int st = 1; st <= Room.MaxPlayers; st++)
                                         {
@@ -513,6 +505,8 @@ else
         ThemeProvider.ThemeChanged += OnThemeChanged;
         MapLoader.MapLoadingComplete += OnMapLoadingComplete;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
+        // 阵营国旗/颜色图标经 GameContentServer 伺服（幂等：已启动则复用）
+        ContentServer.Start(ProgramConstants.GamePath);
         RefreshMaps();
         EnterRoom();
     }
@@ -522,7 +516,7 @@ else
         try
         {
             var colors = MultiplayerColor.LoadColors();
-            return colors.Select(c => new ColorOption(c.Name, c.GameColorIndex, c.XnaColor)).ToList();
+            return colors.Select(c => new ColorOption(ColorLabel(c.Name), c.GameColorIndex, c.XnaColor)).ToList();
         }
         catch
         {
@@ -612,7 +606,12 @@ else
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
-    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnLanguageChanged()
+    {
+        // 颜色名在加载时已本地化，切换语言后需重新取当前语言的显示名
+        _colors = LoadColorsSafe();
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     // ── 顶部操作 ──
 
@@ -653,11 +652,8 @@ else
 
     // ── 我的配置 ──
 
-    private void OnSideChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int v))
-            ApplyOwnOptions(v, Self!.ColorId, Self.StartingLocation, Self.TeamId);
-    }
+    private void OnSidePicked(int side) =>
+        ApplyOwnOptions(side, Self!.ColorId, Self.StartingLocation, Self.TeamId);
 
     private void OnStartChange(ChangeEventArgs e)
     {
@@ -671,8 +667,10 @@ else
             ApplyOwnOptions(Self!.SideId, Self.ColorId, Self.StartingLocation, v);
     }
 
-    private void SetColor(int colorIndex) =>
-        ApplyOwnOptions(Self!.SideId, colorIndex, Self.StartingLocation, Self.TeamId);
+    /// <summary>颜色下拉：0 = 随机。房间内保持“随机”状态（同上游），开局时由
+    /// <see cref="MultiplayerOptionResolver"/> 按共享种子解析，故此处不预分配具体颜色。</summary>
+    private void SetColor(int colorId) =>
+        ApplyOwnOptions(Self!.SideId, colorId, Self.StartingLocation, Self.TeamId);
 
     private void OnSpawnClick(int index)
     {
@@ -748,12 +746,86 @@ else
         return Task.CompletedTask;
     }
 
-    private string GetSideName(int side) =>
-        side >= 0 && side < Sides.Length ? Sides[side] : F("GameLobby.SideIndex", "Side {0}", side);
+    /// <summary>SideId → 显示名（0=随机、随机选择器、真实阵营）；LAN 无观战项。</summary>
+    private string GetSideName(int sideId)
+    {
+        if (sideId == MultiplayerOptionIndex.Random)
+            return T("Skirmish.Side.Random", "Random");
 
-    private Rgba32 GetColor(int index) =>
-        (_colors.FirstOrDefault(c => c.Index == index) ?? _colors.FirstOrDefault())?.Color
-        ?? new Rgba32(160, 220, 255, 255);
+        var selectors = MultiplayerOptionIndex.Selectors;
+        if (sideId > 0 && sideId <= selectors.Count)
+            return SideName(selectors[sideId - 1].Name);
+
+        int realSide = MultiplayerOptionIndex.RealSideOf(sideId);
+        if (realSide >= 0 && realSide < Sides.Length)
+            return SideName(Sides[realSide]);
+
+        return F("GameLobby.SideIndex", "Side {0}", sideId);
+    }
+
+    /// <summary>阵营下拉项（对齐原版 AddSideToDropDown，LAN 无观战）：随机 → 随机选择器 → 真实阵营。</summary>
+    private List<IconSelectItem> SideItems
+    {
+        get
+        {
+            var items = new List<IconSelectItem>
+            {
+                new(MultiplayerOptionIndex.Random, T("Skirmish.Side.Random", "Random"),
+                    GameAssetIcons.Url(ContentServer, "randomicon.png"))
+            };
+
+            var selectors = MultiplayerOptionIndex.Selectors;
+            for (int i = 0; i < selectors.Count; i++)
+            {
+                items.Add(new IconSelectItem(i + 1, SideName(selectors[i].Name),
+                    GameAssetIcons.Url(ContentServer, selectors[i].Name + "icon.png", "randomicon.png")));
+            }
+
+            for (int i = 0; i < Sides.Length; i++)
+            {
+                items.Add(new IconSelectItem(MultiplayerOptionIndex.SideIdOfRealSide(i), SideName(Sides[i]),
+                    GameAssetIcons.SideUrl(ContentServer, Sides, i)));
+            }
+
+            return items;
+        }
+    }
+
+    /// <summary>阵营名本地化（与遭遇战一致）：优先原版 Translation.ini 键（<c>INI:Sides:&lt;阵营名&gt;</c>），
+    /// 缺失回退内置 Resx（<c>Skirmish.Side.*</c>），最后回退英文原名。</summary>
+    private static string SideLabel(string translationKey, string resxKey, string fallback)
+    {
+        string translated = CnCNetClient.Core.I18N.Translation.Instance.LookUp(translationKey, string.Empty, notify: false);
+        return string.IsNullOrEmpty(translated) ? T(resxKey, fallback) : translated;
+    }
+
+    private static string SideName(string side) => SideLabel("INI:Sides:" + side, "Skirmish.Side." + side, side);
+
+    /// <summary>颜色名本地化：<c>MultiplayerColor.Name</c> 已按原版翻译过，未收录时回退内置 Resx（<c>Skirmish.Color.*</c>）。</summary>
+    private static string ColorLabel(string name) => T("Skirmish.Color." + name, name);
+
+    /// <summary>颜色下拉项（对齐原版 XNAClientColorDropDown：ColorId 0=随机，k=颜色表第 k-1 项）。</summary>
+    private List<IconSelectItem> ColorItems
+    {
+        get
+        {
+            var items = new List<IconSelectItem>
+            {
+                new(MultiplayerOptionIndex.Random, T("Skirmish.Random", "Random"),
+                    GameAssetIcons.RandomColorUrl(ContentServer), ToCss(GameAssetIcons.RandomSwatch()))
+            };
+            for (int i = 0; i < _colors.Count; i++)
+                items.Add(new IconSelectItem(i + 1, _colors[i].Name, null, ToCss(_colors[i].Color)));
+            return items;
+        }
+    }
+
+    private Rgba32 GetColor(int colorId)
+    {
+        if (colorId <= 0 || _colors.Count == 0)
+            return GameAssetIcons.RandomSwatch();
+        return _colors[Math.Min(colorId - 1, _colors.Count - 1)].Color;
+    }
 
     private static string ToCss(Rgba32 color) => $"rgb({color.R},{color.G},{color.B})";
 

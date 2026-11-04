@@ -320,12 +320,12 @@ namespace BlazorCncnetClient.Infrastructure
                 QueuedMessageType.GAME_PLAYERS_EXTRA_MESSAGE, 11);
         }
 
-        /// <summary>观战（Spectator）阵营索引 = 真实阵营数量（本端无 Random/随机选择器，
-        /// 同原版 GetSpectatorSideIndex 语义；也同 SpawnIniGenerator 的 IsSpectator 判定 sideId == sideCount）。</summary>
-        public int SpectatorSideIndex => SideCount;
+        /// <summary>观战（Spectator）阵营 SideId = 真实阵营数量 + 随机选项数量
+        /// （同原版 GetSpectatorSideIndex = SideCount + RandomSelectorCount，见 <see cref="MultiplayerOptionIndex"/>）。</summary>
+        public int SpectatorSideIndex => MultiplayerOptionIndex.SpectatorSideId(SideCount);
 
-        /// <summary>指定玩家是否为观战者（阵营 == SpectatorSideIndex）。</summary>
-        public static bool IsSpectatorSide(int side, int sideCount) => side == sideCount;
+        /// <summary>指定玩家是否为观战者（SideId == 观战索引）。</summary>
+        public static bool IsSpectatorSide(int side, int sideCount) => MultiplayerOptionIndex.IsSpectator(side, sideCount);
 
         public GameRoomService(
             CnCNetManager manager,
@@ -802,7 +802,7 @@ namespace BlazorCncnetClient.Infrastructure
         {
             if (!IsHost || !_aiPlayers.Contains(ai))
                 return;
-            ai.SideId = Math.Clamp(side, 0, Math.Max(0, SideCount - 1));
+            ai.SideId = Math.Clamp(side, 0, Math.Max(0, SpectatorSideIndex - 1));
             ai.ColorId = Math.Clamp(color, 0, Math.Max(0, MultiplayerColor.LoadColors().Count));
             ai.StartingLocation = start;
             ai.TeamId = team;
@@ -1748,7 +1748,7 @@ namespace BlazorCncnetClient.Infrastructure
                 return;
             Span<byte> bytes = stackalloc byte[4];
             BinaryPrimitives.WriteInt32LittleEndian(bytes, options);
-            p.Side = Math.Clamp((int)bytes[0], 0, Math.Max(0, SideCount));
+            p.Side = Math.Clamp((int)bytes[0], 0, SpectatorSideIndex);
             p.Color = Math.Clamp((int)bytes[1], 0, Math.Max(0, MultiplayerColor.LoadColors().Count));
             p.Start = Math.Clamp((int)bytes[2], 0, MaxTotalSlots);
             p.Team = Math.Clamp((int)bytes[3], 0, 4);
@@ -1789,7 +1789,7 @@ namespace BlazorCncnetClient.Infrastructure
                     int level = Math.Clamp(aiLevel, 0, ProgramConstants.AI_PLAYER_NAMES.Count - 1);
                     _aiPlayers.Add(new PlayerInfo(
                         ProgramConstants.AI_PLAYER_NAMES[level],
-                        Math.Clamp((int)bytes[3], 0, Math.Max(0, SideCount - 1)),
+                        Math.Clamp((int)bytes[3], 0, Math.Max(0, SpectatorSideIndex - 1)),
                         bytes[1],
                         Math.Clamp((int)bytes[2], 0, Math.Max(0, MultiplayerColor.LoadColors().Count)),
                         Math.Clamp((int)bytes[0], 0, 4))
@@ -1814,7 +1814,7 @@ namespace BlazorCncnetClient.Infrastructure
                     Team = Math.Clamp((int)bytes[0], 0, 4),
                     Start = Math.Clamp((int)bytes[1], 0, MaxTotalSlots),
                     Color = Math.Clamp((int)bytes[2], 0, Math.Max(0, MultiplayerColor.LoadColors().Count)),
-                    Side = Math.Clamp((int)bytes[3], 0, Math.Max(0, SideCount)),
+                    Side = Math.Clamp((int)bytes[3], 0, SpectatorSideIndex),
                     Ready = ready > 0
                 };
                 _players[name] = state;

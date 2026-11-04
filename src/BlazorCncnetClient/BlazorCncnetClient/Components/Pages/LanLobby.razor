@@ -364,6 +364,8 @@
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
         TranslationSvc.LanguageChanged -= OnLanguageChanged;
-        LanSvc.Stop();
+        // 此处不能 Stop：进入 /lan/game 时本页会被释放，而 LAN 房间的 GAME/GAMECLOSED 广播
+        // 依赖大厅的 UDP socket（原版 LANLobby 同样由大厅转发）。socket 由「离开大厅」显式 Stop
+        // 或 DI 作用域销毁（LanLobbyService.Dispose）时关闭。
     }
 }

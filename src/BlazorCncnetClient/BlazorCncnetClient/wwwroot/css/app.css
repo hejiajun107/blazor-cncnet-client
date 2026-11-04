@@ -811,6 +811,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
   font-family:var(--font-orbitron);font-size:11px;color:var(--text-2);border:1px solid var(--line)}
 .slot-empty-text{color:var(--text-3);font-size:12px;letter-spacing:1px}
 .slot-color{flex:none;width:14px;height:14px;border:1px solid rgba(255,255,255,.35);border-radius:50%}
+.slot-color-ic{flex:none;width:14px;height:14px;object-fit:contain;image-rendering:pixelated}
 .slot-info{flex:1;min-width:0}
 .slot-name{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -865,6 +866,23 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .gl-select optgroup{color:var(--cyan-soft);background:rgba(5,16,24,.95);font-style:normal}
 .gl-select option{color:var(--text);background:rgba(5,16,24,.95)}
 
+/* 自绘下拉（IconSelect）：原生 option 只能显示文本，改由按钮 + popover 列表渲染图标/色块。
+   列表挂 popover="manual" 进 top layer：面板的 backdrop-filter 会让 fixed 子元素以面板为包含块、
+   overflow:hidden 还会裁剪，top layer 元素以视口定位，两者都不受影响。 */
+.icon-sel{position:relative;width:100%;min-width:0}
+.icon-sel-btn{display:flex;align-items:center;gap:6px;width:100%;text-align:left;cursor:pointer;position:relative;padding-right:16px}
+.icon-sel-btn:disabled{opacity:.55;cursor:default}
+.icon-sel-caret{position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--text-3);pointer-events:none}
+.icon-sel-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-sel-ic{flex:none;width:14px;height:14px;object-fit:contain;image-rendering:pixelated}
+.icon-sel-swatch{flex:none;width:12px;height:12px;border-radius:50%;border:1px solid rgba(255,255,255,.35)}
+.icon-sel-list{position:fixed;inset:auto;margin:0;max-height:240px;overflow-y:auto;padding:4px;display:flex;flex-direction:column;gap:2px;
+  background:rgba(5,16,24,.98);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.icon-sel-list:not(:popover-open){display:none}
+.icon-sel-item{display:flex;align-items:center;gap:6px;width:100%;padding:4px 8px;background:transparent;border:0;
+  color:var(--text);font-family:var(--font-cn);font-size:12px;text-align:left;cursor:pointer;white-space:nowrap}
+.icon-sel-item:hover,.icon-sel-item.sel{background:rgba(33,230,255,.12);color:var(--cyan)}
+
 .cfg-rules{margin:12px 0;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:8px}
 .cfg-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cfg-row label{flex:none;font-size:12px;color:var(--text-3);letter-spacing:1px}
@@ -912,6 +930,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .gl-tc-name .nm{flex:1;min-width:0;font-size:12px;font-weight:700;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .gl-tr .gl-select{padding:2px 6px;font-size:11px;min-width:0}
+.gl-tr .icon-sel-btn{padding-right:14px}
 .gl-tr .gl-select:disabled{opacity:.45;cursor:not-allowed}
 .gl-tc-name .ai-level{width:auto;flex:none;padding:2px 6px;font-size:11px}
 .gl-tc-name .ai-remove{flex:none;width:18px;height:18px;padding:0;border-radius:3px;font-size:10px}
@@ -922,10 +941,11 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .gl-side{display:flex;align-items:center;gap:4px;min-width:0}
 .side-ic{flex:none;width:20px;height:20px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(0,0,0,.6))}
 .gl-side .gl-select{flex:1;min-width:0}
+.gl-side .icon-sel{flex:1;min-width:0}
 /* 出生点列：纯数字/随机下拉，窄列居中 */
 .gl-start{text-align:center;font-size:10px;padding:2px 3px}
-/* 颜色下拉：选中项以对应色块显示（Chromium 会把 option 内联背景应用到收起态） */
-.color-select option{font-weight:600}
+/* 颜色下拉：选中项文字加粗（随机项另显示 randomcolor 图标） */
+.color-select .icon-sel-text{font-weight:600}
 
 /* 游戏选项（G7：复选/下拉，写 spawn.ini + 自定义地图代码） */
 .go-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px}
@@ -1289,11 +1309,11 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .set-row:last-child{border-bottom:none}
 .set-row.ini-hidden{display:none}
 .set-info{display:flex;flex-direction:column;gap:2px;min-width:0}
-.set-name{font-size:14px;color:var(--text)}
+.set-name{font-size:14px;color:var(--text);white-space:pre-line}
 .set-hint{font-family:var(--font-orbitron);font-size:9px;letter-spacing:2px;color:var(--dim)}
 .set-ctl{flex:none;display:flex;align-items:center;gap:10px}
 .set-val{font-family:var(--font-orbitron);font-size:11px;color:var(--cyan-soft);min-width:38px;text-align:right}
-.set-hint-block{margin:16px 2px;font-size:12px;color:var(--text-3);letter-spacing:1px;line-height:1.6}
+.set-hint-block{margin:16px 2px;font-size:12px;color:var(--text-3);letter-spacing:1px;line-height:1.6;white-space:pre-line}
 /* 更新面板（M4.3）：进度条 + 操作区 */
 .upd-progress{position:relative;height:6px;margin:10px 0 6px;border:1px solid var(--line);background:rgba(5,16,24,.9)}
 .upd-progress i{position:absolute;inset:0 auto 0 0;width:0;transition:width var(--t-item) var(--ease-out)}

@@ -173,6 +173,7 @@ namespace BlazorCncnetClient.Infrastructure
             _sessionId++;
             ResetState();
             IsHost = true;
+            EnsureLobbyBroadcast();
             RoomName = string.IsNullOrWhiteSpace(roomName) ? ProgramConstants.PLAYERNAME + "'s Game" : roomName.Trim();
             MaxPlayers = MAX_PLAYER_COUNT;
             RandomSeed = _random.Next();
@@ -237,6 +238,7 @@ namespace BlazorCncnetClient.Infrastructure
             _sessionId++;
             ResetState();
             IsHost = false;
+            EnsureLobbyBroadcast();
             RoomName = game.RoomName;
             MaxPlayers = MAX_PLAYER_COUNT;
             _hostEndPoint = game.EndPoint;
@@ -263,6 +265,14 @@ namespace BlazorCncnetClient.Infrastructure
             AddChatMessage(new ChatMessage(ColorConstants.Cyan,
                 string.Format(UiText.T("LanRoom.JoiningChat", "Joining \"{0}\"..."), game.RoomName)));
             NotifyChanged();
+        }
+
+        /// <summary>确保大厅的 UDP 广播 socket 正在运行：房间的 GAME / GAMECLOSED 经大厅转发，
+        /// 大厅已运行时为空操作（正常从 /lan/lobby 进入即已 Start）。</summary>
+        private void EnsureLobbyBroadcast()
+        {
+            if (!_lobby.IsRunning)
+                _lobby.Start();
         }
 
         /// <summary>离开房间：主机广播 GAMECLOSED + QUIT，客户端发 QUIT，关闭监听/连接并清理。</summary>
@@ -663,8 +673,12 @@ namespace BlazorCncnetClient.Infrastructure
                 || !int.TryParse(parts[2], out int start) || !int.TryParse(parts[3], out int team))
                 return;
 
+            // SideId 采用上游下拉索引语义（0=随机、1..=随机选择器、RandomCount+i=真实阵营；LAN 无观战项），
+            // ColorId 采用 0=随机、k=颜色表第 k-1 项。
             int sideCount = Math.Max(1, ClientConfiguration.Instance.Sides.Split(',', StringSplitOptions.RemoveEmptyEntries).Length);
-            if (side < 0 || side >= sideCount || color < 0 || color >= 0x10
+            int maxSide = sideCount + MultiplayerOptionIndex.RandomCount - 1;
+            int maxColor = MultiplayerColor.LoadColors().Count;
+            if (side < 0 || side > maxSide || color < 0 || color > maxColor
                 || start < 0 || start > MAX_PLAYER_COUNT || team < 0 || team > 4)
                 return;
 

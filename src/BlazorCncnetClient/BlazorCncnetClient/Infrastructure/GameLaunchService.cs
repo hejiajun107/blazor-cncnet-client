@@ -59,14 +59,19 @@ public sealed class GameLaunchService : IDisposable
             // 1. 生成 spawn.ini + spawnmap.ini（游戏以 -SPAWN 启动时读取；多人局写入 [Tunnel] 隧道信息；
             //    房主添加的 AI 玩家经 aiPlayers 写入 [HouseHandicaps]/[HouseCountries]，无端口/隧道；
             //    gameOptions 写入 [Settings] 并应用自定义地图代码，随 GO 广播与房主一致）
+            // 房间内保留“随机”选项（SideId/ColorId 的上游索引语义），开局时按共享随机种子
+            // 在各客户端本地解析为具体阵营/颜色（对齐上游 GameLobbyBase.Randomize）
+            var roster = MultiplayerOptionResolver.Resolve(
+                players, _room.AIPlayers, _room.SideCount, _room.RandomSeed, gameModeMap);
+
             SpawnIniGenerator.WriteSpawnIni(
-                players, gameModeMap, _room.RandomSeed, _room.SideCount,
+                roster.Players, gameModeMap, _room.RandomSeed, _room.SideCount,
                 _room.UniqueGameId, _room.IsHost,
                 _room.TunnelAddress, _room.TunnelPort,
-                _room.AIPlayers,
+                roster.AIPlayers,
                 teamStartMappings: _room.GetActiveTeamStartMappings(),
                 gameOptions: _room.GameOptions);
-            SpawnIniGenerator.WriteMap(players, gameModeMap, _room.GameOptions);
+            SpawnIniGenerator.WriteMap(roster.Players, gameModeMap, _room.GameOptions);
 
             // 2. 标记对局进行中并跳转加载等待页
             _launchInProgress = true;

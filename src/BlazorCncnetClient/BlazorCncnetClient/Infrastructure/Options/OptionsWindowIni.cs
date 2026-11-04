@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CnCNetClient.Core;
+using CnCNetClient.Core.Extensions;
 using CnCNetClient.Tools;
 
 namespace BlazorCncnetClient.Infrastructure.Options;
@@ -214,8 +215,9 @@ public static class OptionsWindowIni
         }
 
         return new SettingControlAttributes(
-            Text: NullIfEmpty(ini.GetStringValue(controlName, "Text", string.Empty)),
-            ToolTip: NullIfEmpty(ini.GetStringValue(controlName, "ToolTip", string.Empty)),
+            // 显示文本按原版 FromIniString 规则把 @ 还原为换行（OptionsWindow.ini 的多行说明）
+            Text: NullIfEmpty(ini.GetStringValue(controlName, "Text", string.Empty))?.FromIniString(),
+            ToolTip: NullIfEmpty(ini.GetStringValue(controlName, "ToolTip", string.Empty))?.FromIniString(),
             DefaultValue: NullIfEmpty(ini.GetStringValue(controlName, "DefaultValue", string.Empty)),
             SettingSection: NullIfEmpty(ini.GetStringValue(controlName, "SettingSection", string.Empty)),
             SettingKey: NullIfEmpty(ini.GetStringValue(controlName, "SettingKey", string.Empty)),

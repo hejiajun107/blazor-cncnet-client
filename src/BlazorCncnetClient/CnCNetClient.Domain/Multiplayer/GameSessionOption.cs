@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CnCNetClient.Core.Extensions;
 using CnCNetClient.Core.I18N;
 using CnCNetClient.Tools;
 
@@ -71,11 +72,14 @@ public abstract class GameSessionOption
     {
         get
         {
+            // 同原版：ini/翻译文本里的 @ 是换行占位符（FromIniString）
             if (ToolTipKey is null)
-                return RawToolTip;
+                return RawToolTip?.FromIniString();
 
             string translated = Translation.Instance.LookUp(ToolTipKey, RawToolTip ?? string.Empty);
-            return string.IsNullOrEmpty(translated) ? RawToolTip : translated;
+            return string.IsNullOrEmpty(translated)
+                ? RawToolTip?.FromIniString()
+                : translated.FromIniString();
         }
     }
 

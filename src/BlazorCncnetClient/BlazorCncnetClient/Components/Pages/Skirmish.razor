@@ -3,6 +3,7 @@
 @using CnCNetClient.Core
 @using CnCNetClient.Core.Statistics
 @using CnCNetClient.Domain.Multiplayer
+@using CnCNetClient.Tools
 @using SixLabors.ImageSharp.PixelFormats
 @inject SkirmishService Svc
 @inject MapLoader MapLoader
@@ -132,28 +133,21 @@ else
                     <div class="gl-tr human @(ReferenceEquals(_selectedPlayer, Svc.HumanPlayer) ? "sel" : "")"
                          @onclick="() => OnPlayerRowClick(Svc.HumanPlayer)">
                         <div class="gl-tc-name">
-                            <span class="slot-color" style="background:@ToCss(GetColor(HumanColorId))"></span>
+                            @if (HumanColorId == SkirmishService.RandomColorId && RandomColorIconUrl() is { Length: > 0 } humanColorIcon)
+                            {
+                                <img class="slot-color-ic" src="@humanColorIcon" alt="" title="@T("Skirmish.Random", "Random")" onerror="this.style.display='none'" />
+                            }
+                            else
+                            {
+                                <span class="slot-color" style="background:@ToCss(GetColor(HumanColorId))"></span>
+                            }
                             <span class="nm">@ProgramConstants.PLAYERNAME</span>
                             <em class="slot-host">YOU</em>
                         </div>
                         <div class="gl-side">
-                            @if (SideIconUrl(HumanSideId) is { Length: > 0 } humanIcon)
-                            {
-                                <img class="side-ic" src="@humanIcon" alt="" onerror="this.style.display='none'" />
-                            }
-                            <select class="gl-select" value="@HumanSideId" @onchange="OnHumanSideChange">
-                                @foreach (var opt in HumanSideOptions)
-                                {
-                                    <option value="@opt.Id">@opt.Label</option>
-                                }
-                            </select>
+                            <IconSelect CssClass="gl-select" Value="HumanSideId" ValueChanged="OnHumanSideChanged" Items="HumanSideItems" />
                         </div>
-                        <select class="gl-select color-select" value="@HumanColorId" @onchange="OnHumanColorChange">
-                            @for (int c = 0; c < _colors.Count; c++)
-                            {
-                                <option value="@_colors[c].Index" style="background:@ToCss(_colors[c].Color);color:@GetContrastColor(_colors[c].Color)">@_colors[c].Name</option>
-                            }
-                        </select>
+                        <IconSelect CssClass="gl-select color-select" Value="HumanColorId" ValueChanged="OnHumanColorChanged" Items="ColorItems" />
                         <select class="gl-select gl-start" disabled="@(Svc.ForceRandomStarts || Svc.IsHumanSpectator)" value="@HumanStartLocation" @onchange="OnHumanStartChange">
                             <option value="0">@T("Skirmish.Random", "Random")</option>
                             @foreach (var st in StartLocationOptions)
@@ -180,7 +174,14 @@ else
                             <div class="gl-tc-name">
                                 @if (ai is not null)
                                 {
-                                    <span class="slot-color" style="background:@ToCss(GetColor(ai.ColorId))"></span>
+                                    @if (ai.ColorId == SkirmishService.RandomColorId && RandomColorIconUrl() is { Length: > 0 } aiColorIcon)
+                                    {
+                                        <img class="slot-color-ic" src="@aiColorIcon" alt="" title="@T("Skirmish.Random", "Random")" onerror="this.style.display='none'" />
+                                    }
+                                    else
+                                    {
+                                        <span class="slot-color" style="background:@ToCss(GetColor(ai.ColorId))"></span>
+                                    }
                                     <span class="nm">@ai.Name</span>
                                     <select class="gl-select ai-level" value="@ai.AILevel" @onchange="(e) => OnAILevelChange(ai, e)">
                                         <option value="0">@T("Skirmish.Easy", "Easy")</option>
@@ -200,23 +201,11 @@ else
                                 }
                             </div>
                             <div class="gl-side">
-                                @if (ai is not null && SideIconUrl(ai.SideId) is { Length: > 0 } aiIcon)
-                                {
-                                    <img class="side-ic" src="@aiIcon" alt="" onerror="this.style.display='none'" />
-                                }
-                                <select class="gl-select" disabled="@(ai is null)" value="@(ai?.SideId ?? 0)" @onchange="(e) => { if (ai is not null) OnAISideChange(ai, e); }">
-                                    @foreach (var opt in AiSideOptions)
-                                    {
-                                        <option value="@opt.Id">@opt.Label</option>
-                                    }
-                                </select>
+                                <IconSelect CssClass="gl-select" Disabled="@(ai is null)" Value="@(ai?.SideId ?? 0)"
+                                            ValueChanged="v => OnAISideChanged(ai, v)" Items="AiSideItems" />
                             </div>
-                            <select class="gl-select color-select" disabled="@(ai is null)" value="@(ai?.ColorId ?? 0)" @onchange="(e) => { if (ai is not null) OnAIColorChange(ai, e); }">
-                                @for (int c = 0; c < _colors.Count; c++)
-                                {
-                                    <option value="@_colors[c].Index" style="background:@ToCss(_colors[c].Color);color:@GetContrastColor(_colors[c].Color)">@_colors[c].Name</option>
-                                }
-                            </select>
+                            <IconSelect CssClass="gl-select color-select" Disabled="@(ai is null)" Value="@(ai?.ColorId ?? 0)"
+                                        ValueChanged="v => OnAIColorChanged(ai, v)" Items="ColorItems" />
                             <select class="gl-select gl-start" disabled="@(ai is null || Svc.ForceRandomStarts)" value="@(ai?.StartingLocation ?? 0)" @onchange="(e) => { if (ai is not null) OnAIStartChange(ai, e); }">
                                 <option value="0">@T("Skirmish.Random", "Random")</option>
                                 @foreach (var st in StartLocationOptions)
@@ -457,7 +446,8 @@ else
     private string[] _sides = Array.Empty<string>();
     private string[] Sides => _sides;
 
-    /// <summary>阵营下拉项：Id 为状态值（负数=随机选项），Label 为当前语言显示名，IconSide 为图标用的真实阵营名（随机项为 null）。</summary>
+    /// <summary>阵营下拉项：Id 为状态值（负数=随机选项），Label 为当前语言显示名，
+    /// IconSide 为图标用的文件基名（随机选择器为选择器名，随机项为 randomicon，用于拼 {IconSide}icon.png）。</summary>
     private sealed record SideOption(int Id, string Label, string? IconSide);
 
     /// <summary>
@@ -474,15 +464,16 @@ else
         var options = new List<SideOption>
         {
             new(SkirmishService.RandomSideId,
-                SideLabel("Client:Sides:RandomSide", "Skirmish.Side.Random", "Random"), null)
+                SideLabel("Client:Sides:RandomSide", "Skirmish.Side.Random", "Random"), "randomicon")
         };
 
-        // 自定义随机选择器（如「随机盟军 / 随机苏军」），名称来自 GameOptions.ini
+        // 自定义随机选择器（如「随机盟军 / 随机苏军」），名称来自 GameOptions.ini；
+        // 图标沿用原版规则 {selector}icon.png，缺失时回退 randomicon.png。
         for (int i = 0; i < Svc.RandomSelectorCount; i++)
         {
             string name = Svc.RandomSelectors[i].Name;
             options.Add(new(SkirmishService.RandomSelectorSideId(i),
-                SideLabel("INI:Sides:" + name, "Skirmish.Side." + name, name), null));
+                SideLabel("INI:Sides:" + name, "Skirmish.Side." + name, name), name));
         }
 
         for (int s = 0; s < Sides.Length; s++)
@@ -505,6 +496,9 @@ else
 
     /// <summary>真实阵营名 → 当前语言显示名（译文键 Skirmish.Side.&lt;阵营名&gt;，缺失回退原名）。</summary>
     private static string SideName(string side) => SideLabel("INI:Sides:" + side, "Skirmish.Side." + side, side);
+
+    /// <summary>颜色名本地化：<c>MultiplayerColor.Name</c> 已按原版翻译过，未收录时回退内置 Resx（<c>Skirmish.Color.*</c>）。</summary>
+    private static string ColorLabel(string name) => T("Skirmish.Color." + name, name);
 
     /// <summary>当前选中玩家（点击玩家行选中；在地图上点出生点即分配给它，同原版 SelectedPlayer 交互）。
     /// null = 未选中（地图点击默认分配人类玩家）。</summary>
@@ -570,6 +564,17 @@ else
 
     private int HumanSideId => Svc.HumanPlayer?.SideId ?? 0;
     private int HumanColorId => Svc.HumanPlayer?.ColorId ?? 0;
+
+    // 自绘下拉的数据（阵营项带图标、随机项带随机图标，颜色项带色块）
+    private List<IconSelectItem> HumanSideItems =>
+        HumanSideOptions.Select(o => new IconSelectItem(o.Id, o.Label, SideIconUrl(o.Id))).ToList();
+
+    private List<IconSelectItem> AiSideItems =>
+        AiSideOptions.Select(o => new IconSelectItem(o.Id, o.Label, SideIconUrl(o.Id))).ToList();
+
+    private List<IconSelectItem> ColorItems =>
+        _colors.Select(c => new IconSelectItem(c.Index, c.Name,
+            c.Index == SkirmishService.RandomColorId ? RandomColorIconUrl() : null, ToCss(c.Color))).ToList();
     private int HumanStartLocation => Svc.HumanPlayer?.StartingLocation ?? 0;
     private int HumanTeamId => Svc.HumanTeamId;
 
@@ -626,27 +631,35 @@ else
 
     private static List<ColorOption> LoadColorsSafe()
     {
+        List<ColorOption> colors;
         try
         {
-            var colors = MultiplayerColor.LoadColors();
-            return colors.Select(c => new ColorOption(c.Name, c.GameColorIndex, c.XnaColor)).ToList();
+            colors = MultiplayerColor.LoadColors()
+                .Select(c => new ColorOption(ColorLabel(c.Name), c.GameColorIndex, c.XnaColor)).ToList();
         }
         catch
         {
             // 回退默认色板
+            colors = new List<ColorOption>
+            {
+                new(T("Skirmish.Color.Red", "Red"), 0, new Rgba32(255, 60, 60, 255)),
+                new(T("Skirmish.Color.Blue", "Blue"), 1, new Rgba32(70, 120, 255, 255)),
+                new(T("Skirmish.Color.Teal", "Teal"), 2, new Rgba32(80, 220, 255, 255)),
+                new(T("Skirmish.Color.Green", "Green"), 3, new Rgba32(80, 220, 120, 255)),
+                new(T("Skirmish.Color.Yellow", "Yellow"), 4, new Rgba32(255, 220, 80, 255)),
+                new(T("Skirmish.Color.Orange", "Orange"), 5, new Rgba32(255, 150, 60, 255)),
+                new(T("Skirmish.Color.Purple", "Purple"), 6, new Rgba32(190, 120, 255, 255)),
+                new(T("Skirmish.Color.Pink", "Pink"), 7, new Rgba32(255, 130, 200, 255)),
+            };
         }
-        return new List<ColorOption>
-        {
-            new(T("Skirmish.Color.Red", "Red"), 0, new Rgba32(255, 60, 60, 255)),
-            new(T("Skirmish.Color.Blue", "Blue"), 1, new Rgba32(70, 120, 255, 255)),
-            new(T("Skirmish.Color.Teal", "Teal"), 2, new Rgba32(80, 220, 255, 255)),
-            new(T("Skirmish.Color.Green", "Green"), 3, new Rgba32(80, 220, 120, 255)),
-            new(T("Skirmish.Color.Yellow", "Yellow"), 4, new Rgba32(255, 220, 80, 255)),
-            new(T("Skirmish.Color.Orange", "Orange"), 5, new Rgba32(255, 150, 60, 255)),
-            new(T("Skirmish.Color.Purple", "Purple"), 6, new Rgba32(190, 120, 255, 255)),
-            new(T("Skirmish.Color.Pink", "Pink"), 7, new Rgba32(255, 130, 200, 255)),
-        };
+
+        // 对齐原版：颜色下拉第 0 项为「随机」，色块取 GameOptions.ini [General] RandomColor
+        colors.Insert(0, new ColorOption(T("Skirmish.Random", "Random"), SkirmishService.RandomColorId, LoadRandomColor()));
+        return colors;
     }
+
+    /// <summary>随机颜色的色块颜色（GameOptions.ini [General] RandomColor，原版默认 255,255,255，DTA 为 168,168,168）。</summary>
+    private static Rgba32 LoadRandomColor() => GameAssetIcons.RandomSwatch();
 
     private void RefreshMaps()
     {
@@ -965,22 +978,14 @@ else
 
     // ── 人类玩家 ──
 
-    private void OnHumanSideChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int v))
-            SetHuman(v, HumanColorId, HumanStartLocation);
-    }
+    private void OnHumanSideChanged(int v) => SetHuman(v, HumanColorId, HumanStartLocation);
+
+    private void OnHumanColorChanged(int v) => SetHuman(HumanSideId, v, HumanStartLocation);
 
     private void OnHumanTeamChange(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int v))
             Svc.SetHumanTeam(v);
-    }
-
-    private void OnHumanColorChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int v))
-            SetHuman(HumanSideId, v, HumanStartLocation);
     }
 
     private void OnHumanStartChange(ChangeEventArgs e)
@@ -1052,15 +1057,15 @@ else
         Svc.RemoveAI(ai);
     }
 
-    private void OnAISideChange(PlayerInfo ai, ChangeEventArgs e)
+    private void OnAISideChanged(PlayerInfo? ai, int v)
     {
-        if (int.TryParse(e.Value?.ToString(), out int v))
+        if (ai is not null)
             Svc.SetAIOption(ai, v, ai.ColorId, ai.StartingLocation);
     }
 
-    private void OnAIColorChange(PlayerInfo ai, ChangeEventArgs e)
+    private void OnAIColorChanged(PlayerInfo? ai, int v)
     {
-        if (int.TryParse(e.Value?.ToString(), out int v))
+        if (ai is not null)
             Svc.SetAIOption(ai, ai.SideId, v, ai.StartingLocation);
     }
 
@@ -1161,25 +1166,32 @@ else
 
     private static string ToCss(Rgba32 color) => $"rgb({color.R},{color.G},{color.B})";
 
-    /// <summary>阵营图标 URL（原版 {side}icon.png 位于游戏根目录 Resources 下，
-    /// 经 GameContentServer 伺服；图标缺失时浏览器触发 onerror 隐藏）。</summary>
+    /// <summary>阵营图标 URL（原版规则：{side}icon.png；随机阵营用 randomicon.png，
+    /// 自定义随机选择器优先 {selector}icon.png；先主题目录后 Resources 根，经 GameContentServer 伺服）。</summary>
     private string SideIconUrl(int index)
     {
         if (index < 0)
-            return string.Empty; // 随机阵营选项（完全随机 / 随机某一阵营）无图标
+        {
+            // 随机选择器（-(i+2)）优先自身图标；完全随机与缺失时回退 randomicon.png
+            int selectorIndex = -index - 2;
+            if (selectorIndex >= 0 && selectorIndex < Svc.RandomSelectorCount)
+            {
+                string selectorIcon = Svc.RandomSelectors[selectorIndex].Name + "icon.png";
+                return ResourceIconUrl(selectorIcon, "randomicon.png");
+            }
+
+            return ResourceIconUrl("randomicon.png");
+        }
 
         string side = index < Sides.Length ? Sides[index] : "Spectator";
-        try
-        {
-            return ContentServer.IsRunning
-                ? ContentServer.MapUrl("Resources/" + Uri.EscapeDataString(side) + "icon.png")
-                : string.Empty;
-        }
-        catch
-        {
-            return string.Empty;
-        }
+        return ResourceIconUrl(side + "icon.png");
     }
+
+    /// <summary>随机颜色图标（原版 RandomColorTexture，主题可配置；这里按 randomcolor.png → randomicon.png 探测）。</summary>
+    private string RandomColorIconUrl() => GameAssetIcons.RandomColorUrl(ContentServer);
+
+    /// <summary>在 Resources/ThemeDefault 与 Resources 根下查找图标文件（主题优先，同原版 AssetLoader）。</summary>
+    private string ResourceIconUrl(params string[] fileNames) => GameAssetIcons.Url(ContentServer, fileNames);
 
     /// <summary>根据背景色感知亮度选文字色（深底白字 / 浅底深字，保证颜色块上文字可读）。</summary>
     private static string GetContrastColor(Rgba32 color)

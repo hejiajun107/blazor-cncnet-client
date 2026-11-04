@@ -39,10 +39,10 @@ public sealed class LanLobbyService : IDisposable
     private LanMessageDeduplicator? _deduplicator;
     private readonly LanPlayerManager _playerManager = new();
     private Timer? _timer;
-
     private string _localGame = string.Empty;
     private int _localGameIndex = -1;
     private double _timeSinceAlive;
+    private bool _broadcastFailureReported;
     private int _chatColorIndex;
 
     private bool _disposed;
@@ -130,6 +130,7 @@ public sealed class LanLobbyService : IDisposable
             _broadcastManager.Initialize();
             IsRunning = true;
             LastError = string.Empty;
+            _broadcastFailureReported = false;
         }
         catch (Exception ex)
         {
@@ -218,9 +219,20 @@ public sealed class LanLobbyService : IDisposable
     {
         string wrapped = _deduplicator?.WrapMessage(message) ?? message;
         bool ok = _broadcastManager?.SendMessage(wrapped) ?? false;
-        if (!ok)
-            AddChatMessage(UiText.T("LanSvc.BroadcastSendFailed",
-                "Failed to send the LAN broadcast: the network socket may not be initialized."));
+        if (ok)
+        {
+            _broadcastFailureReported = false;
+            return;
+        }
+
+        // 广播失败（socket 未初始化 / 没有可用广播网卡 / 全部网卡发送失败）只提示一次，
+        // 避免 ALIVE 心跳与房间 GAME 广播把大厅聊天刷满。
+        Logger.Log("LAN broadcast failed: " + message);
+        if (_broadcastFailureReported)
+            return;
+        _broadcastFailureReported = true;
+        AddChatMessage(UiText.T("LanSvc.BroadcastSendFailed",
+            "Failed to send the LAN broadcast: the network socket may not be initialized."));
     }
 
     /// <summary>

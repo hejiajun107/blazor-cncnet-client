@@ -1,0 +1,88 @@
+@using Microsoft.JSInterop
+
+@* 自绘下拉：原生 <select>/<option> 只能显示文本与背景色，无法放图标；
+   这里用按钮 + 列表复刻原版 CnCNet 下拉项（阵营图标 / 随机图标 / 颜色色块）。
+   列表常驻 DOM、以 popover="manual" 挂到 top layer，避免被面板的 overflow/backdrop-filter 裁剪。 *@
+<div class="icon-sel" @onclick:stopPropagation="true">
+    <button type="button" class="gl-select icon-sel-btn @CssClass" disabled="@Disabled"
+            @ref="_trigger" @onclick="Toggle">
+        @if (!string.IsNullOrEmpty(SelectedItem?.IconUrl))
+        {
+            <img class="icon-sel-ic" src="@SelectedItem!.IconUrl" alt="" onerror="this.style.display='none'" />
+        }
+        else if (!string.IsNullOrEmpty(SelectedItem?.Swatch))
+        {
+            <span class="icon-sel-swatch" style="background:@SelectedItem!.Swatch"></span>
+        }
+        @if (ShowLabelOnButton)
+        {
+            <span class="icon-sel-text">@(SelectedItem?.Label ?? string.Empty)</span>
+        }
+        <span class="icon-sel-caret">▾</span>
+    </button>
+
+    <div class="icon-sel-list" popover="manual" @ref="_list">
+        @foreach (IconSelectItem item in Items)
+        {
+            <button type="button" class="icon-sel-item @(item.Value == Value ? "sel" : string.Empty)" @onclick="() => Choose(item)">
+                @if (!string.IsNullOrEmpty(item.IconUrl))
+                {
+                    <img class="icon-sel-ic" src="@item.IconUrl" alt="" onerror="this.style.display='none'" />
+                }
+                else if (!string.IsNullOrEmpty(item.Swatch))
+                {
+                    <span class="icon-sel-swatch" style="background:@item.Swatch"></span>
+                }
+                <span class="icon-sel-text">@item.Label</span>
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Value { get; set; }
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+    [Parameter] public IReadOnlyList<IconSelectItem> Items { get; set; } = Array.Empty<IconSelectItem>();
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    /// <summary>收起态是否在按钮上显示文本（窄列的颜色下拉可只显示色块，同原版）。</summary>
+    [Parameter] public bool ShowLabelOnButton { get; set; } = true;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private ElementReference _trigger;
+    private ElementReference _list;
+
+    /// <summary>当前值对应的项；值不在列表时退回第一项，避免按钮空白。</summary>
+    private IconSelectItem? SelectedItem => Items.FirstOrDefault(i => i.Value == Value) ?? Items.FirstOrDefault();
+
+    /// <summary>展开/收起由 JS 处理（切换、点击外部、Esc、窗口缩放都在 app.js 的 iconSelect* 中）。</summary>
+    private async Task Toggle()
+    {
+        if (Disabled)
+            return;
+        try
+        {
+            await JS.InvokeVoidAsync("cncnet.iconSelectToggle", _trigger, _list);
+        }
+        catch
+        {
+            // JS 不可用（预渲染等）时忽略，不影响其它交互
+        }
+    }
+
+    private async Task Choose(IconSelectItem item)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("cncnet.iconSelectHide");
+        }
+        catch
+        {
+            // 同上
+        }
+        if (item.Value != Value)
+            await ValueChanged.InvokeAsync(item.Value);
+    }
+}

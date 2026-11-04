@@ -21,8 +21,9 @@ public static class SpawnIniGenerator
 {
     /// <summary>
     /// Writes spawn.ini for the given players and returns the per-player house info.
-    /// Player side/color/start are treated as concrete selections (the Blazor room
-    /// has no "Random" options), so no randomization is applied.
+    /// Player side/color are treated as concrete selections (the room's "Random" options
+    /// are resolved by MultiplayerOptionResolver before calling this), so no side/color
+    /// randomization is applied here; starting locations are still randomized as in the original.
     /// </summary>
     public static PlayerHouseInfo[] WriteSpawnIni(
         IReadOnlyList<PlayerInfo> players,

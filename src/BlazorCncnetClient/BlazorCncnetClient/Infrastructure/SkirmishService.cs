@@ -80,6 +80,9 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>「完全随机阵营」标识（每个真实阵营等概率）。</summary>
         public const int RandomSideId = -1;
 
+        /// <summary>颜色「随机」选项（对齐原版：颜色下拉第 0 项为 Random，启动时按种子随机分配并避开已选颜色）。</summary>
+        public const int RandomColorId = -1;
+
         /// <summary>自定义随机阵营选择器（GameOptions.ini [RandomSelectors]，名称 → Sides 索引集合）。</summary>
         public IReadOnlyList<(string Name, int[] Sides)> RandomSelectors => ClientConfiguration.Instance.RandomSelectors;
 
@@ -464,8 +467,35 @@ namespace BlazorCncnetClient.Infrastructure
                 return random.Next(0, SideCount);
             }
 
+            // 颜色随机（同原版 GameLobbyBase.Randomize / PlayerHouseInfo.RandomizeColor：
+            // 先收集全部颜色并从已明确选择的颜色中剔除，再按玩家顺序逐个随机挑选并移除）。
+            var mpColors = MultiplayerColor.LoadColors();
+            List<int> freeColorIndexes = Enumerable.Range(0, mpColors.Count).ToList();
+            List<PlayerInfo> colorSources = _aiPlayers.ToList();
+            if (HumanPlayer is not null)
+                colorSources.Insert(0, HumanPlayer);
+            foreach (PlayerInfo source in colorSources)
+            {
+                if (source.ColorId != RandomColorId)
+                    freeColorIndexes.RemoveAll(i => mpColors[i].GameColorIndex == source.ColorId);
+            }
+
+            int ResolveColorId(int colorId)
+            {
+                if (colorId != RandomColorId)
+                    return colorId;
+
+                if (freeColorIndexes.Count == 0)
+                    return mpColors.Count > 0 ? mpColors[0].GameColorIndex : 0;
+
+                int index = random.Next(0, freeColorIndexes.Count);
+                int chosen = freeColorIndexes[index];
+                freeColorIndexes.RemoveAt(index);
+                return mpColors[chosen].GameColorIndex;
+            }
+
             PlayerInfo CreateResolved(PlayerInfo source) =>
-                new(source.Name, ResolveSideId(source.SideId), source.StartingLocation, source.ColorId, source.TeamId)
+                new(source.Name, ResolveSideId(source.SideId), source.StartingLocation, ResolveColorId(source.ColorId), source.TeamId)
                 {
                     Ready = source.Ready,
                     AutoReady = source.AutoReady,
@@ -734,7 +764,7 @@ namespace BlazorCncnetClient.Infrastructure
             if (pInfo.SideId < minSide || pInfo.SideId > sideCount)
                 pInfo.SideId = 0;
 
-            if (pInfo.ColorId < 0 || pInfo.ColorId > MultiplayerColor.LoadColors().Count)
+            if (pInfo.ColorId < RandomColorId || pInfo.ColorId >= MultiplayerColor.LoadColors().Count)
                 pInfo.ColorId = 0;
 
             if (pInfo.StartingLocation < 0 || pInfo.StartingLocation > MaxPlayersConst
