@@ -135,7 +135,7 @@ public sealed class ThemeProvider : IThemeProvider
         _themes.FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.OrdinalIgnoreCase)) ?? Menu;
 
     /// <summary>
-    /// 加载外部主题（F1）：ClientDefinitions.ini [Themes] 节 key=游戏根目录相对主题目录。
+    /// 加载外部主题（F1）：ClientDefinitions.ini [Themes] 节 key=主题目录。
     /// 主题目录约定含 theme.css 与可选 theme.ini（[Theme] Name/Hint）。
     /// 与内置主题重名的 key 忽略（保留内置）。服务器未就绪/环境未就绪时跳过（下次初始化再试）。
     /// </summary>
@@ -148,31 +148,28 @@ public sealed class ThemeProvider : IThemeProvider
         if (defs is null)
             return;
 
-        const string section = "Themes";
-        foreach (string key in defs.GetSectionKeys(section))
+        foreach ((string name, string dir) in GetThemeEntries())
         {
-            if (string.IsNullOrWhiteSpace(key))
+            if (string.IsNullOrWhiteSpace(name))
                 continue;
-            if (_themes.Any(t => string.Equals(t.Key, key, StringComparison.OrdinalIgnoreCase)))
+            if (_themes.Any(t => string.Equals(t.Key, name, StringComparison.OrdinalIgnoreCase)))
                 continue; // 与内置主题重名：忽略
 
-            string dir = defs.GetStringValue(section, key, string.Empty).Trim().Trim('/', '\\');
-            if (dir.Length == 0)
-                continue;
-
-            string name = key;
+            // 原版约定：[Themes] 的值相对 Resources 目录（"Theme directory in Resources directory"）
+            string relativeDir = RESOURCES_DIRECTORY + "/" + dir;
+            string displayName = name;
             string hint = dir;
-            string metaPath = SafePath.CombineFilePath(_uiDefs.RootPath, dir, "theme.ini");
+            string metaPath = SafePath.CombineFilePath(_uiDefs.RootPath, relativeDir, "theme.ini");
             if (File.Exists(metaPath))
             {
                 var meta = new IniFile(metaPath);
-                name = meta.GetStringValue("Theme", "Name", key).Trim();
+                displayName = meta.GetStringValue("Theme", "Name", name).Trim();
                 hint = meta.GetStringValue("Theme", "Hint", dir).Trim();
             }
 
-            _themes.Add(new ThemeInfo(key, name, hint, ResolveMenuMusicUrl(dir)));
-            _externalCss[key] = _content.MapUrl(SafePath.CombineFilePath(dir, "theme.css"));
-            _logger.LogInformation("外部主题已加载：{Key} → {Dir}", key, dir);
+            _themes.Add(new ThemeInfo(name, displayName, hint, ResolveMenuMusicUrl(relativeDir)));
+            _externalCss[name] = _content.MapUrl(SafePath.CombineFilePath(relativeDir, "theme.css"));
+            _logger.LogInformation("外部主题已加载：{Key} → {Dir}", name, relativeDir);
         }
     }
 
@@ -194,8 +191,8 @@ public sealed class ThemeProvider : IThemeProvider
 
     /// <summary>
     /// 解析主菜单音乐（原版 [General] MainMenuTheme 语义）。
-    /// 搜索顺序：传入的主题目录 → Resources/ThemeDefault（原版默认主题）→ Resources 根，
-    /// 取第一个既有 DTACnCNetClient.ini 且 MainMenuTheme 能落到实际音频文件的配置。
+    /// 搜索顺序：传入的主题目录 → Resources/ThemeDefault（原版默认主题）→ ClientDefinitions.ini [Themes]
+    /// 声明的各主题目录 → Resources 根，取第一个既有 DTACnCNetClient.ini 且 MainMenuTheme 能落到实际音频文件的配置。
     /// 值可含多首（逗号分隔，原版随机取一首），路径相对配置文件所在目录。
     /// </summary>
     private string? ResolveMenuMusicUrl(string? themeDir)
@@ -208,11 +205,19 @@ public sealed class ThemeProvider : IThemeProvider
         if (!string.IsNullOrWhiteSpace(themeDir))
             dirs.Add(themeDir.Trim('/', '\\'));
         dirs.Add(DEFAULT_THEME_DIRECTORY);
+        // 对齐上游：主菜单音乐取自主题目录的 DTACnCNetClient.ini。内置主题没有独立目录，
+        // 而部分资源包（如按 DTA 布局制作的包）不带 Resources/ThemeDefault（原版默认主题目录名是
+        // Defaults Theme），因此再按 [Themes] 声明的主题目录顺序回退，最后才是 Resources 根。
+        dirs.AddRange(GetThemeEntries().Select(e => RESOURCES_DIRECTORY + "/" + e.Directory));
         dirs.Add(RESOURCES_DIRECTORY);
 
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string dir in dirs)
         {
-            string iniPath = SafePath.CombineFilePath(root, dir, THEME_INI_NAME);
+            string normalized = dir.Trim('/', '\\').Replace('\\', '/');
+            if (normalized.Length == 0 || !visited.Add(normalized))
+                continue;
+            string iniPath = SafePath.CombineFilePath(root, normalized, THEME_INI_NAME);
             if (!File.Exists(iniPath))
                 continue;
 
@@ -225,7 +230,7 @@ public sealed class ThemeProvider : IThemeProvider
             string? wmaOnly = null;
             foreach (string name in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                string? relative = ResolveAudioFile(root, dir, name, out string? wmaHint);
+                string? relative = ResolveAudioFile(root, normalized, name, out string? wmaHint);
                 if (relative is not null)
                     found.Add(relative);
                 else if (wmaHint is not null)
@@ -236,7 +241,7 @@ public sealed class ThemeProvider : IThemeProvider
             {
                 // 原版 [General] MainMenuTheme 支持逗号分隔多首并随机取一首，此处保持一致
                 string chosen = found[Random.Shared.Next(found.Count)];
-                _logger.LogInformation("主菜单音乐已解析：{Dir} / {Path}", dir, chosen);
+                _logger.LogInformation("主菜单音乐已解析：{Dir} / {Path}", normalized, chosen);
                 return _content.MapUrl(chosen);
             }
 
@@ -252,6 +257,37 @@ public sealed class ThemeProvider : IThemeProvider
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// ClientDefinitions.ini [Themes] 的条目（显示名, 主题目录），按声明顺序。
+    /// 原版值格式为 <c>&lt;显示名&gt;,&lt;相对 Resources 的目录&gt;</c>，例如
+    /// <c>0=Default,ThemeDefault/</c> 指向 <c>Resources\ThemeDefault</c>。
+    /// </summary>
+    private IReadOnlyList<(string Name, string Directory)> GetThemeEntries()
+    {
+        var defs = _uiDefs.Definitions;
+        if (defs is null)
+            return [];
+
+        const string section = "Themes";
+        var entries = new List<(string Name, string Directory)>();
+        foreach (string key in defs.GetSectionKeys(section))
+        {
+            string raw = defs.GetStringValue(section, key, string.Empty).Trim();
+            if (raw.Length == 0)
+                continue;
+
+            string[] parts = raw.Split(',', 2, StringSplitOptions.TrimEntries);
+            string name = parts.Length > 1 && parts[0].Length > 0 ? parts[0] : key;
+            string dir = (parts.Length > 1 ? parts[1] : parts[0]).Trim().Trim('/', '\\');
+            if (dir.Length == 0)
+                continue;
+
+            entries.Add((name, dir));
+        }
+
+        return entries;
     }
 
     /// <summary>

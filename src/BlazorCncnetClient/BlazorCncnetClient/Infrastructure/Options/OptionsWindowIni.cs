@@ -107,6 +107,22 @@ public static class OptionsWindowIni
 
     private const string ExtraControlsSuffix = "ExtraControls";
 
+    /// <summary>
+    /// 分区键（display/audio/game…）→ 原版面板名（DisplayOptionsPanel/AudioOptionsPanel/GameOptionsPanel…）。
+    /// 用于拼控件文案翻译键 <c>INI:Controls:&lt;面板名&gt;:&lt;控件名&gt;:Text|ToolTip</c>。
+    /// </summary>
+    public static string? PanelNameFor(string section)
+    {
+        foreach ((string panel, string sectionKey) in PanelToSection)
+        {
+            if (string.Equals(sectionKey, section, StringComparison.OrdinalIgnoreCase))
+                return panel;
+        }
+
+        return null;
+    }
+
+
     private static readonly Lazy<OptionsWindowConfig> LazyDefault =
         new(() => Load(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), FILE_NAME)));
 

@@ -1031,26 +1031,35 @@
   <data name="Client:UI:Settings.Synced" xml:space="preserve">
     <value>设置已同步</value>
   </data>
+  <data name="Client:UI:Settings.ExtraOption" xml:space="preserve">
+    <value>自定义选项</value>
+  </data>
+  <data name="Client:UI:Settings.ExtraFileOption" xml:space="preserve">
+    <value>文件选项</value>
+  </data>
+  <data name="Client:UI:Settings.ReplayUnlimitedHint" xml:space="preserve">
+    <value>0 = 不限制</value>
+  </data>
   <data name="Client:UI:Settings.LanguageHint" xml:space="preserve">
-    <value>LANGUAGE · 即切即用</value>
+    <value>切换语言立即生效</value>
   </data>
   <data name="Client:UI:Settings.Theme" xml:space="preserve">
     <value>界面主题</value>
   </data>
   <data name="Client:UI:Settings.ThemeHint" xml:space="preserve">
-    <value>THEME · 全局换肤</value>
+    <value>全局换肤</value>
   </data>
   <data name="Client:UI:Settings.IngameResolution" xml:space="preserve">
     <value>游戏分辨率</value>
   </data>
   <data name="Client:UI:Settings.IngameResolutionHint" xml:space="preserve">
-    <value>IN-GAME RESOLUTION · 下次启动游戏生效</value>
+    <value>下次启动游戏生效</value>
   </data>
   <data name="Client:UI:Settings.ClientResolution" xml:space="preserve">
     <value>客户端窗口分辨率</value>
   </data>
   <data name="Client:UI:Settings.ClientResolutionHint" xml:space="preserve">
-    <value>CLIENT RESOLUTION · 重启客户端生效</value>
+    <value>重启客户端生效</value>
   </data>
   <data name="Client:UI:Settings.Windowed" xml:space="preserve">
     <value>窗口化运行</value>
@@ -1059,7 +1068,7 @@
     <value>无边框窗口</value>
   </data>
   <data name="Client:UI:Settings.BorderlessHint" xml:space="preserve">
-    <value>BORDERLESS WINDOW · 需开启窗口化</value>
+    <value>需开启窗口化</value>
   </data>
   <data name="Client:UI:Settings.ClientFps" xml:space="preserve">
     <value>客户端帧率</value>
@@ -1074,7 +1083,7 @@
     <value>游戏渲染器</value>
   </data>
   <data name="Client:UI:Settings.RendererHint" xml:space="preserve">
-    <value>GAME RENDERER · 兼容性选择</value>
+    <value>兼容性选择</value>
   </data>
   <data name="Client:UI:Settings.RendererUnavailable" xml:space="preserve">
     <value>不可用（游戏资源未就绪）</value>
@@ -1119,7 +1128,7 @@
     <value>玩家名</value>
   </data>
   <data name="Client:UI:Settings.PlayerNameHint" xml:space="preserve">
-    <value>PLAYER NAME · 保存后生效</value>
+    <value>保存后生效</value>
   </data>
   <data name="Client:UI:Settings.SkipConnectDialog" xml:space="preserve">
     <value>记住我（跳过登录窗口）</value>
