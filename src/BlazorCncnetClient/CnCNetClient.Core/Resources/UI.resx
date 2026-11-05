@@ -2243,7 +2243,10 @@ Continue launching this mission?
     <value>Select your Yuri's Revenge installation directory</value>
   </data>
   <data name="Client:UI:Startup.WebView2MissingMessage" xml:space="preserve">
-    <value>Microsoft Edge WebView2 Runtime was not detected.\r\n\r\nThe CNCNet client interface is rendered by WebView2, which is required to start.\r\nOpen the official download page to install it now? (Windows 11 usually ships with it)</value>
+    <value>Microsoft Edge WebView2 Runtime was not detected.
+
+The CNCNet client interface is rendered by WebView2, which is required to start.
+Open the official download page to install it now? (Windows 11 usually ships with it)</value>
   </data>
   <data name="Client:UI:Startup.WebView2MissingTitle" xml:space="preserve">
     <value>WebView2 Runtime Missing</value>

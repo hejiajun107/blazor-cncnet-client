@@ -2247,7 +2247,10 @@
     <value>请选择尤里的复仇（Yuri's Revenge）游戏安装目录</value>
   </data>
   <data name="Client:UI:Startup.WebView2MissingMessage" xml:space="preserve">
-    <value>未检测到 Microsoft Edge WebView2 Runtime。\r\n\r\nCNCNet 客户端的界面由 WebView2 渲染，需要该运行时才能启动。\r\n是否立即打开官方下载页面安装？（Windows 11 一般已预装）</value>
+    <value>未检测到 Microsoft Edge WebView2 Runtime。
+
+CNCNet 客户端的界面由 WebView2 渲染，需要该运行时才能启动。
+是否立即打开官方下载页面安装？（Windows 11 一般已预装）</value>
   </data>
   <data name="Client:UI:Startup.WebView2MissingTitle" xml:space="preserve">
     <value>缺少 WebView2 Runtime</value>
