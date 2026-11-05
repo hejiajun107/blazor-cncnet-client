@@ -78,9 +78,9 @@ else
                                         @onclick="() => Svc.SelectMission(m)">
                                     <span class="ci-chip" style="background:@SideColor(m.Side)"></span>
                                     <span class="ci-txt">@m.GUIName</span>
-                                    @if (m.RequiredAddon)
+                                    @if (!string.IsNullOrEmpty(m.TagAbbreviation))
                                     {
-                                        <span class="ci-tag">FS</span>
+                                        <span class="ci-tag">@m.TagAbbreviation</span>
                                     }
                                 </button>
                             }
@@ -104,9 +104,9 @@ else
                         <div class="cd-title">@Selected.GUIName</div>
                         <div class="cd-meta">
                             <span class="cm-chip" style="background:@SideColor(Selected.Side)">@SideName(Selected)</span>
-                            @if (Selected.RequiredAddon)
+                            @if (!string.IsNullOrEmpty(Selected.Tag))
                             {
-                                <span class="ci-tag">@T("Campaign.FirestormAddon", "Firestorm expansion")</span>
+                                <span class="ci-tag">@Selected.Tag</span>
                             }
                             @if (Selected.IsCustomMission)
                             {
@@ -128,7 +128,7 @@ else
                 </header>
                 <div class="gl-body">
                     <div class="diff-seg">
-                        @for (int d = CampaignService.MinDifficulty; d <= CampaignService.MaxDifficulty; d++)
+                        @foreach (int d in DifficultyLevels)
                         {
                             <button type="button" class="diff-btn @(Svc.Difficulty == d ? "on" : "")"
                                     @onclick="() => Svc.SetDifficulty(d)">
@@ -162,6 +162,10 @@ else
 
     private Mission? Selected => Svc.SelectedMission;
 
+    /// <summary>难度档位（用 foreach 生成按钮，避免 for 循环变量被闭包共享导致点击永远落到最后一档）。</summary>
+    private static readonly int[] DifficultyLevels =
+        { CampaignService.MinDifficulty, CampaignService.MinDifficulty + 1, CampaignService.MaxDifficulty };
+
     /// <summary>启动按钮可用性：已选任务且配置了地图且未禁用（原版 btnLaunch.AllowClick 条件）。</summary>
     private bool CanLaunch =>
         Selected is not null
@@ -194,7 +198,12 @@ else
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
-    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnLanguageChanged()
+    {
+        // 任务名/介绍/标签是加载时按翻译求值的，切换语言后需重新构建列表
+        Svc.Reload();
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     /// <summary>作弊检测命中：弹窗确认后放行启动（原版 CheaterWindow.YesClicked 语义）。</summary>
     private void OnCheaterDetected(Mission mission)

@@ -100,6 +100,26 @@ namespace BlazorCncnetClient.Infrastructure
             NotifyChanged();
         }
 
+        /// <summary>
+        /// 语言切换后重建任务列表：任务名/介绍/标签在构造时按当前翻译求值，
+        /// 需要重新解析才能应用新语言（保留按 CodeName 匹配的选中项）。
+        /// </summary>
+        public void Reload()
+        {
+            if (!_initialized)
+                return;
+
+            string? selectedCodeName = SelectedMission?.CodeName;
+            ReadMissionList();
+            if (selectedCodeName is not null)
+            {
+                SelectedMission = _visibleMissions.FirstOrDefault(m =>
+                    string.Equals(m.CodeName, selectedCodeName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            NotifyChanged();
+        }
+
         /// <summary>加载任务列表（原版 ReadMissionList：Battle.ini 为空时回退 BattleFS.ini，再加载自定义任务）。</summary>
         private void ReadMissionList()
         {
@@ -248,11 +268,18 @@ namespace BlazorCncnetClient.Infrastructure
             NotifyChanged();
         }
 
-        /// <summary>难度显示名（Easy/Medium/Hard，与 spawn.ini 难度映射一致）。</summary>
-        public static string GetDifficultyName(int difficulty) =>
-            difficulty >= MinDifficulty && difficulty <= MaxDifficulty
-                ? SpawnIniGenerator.MissionDifficultyNames[difficulty]
-                : SpawnIniGenerator.MissionDifficultyNames[1];
+        /// <summary>难度显示名（Easy/Medium/Hard，与 spawn.ini 难度映射一致；文案可经 Resx/Translation.ini 翻译）。</summary>
+        public static string GetDifficultyName(int difficulty)
+        {
+            int level = difficulty >= MinDifficulty && difficulty <= MaxDifficulty ? difficulty : 1;
+            string key = level switch
+            {
+                0 => "Campaign.DifficultyEasy",
+                1 => "Campaign.DifficultyMedium",
+                _ => "Campaign.DifficultyHard"
+            };
+            return UiText.T(key, SpawnIniGenerator.MissionDifficultyNames[level]);
+        }
 
         // ── 启动与校验 ──
 

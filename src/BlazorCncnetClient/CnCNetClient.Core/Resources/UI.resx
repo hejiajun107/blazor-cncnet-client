@@ -1414,8 +1414,14 @@ Continue launching this mission?
   <data name="Client:UI:Campaign.Difficulty" xml:space="preserve">
     <value>Difficulty</value>
   </data>
-  <data name="Client:UI:Campaign.FirestormAddon" xml:space="preserve">
-    <value>Firestorm expansion</value>
+  <data name="Client:UI:Campaign.DifficultyEasy" xml:space="preserve">
+    <value>Easy</value>
+  </data>
+  <data name="Client:UI:Campaign.DifficultyMedium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="Client:UI:Campaign.DifficultyHard" xml:space="preserve">
+    <value>Hard</value>
   </data>
   <data name="Client:UI:Campaign.HeaderMeta" xml:space="preserve">
     <value>SINGLEPLAYER · {0} missions · Difficulty {1}</value>

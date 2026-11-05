@@ -25,14 +25,17 @@ namespace CnCNetClient.Domain
             CD = missionSection.GetIntValue(nameof(CD), 0);
             Side = missionSection.GetIntValue(nameof(Side), 0);
             Scenario = missionSection.GetStringValue(nameof(Scenario), string.Empty);
+            // 原版以 ini 节名作为翻译键（[Battles] 映射键通常与节名相同，但不保证一致）
+            string l10nKey = missionSection.SectionName ?? missionCodeName;
+
             UntranslatedGUIName = missionSection.GetStringValue("Description", "Undefined mission");
             GUIName = UntranslatedGUIName
-                .L10N($"INI:Missions:{missionCodeName}:Description");
+                .L10N($"INI:Missions:{l10nKey}:Description");
 
             IconPath = missionSection.GetStringValue("SideName", string.Empty);
             GUIDescription = missionSection.GetStringValue("LongDescription", string.Empty)
                 .FromIniString()
-                .L10N($"INI:Missions:{missionCodeName}:LongDescription");
+                .L10N($"INI:Missions:{l10nKey}:LongDescription");
             FinalMovie = missionSection.GetStringValue(nameof(FinalMovie), "none");
             RequiredAddon = missionSection.GetBooleanValue(nameof(RequiredAddon),
                ClientConfiguration.Instance.ClientGameType == ClientType.YR ||
@@ -44,6 +47,12 @@ namespace CnCNetClient.Domain
             BuildOffAlly = missionSection.GetBooleanValue(nameof(BuildOffAlly), false);
             PlayerAlwaysOnNormalDifficulty = missionSection.GetBooleanValue(nameof(PlayerAlwaysOnNormalDifficulty), false);
             Tags = missionSection.GetStringValue(nameof(Tags), string.Empty).SplitWithCleanup();
+
+            // 可选展示标签（如扩展包标识）：ini 未配置时不显示；文本可经 Translation.ini 翻译。
+            UntranslatedTag = missionSection.GetStringValue("Tag", string.Empty);
+            Tag = UntranslatedTag.L10N($"INI:Missions:{l10nKey}:Tag");
+            UntranslatedTagAbbreviation = missionSection.GetStringValue("TagAbbreviation", string.Empty);
+            TagAbbreviation = UntranslatedTagAbbreviation.L10N($"INI:Missions:{l10nKey}:TagAbbreviation");
 
             CodeName = missionCodeName;
             CustomMissionID = ComputeCustomMissionID(missionCodeName);
@@ -94,6 +103,18 @@ namespace CnCNetClient.Domain
         public bool BuildOffAlly { get; private set; }
         public bool PlayerAlwaysOnNormalDifficulty { get; private set; }
         public IReadOnlyCollection<string> Tags { get; private set; }
+
+        /// <summary>可选展示标签（ini <c>Tag</c>，如扩展包名），未配置为空串。</summary>
+        public string Tag { get; private set; }
+
+        /// <summary>可选展示标签原文（用于翻译键回填）。</summary>
+        public string UntranslatedTag { get; private set; }
+
+        /// <summary>可选标签缩写（ini <c>TagAbbreviation</c>），用于左侧任务列表脚标，未配置为空串。</summary>
+        public string TagAbbreviation { get; private set; }
+
+        /// <summary>可选标签缩写原文（用于翻译键回填）。</summary>
+        public string UntranslatedTagAbbreviation { get; private set; }
 
         /// <summary>
         /// This property is not set through the ini file.

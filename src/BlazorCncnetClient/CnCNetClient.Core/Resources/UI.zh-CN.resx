@@ -1418,8 +1418,14 @@
   <data name="Client:UI:Campaign.Difficulty" xml:space="preserve">
     <value>难度</value>
   </data>
-  <data name="Client:UI:Campaign.FirestormAddon" xml:space="preserve">
-    <value>Firestorm 扩展包</value>
+  <data name="Client:UI:Campaign.DifficultyEasy" xml:space="preserve">
+    <value>简单</value>
+  </data>
+  <data name="Client:UI:Campaign.DifficultyMedium" xml:space="preserve">
+    <value>中等</value>
+  </data>
+  <data name="Client:UI:Campaign.DifficultyHard" xml:space="preserve">
+    <value>困难</value>
   </data>
   <data name="Client:UI:Campaign.HeaderMeta" xml:space="preserve">
     <value>SINGLEPLAYER · 共 {0} 项 · 难度 {1}</value>
