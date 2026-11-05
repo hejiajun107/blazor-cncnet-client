@@ -51,6 +51,9 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>房主因长时间无操作被警告（第七轮补缺，原版 GameHostInactiveChecker 弹框语义；UI 弹窗确认后调用 <see cref="ResetHostActivity"/>）。</summary>
         public event Action? HostInactiveWarningRequested;
 
+        /// <summary>请求播放界面音效（对齐原版 EnhancedSoundEffect：joingame/leavegame/message）。</summary>
+        public event Action<string>? UiSoundRequested;
+
         /// <summary>本局唯一 GameID（START 广播第一段，写入 spawn.ini [Settings] GameID）。</summary>
         public int UniqueGameId { get; private set; }
 
@@ -1640,6 +1643,9 @@ namespace BlazorCncnetClient.Infrastructure
                     BroadcastPlayerExtraOptions();
                     BroadcastGame();
                 }
+
+                // 原版 CnCNetGameLobby：其他玩家加入房间时播放 joingame（增强音效自带冷却）
+                UiSoundRequested?.Invoke(UiSoundService.JoinGame);
             }
             NotifyChanged();
         }
@@ -1647,6 +1653,9 @@ namespace BlazorCncnetClient.Infrastructure
         private void OnChannelUserLeft(object? sender, UserNameEventArgs e)
         {
             _players.Remove(e.UserName);
+            // 原版 CnCNetGameLobby：其他玩家离开房间时播放 leavegame
+            if (!string.Equals(e.UserName, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
+                UiSoundRequested?.Invoke(UiSoundService.LeaveGame);
             if (IsHost && IsJoined && Locked)
             {
                 // 有人离开后自动解锁（原版 RemovePlayer 语义）
@@ -1656,7 +1665,13 @@ namespace BlazorCncnetClient.Infrastructure
             NotifyChanged();
         }
 
-        private void OnChannelMessageAdded(object? sender, IRCMessageEventArgs e) => NotifyChanged();
+        private void OnChannelMessageAdded(object? sender, IRCMessageEventArgs e)
+        {
+            // 原版 CnCNetGameLobby：玩家发言时播放 message（系统消息 SenderName 为 null 不播）
+            if (!string.IsNullOrEmpty(e.Message?.SenderName))
+                UiSoundRequested?.Invoke(UiSoundService.Message);
+            NotifyChanged();
+        }
 
         private void OnInvalidPasswordEntered(object? sender, EventArgs e)
         {

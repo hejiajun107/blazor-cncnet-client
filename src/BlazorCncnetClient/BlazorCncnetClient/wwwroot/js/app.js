@@ -646,7 +646,106 @@
 
     function iconSelectHide() { selHide(); }
 
-    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, injectCss, injectJs, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar, playMenuMusic, stopMenuMusic, iconSelectToggle, iconSelectHide };
+    // ── 界面音效（对齐上游 XNAUI：XNAButton 悬停/点击、CheckBox、DropDown） ──
+    // 音频文件与搜索路径由 .NET 侧传入（Resources/button.wav、checkbox.wav、dropdown.wav）。
+    const uiSounds = { urls: {}, volume: 1, ready: false, lastHover: null, cache: {} };
+
+    function playUiSound(name) {
+        const url = uiSounds.urls[name];
+        if (!url || uiSounds.volume <= 0) return;
+        try {
+            let audio = uiSounds.cache[name];
+            if (!audio) {
+                audio = new Audio(url);
+                audio.preload = 'auto';
+                uiSounds.cache[name] = audio;
+            }
+            audio.volume = uiSounds.volume;
+            audio.currentTime = 0;
+            const p = audio.play();
+            if (p && p.catch) p.catch(() => { /* 自动播放策略限制：静默忽略 */ });
+        } catch { /* 忽略播放失败 */ }
+    }
+
+    // 悬停音效只作用于按钮/链接（原版 XNAButton 默认 HoverSoundEffect=button.wav；
+    // 下拉框（原生 <select> 与自绘 .icon-sel）不播悬停音，原版 XNAClientDropDown 只有 ClickSoundEffect）。
+    const UI_HOVER_SELECTOR = 'button:not([disabled]), a[href]';
+    const UI_HOVER_EXCLUDED = '.icon-sel-btn, .icon-sel-item, .set-toggle';
+
+    function uiHoverTarget(target) {
+        if (!target || !target.closest) return null;
+        const el = target.closest(UI_HOVER_SELECTOR);
+        if (!el || el.closest(UI_HOVER_EXCLUDED)) return null;
+        return el;
+    }
+
+    function uiClickHandler(e) {
+        const target = e.target;
+        if (!target || !target.closest) return;
+
+        // 下拉框：打开/关闭与选择项都播放 dropdown.wav（原版 XNAClientDropDown）
+        if (target.closest('.icon-sel-btn, .icon-sel-item')) {
+            playUiSound('dropdown');
+            return;
+        }
+        // 原生下拉框（原版 XNAClientDropDown）：展开时播放 dropdown.wav（AI 难度/地图/队伍/分辨率等）
+        if (target.closest('select')) {
+            playUiSound('dropdown');
+            return;
+        }
+        // 选项卡（原版 XNAClientTabControl）：切换标签页时播放 button.wav
+        if (target.closest('.load-tab, .stats-tab, .pm-tab')) {
+            playUiSound('button');
+            return;
+        }
+        // 复选框/开关：checkbox.wav（原版 XNAClientCheckBox）
+        if (target.closest('input[type="checkbox"], input[type="radio"], [role="switch"], .set-toggle')) {
+            playUiSound('checkbox');
+            return;
+        }
+        // 按钮点击音：原版 XNAButton 默认没有 ClickSoundEffect（仅悬停音效），
+        // 为与上游保持一致，只在游戏房间页（.groom，含 LAN 房间）内播放 button.wav；
+        // 其余页面的按钮/链接点击不发声。
+        const button = target.closest('button:not([disabled]), a[href]');
+        if (button && button.closest('.groom')) playUiSound('button');
+    }
+
+    function uiHoverHandler(e) {
+        if (e.pointerType && e.pointerType !== 'mouse') return;
+        const el = uiHoverTarget(e.target);
+        if (!el) { uiSounds.lastHover = null; return; }
+        if (el === uiSounds.lastHover) return;
+        // 在同一个按钮内部移动时 pointerover 也会触发，用相关元素过滤
+        if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+        uiSounds.lastHover = el;
+        playUiSound('button');
+    }
+
+    function initUiSounds(urls, volume) {
+        uiSounds.urls = urls || {};
+        setUiSoundVolume(volume);
+        if (uiSounds.ready) return;
+        uiSounds.ready = true;
+        document.addEventListener('pointerover', uiHoverHandler, true);
+        document.addEventListener('pointerout', (e) => {
+            if (e.pointerType && e.pointerType !== 'mouse') return;
+            const el = uiSounds.lastHover;
+            if (el && !el.contains(e.relatedTarget)) uiSounds.lastHover = null;
+        }, true);
+        document.addEventListener('click', uiClickHandler, true);
+        // 原生下拉框选择项：原版 XNADropDown 在选中项时同样播放 dropdown.wav
+        document.addEventListener('change', (e) => {
+            const el = e.target;
+            if (el && el.tagName === 'SELECT' && !el.disabled) playUiSound('dropdown');
+        }, true);
+    }
+
+    function setUiSoundVolume(volume) {
+        uiSounds.volume = typeof volume === 'number' && volume >= 0 ? Math.min(1, volume) : 1;
+        for (const key of Object.keys(uiSounds.cache)) uiSounds.cache[key].volume = uiSounds.volume;
+    }
+
+    window.cncnet = { initStars, initGlobe, initRadarScan, initReadout, setPlayerCount, toast, applyTheme, getTheme, setThemeUrls, injectCss, injectJs, initMenuKeyNav, disposeMenuKeyNav, scrollToBottom, getViewport, initLobbyKeyNav, disposeLobbyKeyNav, initHostActivityWatcher, disposeHostActivityWatcher, copyText, fitMapPreview, initTopBar, disposeTopBar, playMenuMusic, stopMenuMusic, initUiSounds, setUiSoundVolume, playUiSound, iconSelectToggle, iconSelectHide };
 })();
 
 // ── 回放文件拖放导入（主菜单）─────────────────────────────────

@@ -15,6 +15,7 @@
 @inject MessageBoxService MessageBox
 @inject DiscordPresenceService Discord
 @inject ITranslationService TranslationSvc
+@inject UiSoundService Snd
 
 <div class="lobby page-anim">
     <header class="lobby-top item-in">
@@ -584,6 +585,7 @@
         LobbySvc.Changed += OnChanged;
         LobbySvc.PmChanged += OnPmChanged;
         LobbySvc.PmReceived += OnPmReceived;
+        LobbySvc.UiSoundRequested += OnUiSound;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
         // 地图快照由 Program.cs 在启动时预热、异步发布。房间列表可能先于快照渲染完成，
@@ -673,6 +675,9 @@
         _pmScroll = true;
         _ = InvokeAsync(StateHasChanged);
     }
+
+    /// <summary>大厅事件音效（新房间 gamecreated / 私聊·邀请 pm）。</summary>
+    private void OnUiSound(string name) => Snd.Play(name);
 
     private void OnThemeChanged(ThemeInfo theme) => _ = InvokeAsync(StateHasChanged);
 
@@ -1102,6 +1107,7 @@
         LobbySvc.PmChanged -= OnPmChanged;
         MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
         LobbySvc.PmReceived -= OnPmReceived;
+        LobbySvc.UiSoundRequested -= OnUiSound;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         TranslationSvc.LanguageChanged -= OnLanguageChanged;
         Mon.StateChanged -= OnMonConnectionChanged;

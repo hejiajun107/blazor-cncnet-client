@@ -36,6 +36,9 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>邀请未被送达（原版 HandleGameInvitationFailedNotification）：参数为被邀请者昵称。</summary>
         public event Action<string>? InvitationFailed;
 
+        /// <summary>请求播放界面音效（对齐原版 EnhancedSoundEffect：gamecreated/pm）。</summary>
+        public event Action<string>? UiSoundRequested;
+
         private readonly CnCNetManager _manager;
         private readonly GameCollection _gameCollection;
         private readonly CnCNetUserData _userData;
@@ -580,6 +583,8 @@ namespace BlazorCncnetClient.Infrastructure
             AddPmMessage(session, e.Sender, e.Message, false);
             session.LastActivity = DateTime.Now;
             session.UnreadCount++;
+            // 原版 PrivateMessagingWindow：收到私聊时播放 pm.wav
+            UiSoundRequested?.Invoke(UiSoundService.PrivateMessage);
             PmReceived?.Invoke(session.UserName);
             PmChanged?.Invoke();
         }
@@ -635,6 +640,8 @@ namespace BlazorCncnetClient.Infrastructure
                 return;
 
             _pendingInvitations.Add(key);
+            // 原版 CnCNetLobby：收到游戏邀请时播放 pm.wav
+            UiSoundRequested?.Invoke(UiSoundService.PrivateMessage);
             GameInvitationReceived?.Invoke(new GameInvitation(sender, gameName, channelName, password));
         }
 
@@ -719,7 +726,17 @@ namespace BlazorCncnetClient.Infrastructure
                     return;
                 }
 
+                // 原版 CnCNetLobby：新房间首次出现在列表时播放 gamecreated（周期性广播刷新不重复播放），
+                // 受 PlaySoundOnGameHosted（默认开）与房间锁定/本机已在对局中的限制。
+                bool isNewGame = !_gamesByHost.ContainsKey(e.UserName);
                 _gamesByHost[e.UserName] = item;
+                if (isNewGame
+                    && UserINISettings.Instance.PlaySoundOnGameHosted.Value
+                    && !item.Locked
+                    && !ProgramConstants.IsInGame)
+                {
+                    UiSoundRequested?.Invoke(UiSoundService.GameCreated);
+                }
                 NotifyChanged();
             }
             catch (Exception)

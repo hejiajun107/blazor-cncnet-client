@@ -265,6 +265,10 @@ namespace BlazorCncnetClient
             // 依赖 CnCNetManager/MapLoader 等单例，状态按会话（scoped）隔离。
             appBuilder.Services.AddScoped<GameRoomService>();
 
+            // 界面音效（对齐上游 EnhancedSoundEffect）：Resources 音效 URL 解析 + 音量 + 每类音效冷却，
+            // 供主布局初始化、房间/大厅服务事件驱动播放（scoped，与组件共享同一 JS 上下文）。
+            appBuilder.Services.AddScoped<UiSoundService>();
+
             // 大厅 → 游戏房间页导航参数（创建/加入请求），scoped 随电路存续。
             appBuilder.Services.AddScoped<GameRoomNavigation>();
 
@@ -321,6 +325,9 @@ namespace BlazorCncnetClient
                     .SetSize(clientResX, clientResY)
                     .SetMinSize(1280, 720) // 限制窗口最小尺寸（适配 1280*720 / 1920*1080）
                     .EnableDevTools(true)
+                    // 解除 WebView2/Chromium 的自动播放限制（autoplay-policy）：
+                    // 主菜单音乐与界面悬停音效无需等待用户手势即可发声。
+                    .EnableMediaAutoplay(true)
                     //.SetChromeless(true)
                     // .SetMaxSize(new Size(1280, 720))
                     ;

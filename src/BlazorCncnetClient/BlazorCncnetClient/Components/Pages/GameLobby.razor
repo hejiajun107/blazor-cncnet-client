@@ -17,6 +17,7 @@
 @inject DiscordPresenceService Discord
 @inject ITranslationService TranslationSvc
 @inject GameContentServer ContentServer
+@inject UiSoundService Snd
 
 @if (!Room.IsInGameRoom)
 {
@@ -938,6 +939,7 @@ else
             _sides = new[] { "GDI", "Nod", "Allies", "Soviet" };
 
         Room.Changed += OnChanged;
+        Room.UiSoundRequested += OnUiSound;
         Room.HostInactiveWarningRequested += OnHostInactiveWarning;
         Room.PlayerExtraOptionsChanged += OnExtraOptionsChanged;
         ThemeProvider.ThemeChanged += OnThemeChanged;
@@ -1056,6 +1058,9 @@ else
             RefreshMaps();
             StateHasChanged();
         });
+
+    /// <summary>房间事件音效（加入/离开/聊天）。</summary>
+    private void OnUiSound(string name) => Snd.Play(name);
 
     private void OnChanged()
     {
@@ -1603,6 +1608,7 @@ else
     public void Dispose()
     {
         Room.Changed -= OnChanged;
+        Room.UiSoundRequested -= OnUiSound;
         Room.HostInactiveWarningRequested -= OnHostInactiveWarning;
         Room.PlayerExtraOptionsChanged -= OnExtraOptionsChanged;
         ThemeProvider.ThemeChanged -= OnThemeChanged;

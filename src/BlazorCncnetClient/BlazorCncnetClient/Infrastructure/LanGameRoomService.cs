@@ -60,6 +60,9 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>离开房间事件（主动/断线/超时），供页面跳回大厅。</summary>
         public event Action? Left;
 
+        /// <summary>请求播放界面音效（对齐原版 EnhancedSoundEffect：joingame/leavegame/message/getready/return）。</summary>
+        public event Action<string>? UiSoundRequested;
+
         private readonly LanLobbyService _lobby;
         private readonly MapLoader _mapLoader;
         private readonly GameCollection _gameCollection;
@@ -588,6 +591,8 @@ namespace BlazorCncnetClient.Infrastructure
 
             AddChatMessage(new ChatMessage(ColorConstants.Cyan,
                 string.Format(UiText.T("LanRoom.PlayerJoined", "{0} joined the room."), pInfo.Name)));
+            if (!string.Equals(pInfo.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
+                UiSoundRequested?.Invoke(UiSoundService.JoinGame);
             OnGameOptionChanged();    // 下发当前地图/规则
             BroadcastPlayerOptions(); // 下发全部玩家配置
             BroadcastGame();          // UDP GAME 刷新房间列表
@@ -626,6 +631,8 @@ namespace BlazorCncnetClient.Infrastructure
 
             AddChatMessage(new ChatMessage(ColorConstants.Cyan,
                 string.Format(UiText.T("LanRoom.PlayerLeft", "{0} left the room."), pInfo.Name)));
+            if (!string.Equals(pInfo.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
+                UiSoundRequested?.Invoke(UiSoundService.LeaveGame);
             ClearReadyStatuses();
             BroadcastPlayerOptions();
             BroadcastGame();
@@ -658,9 +665,12 @@ namespace BlazorCncnetClient.Infrastructure
                 + ProgramConstants.LAN_DATA_SEPARATOR + parts[1]);
         }
 
-        /// <summary>玩家结束游戏返回房间：广播 RETURN {sender}。</summary>
+        /// <summary>玩家结束游戏返回房间：广播 RETURN {sender}，主机本地播放 return。</summary>
         private void Host_HandleReturn(LANPlayerInfo pInfo)
-            => BroadcastMessage(RETURN_COMMAND + " " + pInfo.Name);
+        {
+            BroadcastMessage(RETURN_COMMAND + " " + pInfo.Name);
+            UiSoundRequested?.Invoke(UiSoundService.Return);
+        }
 
         /// <summary>玩家请求改选项：校验范围 → 写回 → 重发 POPTS（side/start/team 变化则清就绪）。</summary>
         private void Host_HandleOptionsRequest(LANPlayerInfo pInfo, string message)
@@ -744,12 +754,16 @@ namespace BlazorCncnetClient.Infrastructure
                 ? LanLobbyService.ChatColors[colorIdx].XNAColor
                 : ColorConstants.White;
             AddChatMessage(new ChatMessage(parts[0], color, DateTime.Now, parts[2]));
+            if (!string.Equals(parts[0], ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
+                UiSoundRequested?.Invoke(UiSoundService.Message);
         }
 
         private void Client_HandleGetReady()
         {
             AddChatMessage(new ChatMessage(ColorConstants.Yellow,
                 UiText.T("LanRoom.HostWaitingReady", "The host is waiting for you to get ready!")));
+            // 原版 MultiplayerGameLobby.GetReadyNotification：房主催促未就绪玩家时播放 getready
+            UiSoundRequested?.Invoke(UiSoundService.GetReady);
             NotifyChanged();
         }
 
@@ -770,6 +784,7 @@ namespace BlazorCncnetClient.Infrastructure
                 p.IsInGame = false;
             AddChatMessage(new ChatMessage(ColorConstants.Cyan,
                 string.Format(UiText.T("LanRoom.PlayerReturned", "{0} has returned to the room."), args)));
+            UiSoundRequested?.Invoke(UiSoundService.Return);
             NotifyChanged();
         }
 
@@ -810,8 +825,29 @@ namespace BlazorCncnetClient.Infrastructure
                 newPlayers.Add(p);
             }
 
+            // POPTS 整表重建：对比新旧名单补发 join/leave（原版 LANGameLobby 靠 POPTS 同步玩家变化）
+            var previousNames = _players.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             _players.Clear();
             _players.AddRange(newPlayers);
+
+            foreach (var p in newPlayers)
+            {
+                if (!previousNames.Contains(p.Name)
+                    && !string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
+                {
+                    UiSoundRequested?.Invoke(UiSoundService.JoinGame);
+                }
+            }
+            foreach (string oldName in previousNames)
+            {
+                if (!newPlayers.Any(p => string.Equals(p.Name, oldName, StringComparison.OrdinalIgnoreCase))
+                    && !string.Equals(oldName, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
+                {
+                    UiSoundRequested?.Invoke(UiSoundService.LeaveGame);
+                }
+            }
+
             NotifyChanged();
         }
 

@@ -8,6 +8,7 @@
 @inject ReplaceableComponentService Replacer
 @inject PluginAssetInjector PluginAssets
 @inject ITranslationService TranslationSvc
+@inject UiSoundService UiSound
 
 <!-- HUD 顶栏（全局，TopBar 通用组件，spec §5.3；状态灯/文本由 ConnectionMonitor 驱动，M3.10）。
      主题切换已移至设置页（Settings.razor），此处仅保留版本/帧率读数 -->
@@ -76,6 +77,15 @@
             await ThemeProvider.InitializeAsync();
             // 主菜单音乐（原版 [General] MainMenuTheme，贯穿客户端各页面播放）
             await SyncMenuMusicAsync();
+            // 界面音效（原版 XNAUI 按钮/复选框/下拉框 + 房间/大厅事件音效）
+            try
+            {
+                await UiSound.InitializeAsync();
+            }
+            catch
+            {
+                // WebView 未就绪时音效初始化失败不影响页面渲染
+            }
             // F4 插件资源（style/script）：首帧注入 WebView（幂等）
             await PluginAssets.InjectAllAsync();
             // 星粒背景动效（尊重 prefers-reduced-motion，内部处理）
