@@ -16,6 +16,8 @@
 | 换肤 / 加样式 / 加脚本 | 否（纯文件） | `plugin.ini` 的 `Style` / `Script` |
 | 往既有页面追加功能 | 是 | `IPluginUiRegistrar.ContributeSlot` |
 | 覆盖既有槽位组件 | 是 | `IPluginUiRegistrar.ReplaceSlot` |
+| 轻量替换启动闪屏内容 | 是 | `IPluginUiRegistrar.SetLoadingScreenContent` |
+| 整体替换启动闪屏 | 是 | `ReplaceSlot("layout.splash", typeof(你的组件))` |
 | 替换整个主菜单主体（首页） | 是 | `ReplaceSlot("page.mainmenu", typeof(你的组件))` |
 | 新增独立页面 | 是 | `IPluginUiRegistrar.AddPageAssembly` + `@page` |
 | 追加主菜单项 | 是 | `IPluginUiRegistrar.AddMenuEntry` |
@@ -32,6 +34,13 @@
 
 插件是一个 **Razor 类库（RCL）**，目标框架 `net10.0`。可用仓库内示例
 [samples/HelloPlugin](file:///f:/work/PhotinoCLient/blazor-cncnet-client/blazor-cncnet-client/samples/HelloPlugin) 作模板。
+
+> ⚠️ **插件工程请放在本仓库目录之外**（例如 `D:\MyPlugins\MyPlugin`）。
+> 仓库内 `samples/` 仅作模板参考，不要把实际插件项目提交进本仓库：
+> 插件设计是与宿主/上游解耦的独立产物，只依赖发布出来的契约 DLL 或
+> `CnCNetClient.Plugin.Abstractions` 包；放进仓库会把两者耦合在一起
+> （路径假设、构建顺序、`ProjectReference` 私密性都容易出错）。
+> 需要联调时可以临时 `ProjectReference` 到契约工程，但交付物应为独立仓库/目录。
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk.Razor">
@@ -259,6 +268,42 @@ body::after{content:"PLUGIN CSS ACTIVE";position:fixed;top:8px;right:8px;z-index
 完整实现见 [samples/Cnc3Home](../samples/Cnc3Home)：本地 three.js r149（UMD）、
 NASA 公有领域地球贴图、`assets/` 随构建复制、`cnc3-home.js` 负责挂载/释放。
 
+### 2.8 启动闪屏：轻量覆盖 / 整体替换
+
+启动闪屏槽位为 `layout.splash`（默认 `SplashScreen`）。两种粒度二选一：
+
+**A. 轻量覆盖内容**（不写组件，只换图/视频/文案/品牌字/时长）：
+
+```csharp
+public void RegisterUi(IPluginUiRegistrar ui)
+{
+    ui.SetLoadingScreenContent(new LoadingScreenContent
+    {
+        Image = "Plugins/my-plugin/splash.png",  // 游戏根相对路径，或游戏根内绝对路径
+        TextKey = "INI:LoadingScreen:SplashText",// Translation.ini [Values] 翻译键
+        Text = "正在载入…",                      // TextKey 未命中时的兜底
+        BrandTitle = "MY MOD",
+        BrandSubtitle = "TIBERIUM WARS",
+        Duration = 3.0                           // <=0 = 初始化完成即关闭
+    });
+}
+```
+
+- 仅覆盖非 null 字段；未声明字段沿用 `ClientDefinitions.ini [LoadingScreen]`。
+- 多插件声明时**后加载者优先**（见日志）；`ShowSplash` 不参与覆盖，关闭闪屏请改 ini。
+
+**B. 整体替换组件**（自有布局/动画）：
+
+```csharp
+ui.ReplaceSlot("layout.splash", typeof(MySplash));
+```
+
+- 替换后由插件组件**自负渲染与淡出**（宿主不再运行原 `SplashScreen`）。
+  可 `@inject LoadingScreenService` / `GameContentServer` 复用配置与媒体 URL，
+  也可完全自行实现；`ShowSplash`、`SplashDuration` 等 ini 开关对替换组件无效。
+
+详细配置与语义见 [splash-screen.md](./splash-screen.md)。
+
 ---
 
 ## 3. 契约 API 参考
@@ -290,8 +335,19 @@ NASA 公有领域地球贴图、`assets/` 随构建复制、`cnc3-home.js` 负�
 |---|---|
 | `ContributeSlot(slotKey, Type)` | **追加**：多插件/多组件共存，按加载顺序渲染 |
 | `ReplaceSlot(slotKey, Type)` | **覆盖**：同槽位后注册者胜（会写日志），谨慎使用 |
+| `SetLoadingScreenContent(LoadingScreenContent)` | 轻量覆盖启动闪屏内容（后注册者优先，仅覆盖非 null 字段） |
 | `AddMenuEntry(PluginMenuEntry)` | 追加主菜单项 |
 | `AddPageAssembly(Assembly)` | 声明提供 `@page` 的程序集，由宿主 `Router` 发现 |
+
+### `LoadingScreenContent`（`SetLoadingScreenContent` 入参）
+
+| 字段 | 说明 |
+|---|---|
+| `Image` / `Video` | 背景图/视频；游戏根相对路径或游戏根内绝对路径；`Video` 优先 |
+| `TextKey` / `Text` | 底部文案翻译键（Translation.ini [Values]）/ 兜底文本 |
+| `BrandTitle` / `BrandSubtitle` | 品牌主/副标题（默认 `CNC NET` / `COMMAND & CONQUER`） |
+| `ShowProgress` / `ShowVersion` | 是否显示进度条 / 版本号 |
+| `Duration` | 展示秒数；`<=0` = 初始化完成即关闭 |
 
 ### `PluginMenuEntry`
 

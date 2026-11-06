@@ -23,11 +23,17 @@ SplashVideo=Resources/splash.mp4   ; 背景视频（可选；存在时优先于�
 SplashDuration=2.0         ; 展示秒数；<=0 = 初始化完成即关闭（最短约 0.5s）
 ShowProgress=true          ; 是否显示初始化进度条（动画式，无真实百分比）
 ShowVersion=true           ; 是否显示版本号（BUILD xxx）
-SplashText=                ; 底部提示文案（可选；当前直接展示，未接多语言）
+SplashText=                ; 底部提示文案（TextKey 未命中时的兜底文本）
+SplashTextKey=             ; 底部文案翻译键（Translation.ini [Values]，如 INI:LoadingScreen:SplashText）
+BrandTitle=CNC NET         ; 品牌主标题
+BrandSubtitle=COMMAND & CONQUER ; 品牌副标题
 ```
 
 全部键可省略，缺省即默认值。**无 `SplashImage`/`SplashVideo` 时**显示内置
-HUD 风格品牌画面（CNC NET 标题 + 青色动画），即默认可用。
+HUD 风格品牌画面（`BrandTitle` + 青色动画），即默认可用。
+
+文案多语言：`SplashTextKey` 非空时按 `.L10N` 规则查 `Translation.ini` 的
+`[Values]`（键名即 `SplashTextKey` 的值），未命中回退 `SplashText`。
 
 ## 路径语义
 
@@ -60,6 +66,51 @@ ShowProgress=false
 ShowVersion=true
 SplashText=WELCOME, COMMANDER
 ```
+
+## 插件替换（两种粒度）
+
+启动闪屏对应槽位 `layout.splash`（`App.razor` → `ReplaceableComponent`，
+默认组件 `SplashScreen`）。插件按需要选择轻量覆盖或整体替换。
+
+### 1) 轻量替换内容（不写组件）
+
+`RegisterUi` 阶段声明 `LoadingScreenContent`，只覆盖非 null 字段；
+多插件声明时**后加载者优先**：
+
+```csharp
+public void RegisterUi(IPluginUiRegistrar ui)
+{
+    ui.SetLoadingScreenContent(new LoadingScreenContent
+    {
+        Image = "Plugins/my-plugin/splash.png",
+        Video = null,                              // 置空留给 ini / 默认
+        TextKey = "INI:LoadingScreen:SplashText",
+        Text = "正在载入…",
+        BrandTitle = "MY MOD",
+        BrandSubtitle = "TIBERIUM WARS",
+        ShowProgress = false,
+        ShowVersion = true,
+        Duration = 3.0                             // <=0 = 初始化完成即关闭
+    });
+}
+```
+
+- `Image` / `Video` 支持游戏根相对路径，也支持**绝对路径**（必须位于游戏根内，
+  宿主自动转为内容服务器相对路径，便于插件用 `PluginDirectory` 拼路径）。
+- 未声明的字段保持 `[LoadingScreen]` 配置或内置默认；`ShowSplash` 不参与插件覆盖
+  （要关闭闪屏请改 ini）。
+
+### 2) 整体替换组件（自定义布局/动画）
+
+```csharp
+ui.ReplaceSlot("layout.splash", typeof(MySplash));
+```
+
+- 替换后由插件组件**自负渲染与淡出**：可 `@inject LoadingScreenService` 读取
+  `Config.SplashDuration` / 媒体路径与 `GameContentServer`，按自身逻辑计时并移除遮罩。
+- 宿主不再调用原 `SplashScreen`，因此 `ShowSplash` / `SplashDuration` 等 ini 开关
+  对替换组件无效（如需沿用，请在组件内自行读取并判断）。
+- 同一 key 后注册的插件胜出（会写日志）；不要与轻量覆盖混用，避免行为不明。
 
 ## 相关
 

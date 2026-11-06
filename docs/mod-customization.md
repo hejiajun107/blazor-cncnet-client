@@ -169,6 +169,7 @@ Style=plugin.css
 |---|---|---|---|
 | `page.mainmenu` | 替换 | 内置主菜单 | 主菜单主体整块（含地球/斜切菜单等自定义首页）；仅插件 `ReplaceSlot` 可接管，不支持 `[Components]` |
 | `layout.footer` | 替换 | `FooterBar` | 全局底栏（SYSTEM STATUS / 分辨率等） |
+| `layout.splash` | 替换 | `SplashScreen` | 启动闪屏；`[Components]` 可切内置实现，插件也可 `ReplaceSlot` 整体接管（轻量换内容用 `SetLoadingScreenContent`） |
 | `layout.topbar` | 追加 | — | 全局顶栏菜单区（插件按钮/指示器），经 `PluginSlot` 渲染 |
 | `menu.entry` | 追加 | — | 主菜单按钮列表之后、页脚之前（自定义渲染的菜单入口） |
 | `page.settings.aside` | 追加 | — | 设置页左侧栏（插件内容卡片），经 `PluginSlot` 渲染 |
@@ -186,8 +187,23 @@ Style=plugin.css
 
 ## 相关：启动闪屏
 
-`[LoadingScreen]` 节可配置启动闪屏（图片/视频/品牌画面/进度条/版本号），详见
+`[LoadingScreen]` 节可配置启动闪屏（图片/视频/品牌标题/进度条/版本号/文案翻译键），详见
 `docs/splash-screen.md`。放同一 ini 的原因：F3 统一一处维护 UI 外观。
+插件侧还支持轻量内容覆盖（`SetLoadingScreenContent`）与整体替换
+（`ReplaceSlot("layout.splash", …)`），见 `docs/plugin-dev.md` §2.8。
+
+## 相关：窗口标题
+
+客户端窗口标题取自 `ClientDefinitions.ini` 的 `[Settings] WindowTitle`：
+
+```ini
+[Settings]
+WindowTitle=CNCNet 客户端
+```
+
+- 翻译键 `INI:ClientDefinitions:WindowTitle`，写在 `Translation.ini` 的 `[Values]`；
+  未配置翻译时显示 ini 原文；两者都为空时回退内置 `CNCNet Client`。
+- 标题在启动时应用，切换语言需重启客户端才更新（与原版一致）。
 
 ## 完整示例
 
