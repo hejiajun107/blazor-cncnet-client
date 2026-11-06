@@ -29,6 +29,7 @@ public sealed class ReplaceableComponentService
         _uiDefs = uiDefs;
         _plugins = plugins;
         _defaults["layout.footer"] = typeof(FooterBar);
+        _defaults["layout.splash"] = typeof(SplashScreen);
     }
 
     /// <summary>解析槽位组件类型（ini 覆盖 → 插件替换 → 内置默认）。未知槽位抛异常（配置错误应尽早暴露）。</summary>

@@ -17,8 +17,9 @@
     </Found>
 </Router>
 
-<!-- 启动闪屏（M5 2.3 LoadingScreen）：ClientDefinitions.ini [LoadingScreen] 配置，最高层级覆盖 -->
-<SplashScreen />
+@* 启动闪屏（M5 2.3 LoadingScreen）：内容取自 ClientDefinitions.ini [LoadingScreen]，
+   可由插件轻量覆盖内容（SetLoadingScreenContent）或整体替换组件（ReplaceSlot "layout.splash"）。 *@
+<ReplaceableComponent Key="layout.splash" />
 
 @code {
     protected override void OnInitialized()

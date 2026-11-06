@@ -306,6 +306,13 @@ namespace BlazorCncnetClient
 
 
             appBuilder.WithInfiniFrameWindowBuilder(builder => {
+                // 窗口标题：ClientDefinitions.ini [Settings] WindowTitle，
+                // 翻译键 INI:ClientDefinitions:WindowTitle（Translation.ini [Values]）。
+                // 原版语义：未配置时保留默认标题。
+                string windowTitle = ClientConfiguration.Instance.WindowTitle;
+                if (string.IsNullOrWhiteSpace(windowTitle))
+                    windowTitle = "CNCNet Client";
+
                 // M 设置对齐旧客户端：客户端窗口分辨率读 ClientSettings.ini [Video] ClientResolutionX/Y
                 // （原版 GameClass.SetGraphicsMode 语义），下限保持 1280x720（窗口最小尺寸）。
                 var clientResX = Math.Max(1280, (int)UserINISettings.Instance.ClientResolutionX);
@@ -319,7 +326,7 @@ namespace BlazorCncnetClient
                     // .Center()
                     // .SetUseOsDefaultSize(true)
                     // .SetUseOsDefaultLocation(true);
-                    .SetTitle("CNCNet Client")
+                    .SetTitle(windowTitle)
                     // 用 int 重载，避免宿主层引入 System.Drawing
                     .SetLocation(100, 100)
                     .SetSize(clientResX, clientResY)

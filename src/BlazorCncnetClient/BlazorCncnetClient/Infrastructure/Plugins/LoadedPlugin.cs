@@ -75,4 +75,7 @@ public sealed class LoadedPlugin
 
     /// <summary>主菜单项。</summary>
     public List<PluginMenuEntry> MenuEntries { get; } = [];
+
+    /// <summary>启动闪屏内容覆盖（<see cref="IPluginUiRegistrar.SetLoadingScreenContent"/> 写入）。</summary>
+    public LoadingScreenContent? LoadingScreenContent { get; set; }
 }

@@ -58,6 +58,21 @@ public sealed class PluginCatalog
     public IReadOnlyList<PluginMenuEntry> EnabledMenuEntries =>
         Enabled.SelectMany(p => p.MenuEntries).ToList();
 
+    /// <summary>启动闪屏内容覆盖（后加载的插件优先；无声明时为 null）。</summary>
+    public LoadingScreenContent? LoadingScreenContent
+    {
+        get
+        {
+            for (int i = _plugins.Count - 1; i >= 0; i--)
+            {
+                var plugin = _plugins[i];
+                if (plugin.State == PluginState.Enabled && plugin.LoadingScreenContent is { } content)
+                    return content;
+            }
+            return null;
+        }
+    }
+
     /// <summary>
     /// 阶段一：发现并加载插件（必须在 DI <c>Build()</c> 之前调用）。
     /// </summary>

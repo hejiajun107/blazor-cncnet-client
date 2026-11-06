@@ -74,9 +74,54 @@ public interface IPluginUiRegistrar
     /// </summary>
     void ReplaceSlot(string slotKey, Type componentType);
 
+    /// <summary>
+    /// 轻量覆盖启动闪屏的展示内容（图片 / 视频 / 文案 / 品牌标题 / 进度条 / 版本号 / 时长），
+    /// 不替换组件。仅覆盖非 null 字段；多插件声明时以**后注册者**为准。
+    /// 需要整体接管闪屏（自有布局 / 动画 / 交互）时改用 <see cref="ReplaceSlot"/> 替换 <c>layout.splash</c>。
+    /// </summary>
+    void SetLoadingScreenContent(LoadingScreenContent content);
+
     /// <summary>追加一个主菜单入口。</summary>
     void AddMenuEntry(PluginMenuEntry entry);
 
     /// <summary>声明插件提供的页面程序集（其 <c>@page</c> 路由将被 Router 发现）。</summary>
     void AddPageAssembly(Assembly assembly);
+}
+
+/// <summary>
+/// 启动闪屏内容的轻量覆盖（不替换组件）。字段为 <c>null</c> 表示沿用
+/// <c>ClientDefinitions.ini [LoadingScreen]</c> 或内置默认值。
+/// </summary>
+/// <remarks>
+/// 图片 / 视频路径支持「游戏根相对路径」或绝对路径（绝对路径须位于游戏根目录下，
+/// 宿主会转换为内容服务器可访问的相对路径）。
+/// </remarks>
+public sealed record LoadingScreenContent
+{
+    /// <summary>背景图（如 Resources/splash.png 或 Plugins/&lt;name&gt;/splash.png）。</summary>
+    public string? Image { get; init; }
+
+    /// <summary>背景视频（存在时优先于 <see cref="Image"/>）。</summary>
+    public string? Video { get; init; }
+
+    /// <summary>底部提示文案的翻译键（Translation.ini [Values]，如 INI:LoadingScreen:SplashText）。</summary>
+    public string? TextKey { get; init; }
+
+    /// <summary>底部提示文案（TextKey 未配置或未命中时显示）。</summary>
+    public string? Text { get; init; }
+
+    /// <summary>品牌主标题（默认 CNC NET）。</summary>
+    public string? BrandTitle { get; init; }
+
+    /// <summary>品牌副标题（默认 COMMAND &amp; CONQUER）。</summary>
+    public string? BrandSubtitle { get; init; }
+
+    /// <summary>是否显示初始化进度条。</summary>
+    public bool? ShowProgress { get; init; }
+
+    /// <summary>是否显示版本号。</summary>
+    public bool? ShowVersion { get; init; }
+
+    /// <summary>展示时长（秒）；&lt;=0 表示「初始化完成即关闭」的最短展示。</summary>
+    public double? Duration { get; init; }
 }

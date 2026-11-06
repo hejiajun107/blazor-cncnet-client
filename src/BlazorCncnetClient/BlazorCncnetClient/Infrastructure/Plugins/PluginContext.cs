@@ -72,6 +72,21 @@ internal sealed class PluginUiRegistrar : IPluginUiRegistrar
         _plugin.SlotReplacements[slotKey] = componentType;
     }
 
+    public void SetLoadingScreenContent(LoadingScreenContent content)
+    {
+        if (content is null)
+        {
+            Log.Warning("插件 {Id} 传入了空的加载界面内容覆盖，已忽略", _plugin.Id);
+            return;
+        }
+
+        if (_plugin.LoadingScreenContent is not null)
+        {
+            Log.Information("插件 {Id} 覆盖启动闪屏内容（后注册者优先）", _plugin.Id);
+        }
+        _plugin.LoadingScreenContent = content;
+    }
+
     public void AddMenuEntry(PluginMenuEntry entry)
     {
         if (entry is null || string.IsNullOrWhiteSpace(entry.Key) || string.IsNullOrWhiteSpace(entry.Route))

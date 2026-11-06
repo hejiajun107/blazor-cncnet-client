@@ -18,8 +18,8 @@
         }
 
         <div class="splash-brand">
-            <div class="splash-logo">CNC NET</div>
-            <div class="splash-sub">COMMAND &amp; CONQUER</div>
+            <div class="splash-logo">@Config.BrandTitle</div>
+            <div class="splash-sub">@Config.BrandSubtitle</div>
             @if (Config.ShowProgress)
             {
                 <div class="splash-bar" aria-hidden="true"><div class="splash-bar-fill"></div></div>
@@ -54,7 +54,9 @@
     private string VideoUrl => ContentServer.MapUrl(Config.SplashVideo);
     private string ImageUrl => ContentServer.MapUrl(Config.SplashImage);
 
-    private string Text => Config.SplashText;
+    private string Text => string.IsNullOrWhiteSpace(Config.SplashTextKey)
+        ? Config.SplashText
+        : Config.SplashText.L10N(Config.SplashTextKey);
 
     private static string T(string key, string fallback) => UiText.T(key, fallback);
 
