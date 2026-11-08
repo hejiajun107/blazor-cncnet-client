@@ -650,7 +650,6 @@
         Int("scrollRate", v => SettingsSvc.Ini.ScrollRate.Value = v);
         Int("doubleTapInterval", v => SettingsSvc.Ini.DoubleTapInterval.Value = v);
         Int("gameSpeed", v => SettingsSvc.Ini.GameSpeed.Value = v);
-        Int("difficulty", v => SettingsSvc.Ini.Difficulty.Value = v);
         Bool("autoTrimUnderscores", v => SettingsSvc.Ini.AutoRemoveUnderscoresFromName.Value = v);
 
         Bool("recordReplays", v => SettingsSvc.Ini.RecordReplays.Value = v);
@@ -904,18 +903,6 @@
                        value="@(GetInt("gameSpeed", SettingsSvc.Ini.GameSpeed.Value))"
                        @onchange="@(e => SetDraftInt("gameSpeed", e))" />
                 <span class="set-val">@GetInt("gameSpeed", SettingsSvc.Ini.GameSpeed.Value)</span>
-            </div>
-        </div>
-        <div class="set-row" data-setting="Options:Difficulty">
-            <div class="set-info"><span class="set-name">@Ui("Settings.Difficulty", "Game difficulty")</span></div>
-            <div class="set-ctl">
-                <select class="set-select" value="@(GetInt("difficulty", SettingsSvc.Ini.Difficulty.Value))"
-                        @onchange="@(e => SetDraftInt("difficulty", e))">
-                    <option value="1">@F("Settings.DifficultyLevel", "Difficulty {0}", 1)</option>
-                    <option value="2">@F("Settings.DifficultyLevel", "Difficulty {0}", 2)</option>
-                    <option value="3">@F("Settings.DifficultyLevel", "Difficulty {0}", 3)</option>
-                    <option value="4">@F("Settings.DifficultyLevel", "Difficulty {0}", 4)</option>
-                </select>
             </div>
         </div>
         <div class="set-row" data-setting="Options:AutoRemoveUnderscoresFromName">

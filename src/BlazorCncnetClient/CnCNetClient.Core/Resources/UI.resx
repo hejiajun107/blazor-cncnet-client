@@ -1111,12 +1111,6 @@ They interfere with the game/mod and must be removed before the client can start
   <data name="Client:UI:Settings.GameSpeed" xml:space="preserve">
     <value>Game speed</value>
   </data>
-  <data name="Client:UI:Settings.Difficulty" xml:space="preserve">
-    <value>Game difficulty</value>
-  </data>
-  <data name="Client:UI:Settings.DifficultyLevel" xml:space="preserve">
-    <value>Difficulty {0}</value>
-  </data>
   <data name="Client:UI:Settings.AutoTrimUnderscores" xml:space="preserve">
     <value>Auto trim underscores from nickname</value>
   </data>

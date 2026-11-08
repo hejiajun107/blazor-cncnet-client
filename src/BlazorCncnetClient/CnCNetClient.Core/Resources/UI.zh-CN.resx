@@ -1115,12 +1115,6 @@
   <data name="Client:UI:Settings.GameSpeed" xml:space="preserve">
     <value>游戏速度</value>
   </data>
-  <data name="Client:UI:Settings.Difficulty" xml:space="preserve">
-    <value>游戏难度</value>
-  </data>
-  <data name="Client:UI:Settings.DifficultyLevel" xml:space="preserve">
-    <value>难度 {0}</value>
-  </data>
   <data name="Client:UI:Settings.AutoTrimUnderscores" xml:space="preserve">
     <value>自动去除昵称下划线</value>
   </data>
