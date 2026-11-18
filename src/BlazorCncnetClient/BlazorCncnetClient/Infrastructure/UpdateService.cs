@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using CnCNetClient.Core;
 using CnCNetClient.Domain;
 using CnCNetClient.Integration.Lifecycle;
@@ -101,6 +103,12 @@ public sealed class UpdateService : IDisposable
         if (!_env.IsReady || _env.GamePath is null)
             return;
 
+        // 自更新会替换客户端自身的 exe/dll：SecondStageUpdater 在客户端退出后覆盖 Updater\ 下的文件，
+        // 完成后按 ClientDefinitions.ini [Settings] LauncherExe 启动安装根下的同名 exe。
+        // 本移植版启动器固定叫 Launcher.exe，模组 ini 常沿用上游旧名（如 WDLauncher.exe），
+        // 值对不上就会「更新完成但不再自动重启」，故先做一次契约对齐。
+        EnsureLauncherExeConfigured(_env.GamePath);
+
         Updater.Initialize(
             _env.GamePath,
             SafePath.CombineDirectoryPath(_env.GamePath, ProgramConstants.BASE_RESOURCE_PATH),
@@ -122,6 +130,95 @@ public sealed class UpdateService : IDisposable
 
         IsAvailable = true;
         RaiseStateChanged();
+    }
+
+    /// <summary>
+    /// 对齐自更新重启契约：SecondStageUpdater 替换完文件后读取
+    /// <c>Resources/ClientDefinitions.ini [Settings] LauncherExe</c>，启动安装根下的同名 exe。
+    /// 仅当该值指向的文件不存在、而本移植版的 <c>Launcher.exe</c> 存在时，才把这一行改写为
+    /// <c>LauncherExe=Launcher.exe</c>；改写按行进行并使用 Latin1（字节一一映射），
+    /// 不会破坏 ini 的注释与原始编码。其余情况一律不动。
+    /// </summary>
+    private static void EnsureLauncherExeConfigured(string gamePath)
+    {
+        try
+        {
+            string clientDefinitionsPath = SafePath.CombineFilePath(
+                gamePath, ProgramConstants.BASE_RESOURCE_PATH, ClientConfiguration.CLIENT_DEFS);
+
+            if (!File.Exists(clientDefinitionsPath))
+                return;
+
+            if (!File.Exists(SafePath.CombineFilePath(gamePath, ProgramConstants.LAUNCHER_EXECUTABLE_NAME)))
+                return;
+
+            string[] lines = File.ReadAllLines(clientDefinitionsPath, Encoding.Latin1);
+            bool inSettings = false;
+            int launcherLineIndex = -1;
+            string configured = string.Empty;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string trimmed = lines[i].Trim();
+
+                if (trimmed.StartsWith('[') && trimmed.EndsWith(']'))
+                {
+                    inSettings = trimmed.Equals("[Settings]", StringComparison.OrdinalIgnoreCase);
+                    continue;
+                }
+
+                if (!inSettings ||
+                    !trimmed.StartsWith("LauncherExe", StringComparison.OrdinalIgnoreCase) ||
+                    !trimmed.Contains('='))
+                {
+                    continue;
+                }
+
+                launcherLineIndex = i;
+
+                string value = trimmed[(trimmed.IndexOf('=') + 1)..];
+                int commentIndex = value.IndexOf(';');
+                if (commentIndex >= 0)
+                    value = value[..commentIndex];
+
+                configured = value.Trim();
+                break;
+            }
+
+            // 未配置（或配置为空）时不猜测；配置的文件存在时保持原样。
+            if (launcherLineIndex < 0 || string.IsNullOrWhiteSpace(configured))
+                return;
+
+            if (File.Exists(SafePath.CombineFilePath(gamePath, configured)))
+                return;
+
+            // SecondStageUpdater 还会先把 Resources/Launcher/<名字>-<架构><扩展名> 复制到安装根；
+            // 该文件存在说明模组自带可用的启动器，同样无需改写。
+            string architectureLauncher = SafePath.CombineFilePath(
+                gamePath,
+                ProgramConstants.BASE_RESOURCE_PATH,
+                "Launcher",
+                $"{Path.GetFileNameWithoutExtension(configured)}-" +
+                $"{System.Runtime.InteropServices.RuntimeInformation.OSArchitecture}" +
+                $"{Path.GetExtension(configured)}");
+
+            if (File.Exists(architectureLauncher))
+                return;
+
+            // 只替换等号后的值，保留原行的缩进与键名大小写。
+            int equalsIndex = lines[launcherLineIndex].IndexOf('=');
+            lines[launcherLineIndex] = lines[launcherLineIndex][..(equalsIndex + 1)] +
+                ProgramConstants.LAUNCHER_EXECUTABLE_NAME;
+
+            File.WriteAllLines(clientDefinitionsPath, lines, Encoding.Latin1);
+
+            Logger.Log($"ClientDefinitions.ini 的 LauncherExe={configured} 不存在，已改为 " +
+                $"{ProgramConstants.LAUNCHER_EXECUTABLE_NAME}，保证自更新后能自动重启。");
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("对齐 LauncherExe 失败（自更新后可能无法自动重启）：" + ex);
+        }
     }
 
     /// <summary>启动一次更新检查（幂等：检查/更新进行中时忽略）。</summary>

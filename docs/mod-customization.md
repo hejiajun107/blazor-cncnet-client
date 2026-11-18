@@ -205,6 +205,39 @@ WindowTitle=CNCNet 客户端
   未配置翻译时显示 ini 原文；两者都为空时回退内置 `CNCNet Client`。
 - 标题在启动时应用，切换语言需重启客户端才更新（与原版一致）。
 
+## 相关：翻译 stub 生成（给翻译者）
+
+与原版一致：在客户端用户设置 ini（通常是 `ClientSettings.ini`）的 `[Options]` 打开开关，
+客户端会在**退出时**把本次运行中查不到译文的键写入 `Client\Translation.ini`：
+
+```ini
+[Options]
+GenerateTranslationStub=true
+; 只输出缺失项（false/缺省时输出完整翻译表）
+GenerateOnlyNewValuesInTranslationStub=true
+```
+
+- 缺失键以注释形式输出（`; 键=英文默认值`）：翻译者保留该行、删掉行首 `; ` 并填入译文即可。
+- 生成位置与翻译表一致：安装根下 `Client\Translation.ini`（文件名取
+  `ClientDefinitions.ini` 的 `[Settings] TranslationIniName`）。
+- 与原版的差异：原版通过生成代码登记全部编译期字符串，本移植版没有该生成器，
+  stub 只包含**运行时实际查询过且缺失**的键——即真正缺失的那些，不会产生大量未使用条目。
+- 该开关只影响退出时的导出，不影响运行期加载。
+
+## 相关：自动更新与启动器约定
+
+自动更新可替换客户端自身的 `Launcher.exe` 与 `ClientApp\` 下的 exe/dll：
+文件先下载到 `Updater\`，客户端退出后由 `SecondStageUpdater` 覆盖，再按
+`ClientDefinitions.ini [Settings] LauncherExe` 启动安装根下的同名 exe。
+
+- 客户端退出前会真正持有互斥锁 `Global1cc9f8e7-9f69-4bbc-b045-e734204027a9`，
+  `SecondStageUpdater` 靠等待它确认文件已不再被占用。
+- 若 `LauncherExe` 指向的文件不存在（例如模组沿用了上游启动器名 `WDLauncher.exe`），
+  客户端会在更新系统初始化时把该行改写为 `LauncherExe=Launcher.exe`，避免"更新完成却不自动重启"；
+  该改写按行进行、保留 ini 其余内容与编码，只在本移植版启动器存在且配置名不可用时触发。
+- 模组也可继续使用上游机制：把架构专用启动器放在
+  `Resources\Launcher\<LauncherExe 去扩展名>-X64.exe`，`SecondStageUpdater` 会先复制它再启动。
+
 ## 完整示例
 
 ```ini

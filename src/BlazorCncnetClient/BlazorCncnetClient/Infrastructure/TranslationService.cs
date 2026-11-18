@@ -45,6 +45,58 @@ public sealed class TranslationService : ITranslationService
     /// <inheritdoc/>
     public event Action? LanguageChanged;
 
+    /// <summary>stub 生成只注册一次（ProcessExit 事件可能因多次调用而重复订阅）。</summary>
+    private static bool _translationStubEnabled;
+
+    /// <summary>
+    /// 翻译 stub 生成（镜像原版 PreStartup）：settings INI <c>[Options] GenerateTranslationStub</c>
+    /// 为 true 时，在进程退出前把本次运行中查不到译文的键写入
+    /// <c>Client\Translation.ini</c>（文件名取 <see cref="ClientConfiguration.TranslationIniName"/>）。
+    /// 缺失键以 <c>; 键=默认值</c> 注释形式输出，翻译者取消注释并填入译文即可；
+    /// <c>GenerateOnlyNewValuesInTranslationStub</c> 为 true 时只输出缺失项，否则输出整张表。
+    /// </summary>
+    /// <remarks>
+    /// 与原版的差异：原版还会通过生成代码（TranslationNotifier）登记全部编译期字符串，
+    /// 本移植版没有该生成器，stub 只包含运行时实际查询过的键（即真正缺失的那些）。
+    /// </remarks>
+    public static void EnableStubGenerationIfConfigured()
+    {
+        if (_translationStubEnabled)
+            return;
+
+        if (!UserINISettings.Instance.GenerateTranslationStub.Value)
+            return;
+
+        _translationStubEnabled = true;
+
+        string stubPath = SafePath.CombineFilePath(
+            ProgramConstants.ClientUserFilesPath,
+            ClientConfiguration.Instance.TranslationIniName);
+
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            try
+            {
+                IniFile ini = Translation.Instance.DumpIni(
+                    UserINISettings.Instance.GenerateOnlyNewValuesInTranslationStub.Value);
+
+                string? directory = Path.GetDirectoryName(stubPath);
+                if (!string.IsNullOrEmpty(directory))
+                    Directory.CreateDirectory(directory);
+
+                ini.WriteIniFile(stubPath);
+
+                Logger.Log("翻译 stub 已写入：" + stubPath);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("写入翻译 stub 失败：" + ex);
+            }
+        };
+
+        Logger.Log("已启用翻译 stub 生成，退出时写入：" + stubPath);
+    }
+
     /// <summary>启动时按已持久化语言（settings INI <c>[Options] Translation</c>）应用 UI 文化与游戏翻译。</summary>
     private void Initialize()
     {

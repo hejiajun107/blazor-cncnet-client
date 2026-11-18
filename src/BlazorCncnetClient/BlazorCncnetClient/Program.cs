@@ -300,9 +300,30 @@ namespace BlazorCncnetClient
             appBuilder.RootComponents.Add<App>("app");
 
             // M4.3 D6.2：Global 互斥锁 —— SecondStageUpdater 靠等待它获知主程序已退出，
-            // 随后才替换更新文件并重启客户端。GUID 与原版 DXMainClient/Program.cs 保持一致。
-            // 持有引用到 Run() 返回，进程存活期间不释放（释放即视为退出）。
-            var clientMutex = new System.Threading.Mutex(false, "Global{1CC9F8E7-9F69-4BBC-B045-E734204027A9}");
+            // 随后才替换更新文件并重启客户端。名称必须与原版 DXMainClient/Program.cs 完全一致
+            // （"Global" + Guid.ToString()，无花括号、小写），否则第二个进程等的是另一个对象，
+            // 会在客户端仍占用 ClientApp\*.exe/*.dll 时就开始覆盖文件。
+            // 另外必须真正 WaitOne 持有它：仅 new Mutex 不持有等于没有等待。
+            string clientMutexId = FormattableString.Invariant($"Global{Guid.Parse("1CC9F8E7-9F69-4BBC-B045-E734204027A9")}");
+            using var clientMutex = new System.Threading.Mutex(false, clientMutexId, out _);
+            bool hasMutexHandle;
+
+            try
+            {
+                // 与上游一致：单实例 + 8 秒等待；SecondStageUpdater 侧等待上限 30 秒。
+                hasMutexHandle = clientMutex.WaitOne(8000, false);
+            }
+            catch (AbandonedMutexException)
+            {
+                // 上一个实例未释放（如崩溃）：视为已获取。
+                hasMutexHandle = true;
+            }
+
+            if (!hasMutexHandle)
+            {
+                Logger.Log("另一个客户端实例正在运行，退出本次启动。");
+                return;
+            }
 
 
             appBuilder.WithInfiniFrameWindowBuilder(builder => {
@@ -360,6 +381,11 @@ namespace BlazorCncnetClient
             {
                 Log.Warning(ex, "启动时预加载游戏翻译失败，游戏选项/内容将显示默认语言");
             }
+
+            // 翻译 stub 生成（原版 PreStartup 同款）：ClientSettings.ini [Options] GenerateTranslationStub=true 时，
+            // 进程退出前把本次运行查不到的翻译键写入 Client\Translation.ini（缺失键以 "; 键" 注释形式输出），
+            // 便于翻译者补齐；GenerateOnlyNewValuesInTranslationStub=true 时只输出缺失项。
+            TranslationService.EnableStubGenerationIfConfigured();
             }
             catch (Exception ex)
             {
