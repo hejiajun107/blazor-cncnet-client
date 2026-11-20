@@ -168,12 +168,12 @@
                                 <div class="load-meta">@F("Replays.Length", "Length {0} at {1} fps", FormatDuration(rp.Duration), rp.FramesPerSecond)</div>
                                 @if (!rp.IsComplete)
                                 {
-                                    <div class="load-tag">@T("Replays.Incomplete", "Recording was not closed cleanly")</div>
+                                    <div class="load-tag warn">@T("Replays.Incomplete", "Recording was not closed cleanly")</div>
                                 }
                             }
                             else
                             {
-                                <div class="load-tag">@F("Replays.UnsupportedVersion", "Unsupported replay format version {0}", rp.FormatVersion)</div>
+                                <div class="load-tag warn">@F("Replays.UnsupportedVersion", "Unsupported replay format version {0}", rp.FormatVersion)</div>
                             }
                             @if (!string.IsNullOrWhiteSpace(rp.GamePackageVersion))
                             {

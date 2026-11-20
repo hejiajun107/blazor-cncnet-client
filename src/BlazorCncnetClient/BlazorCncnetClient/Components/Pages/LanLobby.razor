@@ -163,7 +163,7 @@
                 <div class="gd-row"><span>@T("LanLobby.Address", "Address")</span><b>@_selectedGame.EndPoint</b></div>
                 @if (_selectedGame.Incompatible)
                 {
-                    <div class="gd-row"><span>@T("GameLobby.Version", "Version")</span><b class="gd-pass">@F("LanLobby.VersionMismatch", "Version mismatch {0}", _selectedGame.GameVersion)</b></div>
+                    <div class="gd-row"><span>@T("GameLobby.Version", "Version")</span><b class="gd-pass warn">@F("LanLobby.VersionMismatch", "Version mismatch {0}", _selectedGame.GameVersion)</b></div>
                 }
             </div>
             <div class="gd-actions">
