@@ -31,6 +31,11 @@ namespace CnCNetClient.Core
         private const bool DEFAULT_HIDE_INCOMPATIBLE_GAMES = false;
         private const int DEFAULT_MAX_PLAYER_COUNT = 8;
 
+        // 游戏侧分辨率默认值：首次启动（游戏 INI 无分辨率键）时按客户端窗口下限 1280x720 建屏，
+        // 而非游戏的 1024x768，避免「首次进入比客户端窗口小、设置里选过才变大」。
+        private const int DEFAULT_INGAME_WIDTH = 1280;
+        private const int DEFAULT_INGAME_HEIGHT = 720;
+
         public static UserINISettings Instance
         {
             get
@@ -170,13 +175,13 @@ namespace CnCNetClient.Core
                 gameIni,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? OPTIONS : VIDEO,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Width" : "ScreenWidth",
-                1024);
+                DEFAULT_INGAME_WIDTH);
 
             IngameScreenHeight = new IntSetting(
                 gameIni,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? OPTIONS : VIDEO,
                 ClientConfiguration.Instance.ClientGameType == ClientType.RA ? "Height" : "ScreenHeight",
-                768);
+                DEFAULT_INGAME_HEIGHT);
 
             ClientTheme = new StringSetting(iniFile, MULTIPLAYER, "Theme", ClientConfiguration.Instance.GetThemeInfoFromIndex(0).Name);
             // M4.2 移植适配：默认 UI 语言中文优先（zh-CN），非中文系统按原逻辑跟随系统翻译目录
@@ -639,7 +644,7 @@ namespace CnCNetClient.Core
                 string widthKey = IngameScreenWidth.IniKeyName;
                 if (gameIni.GetIntValue(widthSection, widthKey, 0) <= 0)
                 {
-                    gameIni.SetIntValue(widthSection, widthKey, 1024);
+                    gameIni.SetIntValue(widthSection, widthKey, DEFAULT_INGAME_WIDTH);
                     changed = true;
                 }
 
@@ -647,7 +652,7 @@ namespace CnCNetClient.Core
                 string heightKey = IngameScreenHeight.IniKeyName;
                 if (gameIni.GetIntValue(heightSection, heightKey, 0) <= 0)
                 {
-                    gameIni.SetIntValue(heightSection, heightKey, 768);
+                    gameIni.SetIntValue(heightSection, heightKey, DEFAULT_INGAME_HEIGHT);
                     changed = true;
                 }
 

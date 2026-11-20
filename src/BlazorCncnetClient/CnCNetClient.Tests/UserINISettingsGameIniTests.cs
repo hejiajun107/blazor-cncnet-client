@@ -115,8 +115,8 @@ public class UserINISettingsGameIniTests : IDisposable
         UserINISettings.Instance.SaveSettings();
 
         var gameIni = new IniFile(_gameIniPath);
-        Assert.Equal(1024, gameIni.GetIntValue(UserINISettings.VIDEO, "ScreenWidth", 0));
-        Assert.Equal(768, gameIni.GetIntValue(UserINISettings.VIDEO, "ScreenHeight", 0));
+        Assert.Equal(1280, gameIni.GetIntValue(UserINISettings.VIDEO, "ScreenWidth", 0));
+        Assert.Equal(720, gameIni.GetIntValue(UserINISettings.VIDEO, "ScreenHeight", 0));
         Assert.Equal("no", gameIni.GetStringValue("Intro", "Play", string.Empty));
     }
 

@@ -336,8 +336,12 @@ namespace BlazorCncnetClient
 
                 // M 设置对齐旧客户端：客户端窗口分辨率读 ClientSettings.ini [Video] ClientResolutionX/Y
                 // （原版 GameClass.SetGraphicsMode 语义），下限保持 1280x720（窗口最小尺寸）。
+                // SetSize/SetMinSize 是窗口外框尺寸：按客户区（页面视口）反推外框，
+                // 否则 1280x720 的实际视口只有 1264x681，高 DPI 缩放后还会更小。
                 var clientResX = Math.Max(1280, (int)UserINISettings.Instance.ClientResolutionX);
                 var clientResY = Math.Max(720, (int)UserINISettings.Instance.ClientResolutionY);
+                var (windowWidth, windowHeight) = WindowSizing.FromClientSize(clientResX, clientResY);
+                var (minWindowWidth, minWindowHeight) = WindowSizing.FromClientSize(1280, 720);
                 builder
                     // .SetTransparent(true)
                     // .SetChromeless(true)
@@ -350,8 +354,8 @@ namespace BlazorCncnetClient
                     .SetTitle(windowTitle)
                     // 用 int 重载，避免宿主层引入 System.Drawing
                     .SetLocation(100, 100)
-                    .SetSize(clientResX, clientResY)
-                    .SetMinSize(1280, 720) // 限制窗口最小尺寸（适配 1280*720 / 1920*1080）
+                    .SetSize(windowWidth, windowHeight)
+                    .SetMinSize(minWindowWidth, minWindowHeight) // 最小客户区 1280x720（适配 1280*720 / 1920*1080）
                     .EnableDevTools(true)
                     // 解除 WebView2/Chromium 的自动播放限制（autoplay-policy）：
                     // 主菜单音乐与界面悬停音效无需等待用户手势即可发声。
