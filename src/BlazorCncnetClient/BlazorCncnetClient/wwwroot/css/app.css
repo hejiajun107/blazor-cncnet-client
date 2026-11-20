@@ -147,6 +147,14 @@ a,.btn-link{color:var(--cyan)}
 .hud .sys-right{justify-self:end}
 .hud .hud-player{display:flex;align-items:center;gap:6px;min-width:0}
 .hud .hud-player b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 帧率读数预留四位数字的宽度，避免每秒更新时挤动顶栏。 */
+.hud .hud-fps{white-space:nowrap}
+.hud .hud-fps b{
+  display:inline-block;
+  inline-size:calc(4ch + 8px);
+  text-align:end;
+  font-variant-numeric:tabular-nums;
+}
 .hud .hud-clock{white-space:nowrap}
 .hud b{color:var(--cyan);font-weight:700}
 .hud .live{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);animation:blink 1.8s infinite}
