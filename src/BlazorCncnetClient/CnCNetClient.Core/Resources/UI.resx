@@ -1480,6 +1480,12 @@ Continue launching this mission?
   <data name="Client:UI:Index.NotFound" xml:space="preserve">
     <value>Not found</value>
   </data>
+  <data name="Client:UI:Index.GameCollectionMissingTitle" xml:space="preserve">
+    <value>Game collection entry missing</value>
+  </data>
+  <data name="Client:UI:Index.GameCollectionMissing" xml:space="preserve">
+    <value>LocalGame={0} is not defined in the game collection. Add a [CustomGames] entry with InternalName={0} (plus UIName / ChatChannel / GameBroadcastChannel) to Resources\GameCollectionConfig.ini, or set [Settings] LocalGame in ClientDefinitions.ini to a built-in game ID. Running with the fallback channel {1} for now.</value>
+  </data>
   <data name="Client:UI:Index.NotInitialized" xml:space="preserve">
     <value>Not initialized</value>
   </data>

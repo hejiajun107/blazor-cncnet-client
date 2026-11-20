@@ -15,6 +15,13 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
     {
         public List<CnCNetGame> GameList { get; private set; }
 
+        /// <summary>
+        /// 非 null 表示 <c>ClientDefinitions.ini [Settings] LocalGame</c> 未能在游戏集合中找到，
+        /// 已用兜底条目（<c>#cncnet-{id}</c> 频道）继续运行；值为未配置的 LocalGame。
+        /// 启动页据此提示模组作者补 <c>GameCollectionConfig.ini [CustomGames]</c>。
+        /// </summary>
+        public string? LocalGameFallbackId { get; private set; }
+
         public GameCollection()
         {
             Initialize();
@@ -168,10 +175,39 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
             GameList.AddRange(GetCustomGames(defaultGames.Concat<CnCNetGame>(otherGames).ToList()));
             GameList.AddRange(otherGames);
 
+            // 上游在此直接抛 ClientConfigurationException：配置缺失时整个客户端不可用，
+            // 而且异常只出现在 Blazor 控制台（用户看不到、日志也不一定有）。
+            // 这里改为「记录 + 兜底条目」：LocalGame 未在集合中时按 #{id} 频道补一条，
+            // 让客户端其余功能可用，并把问题暴露到启动页与客户端日志，便于排查。
             if (GetGameIndexFromInternalName(ClientConfiguration.Instance.LocalGame) == -1)
             {
-                throw new ClientConfigurationException("Could not find a game in the game collection matching LocalGame value of " +
-                    ClientConfiguration.Instance.LocalGame + ".");
+                string localGameId = ClientConfiguration.Instance.LocalGame;
+
+                LocalGameFallbackId = localGameId;
+
+                GameList.Add(new CustomCnCNetGame(localGameId + "icon.png")
+                {
+                    InternalName = localGameId,
+                    UIName = localGameId.ToUpperInvariant(),
+                    ChatChannel = "#cncnet-" + localGameId,
+                    GameBroadcastChannel = "#cncnet-" + localGameId + "-games",
+                    ClientExecutableName = string.Empty,
+                    RegistryInstallPath = "HKCU\\Software\\" + localGameId.ToUpperInvariant()
+                });
+
+                try
+                {
+                    CnCNetClient.Tools.Logger.Log(
+                        $"GameCollection：LocalGame={localGameId} 未在游戏集合中定义。" +
+                        $"请在 Resources/GameCollectionConfig.ini 的 [CustomGames] 中新增 InternalName={localGameId} 的条目" +
+                        $"（含 UIName/ChatChannel/GameBroadcastChannel），" +
+                        $"或把 Resources/ClientDefinitions.ini [Settings] LocalGame 改为内置游戏 ID。" +
+                        $"当前使用兜底条目：InternalName={localGameId}，频道 #cncnet-{localGameId}。");
+                }
+                catch
+                {
+                    // 日志失败不影响启动。
+                }
             }
 
             // Fire-and-forget background preloading of images.

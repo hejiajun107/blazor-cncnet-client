@@ -5,6 +5,7 @@
 @inject ILogger<Index> Logger
 @inject NavigationManager Nav
 @inject ITranslationService TranslationSvc
+@inject IServiceProvider Services
 
 <div class="env-check">
     <h1>@T("Index.Title", "CNCNet Client")</h1>
@@ -16,6 +17,17 @@
     <div class="env-row"><span>@T("Index.ClientConfig", "Client configuration")</span><code>@(Env.ConfigurationReady ? T("Index.Initialized", "Initialized") : T("Index.NotInitialized", "Not initialized"))</code></div>
 
     <div class="msg @(Env.IsReady ? "ok" : "warn")">@Env.Message</div>
+
+    @* LocalGame 未在 Resources/GameCollectionConfig.ini 中定义：已兜底继续运行，但必须提示模组作者补配置 *@
+    @if (!string.IsNullOrEmpty(_localGameFallbackId))
+    {
+        <div class="msg warn">
+            <strong>@T("Index.GameCollectionMissingTitle", "Game collection entry missing")</strong><br />
+            @F("Index.GameCollectionMissing",
+                "LocalGame={0} is not defined in the game collection. Add a [CustomGames] entry with InternalName={0} (UIName / ChatChannel / GameBroadcastChannel) to Resources\\GameCollectionConfig.ini, or set [Settings] LocalGame in ClientDefinitions.ini to a built-in game ID. Running with the fallback channel {1} for now.",
+                _localGameFallbackId, "#cncnet-" + _localGameFallbackId)
+        </div>
+    }
 
     @* 游戏运行文件缺失引导（用户确认清单：gamemd.exe/核心 mix/Ares 链等）。
         已定位游戏目录但缺必要文件时，引导选择完整 YR 目录并提取，完成后复检。 *@
@@ -66,6 +78,9 @@
 
     private bool _busy;
 
+    /// <summary>LocalGame 未配置时 GameCollection 使用的兜底 ID（null 表示配置正常）。</summary>
+    private string? _localGameFallbackId;
+
     protected override void OnInitialized()
     {
         Logger.LogInformation("启动环境检测开始");
@@ -74,6 +89,22 @@
 
         // 游戏运行文件检测（启动时即提示缺失，引导提取）。
         GameFiles.Detect();
+
+        // 环境就绪后再解析 GameCollection（其构造依赖 ClientConfiguration）。
+        // 未配置的 LocalGame 会被兜底而不是抛异常，这里把问题显示在启动页并写入日志。
+        if (Env.IsReady)
+        {
+            var games = (CnCNetClient.Domain.Multiplayer.CnCNet.GameCollection?)Services.GetService(
+                typeof(CnCNetClient.Domain.Multiplayer.CnCNet.GameCollection));
+            _localGameFallbackId = games?.LocalGameFallbackId;
+
+            if (!string.IsNullOrEmpty(_localGameFallbackId))
+            {
+                Logger.LogWarning(
+                    "LocalGame={LocalGame} 未在 Resources/GameCollectionConfig.ini 中定义，已使用兜底频道 #{Channel} 继续运行",
+                    _localGameFallbackId, "cncnet-" + _localGameFallbackId);
+            }
+        }
 
         TranslationSvc.LanguageChanged += OnLanguageChanged;
     }

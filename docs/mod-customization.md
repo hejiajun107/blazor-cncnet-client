@@ -205,6 +205,28 @@ WindowTitle=CNCNet 客户端
   未配置翻译时显示 ini 原文；两者都为空时回退内置 `CNCNet Client`。
 - 标题在启动时应用，切换语言需重启客户端才更新（与原版一致）。
 
+## 相关：游戏集合（GameCollection）与 LocalGame
+
+`Resources\ClientDefinitions.ini` 的 `[Settings] LocalGame` 必须能在游戏集合中找到同名条目。
+内置 ID 为 `dta` / `ti` / `mo` / `rr` / `re` / `cncr` / `td` / `ra` / `d2k` / `ts` / `yr` / `ss` / `cncnet`。自定义模组（例如 `LocalGame=zb`）
+**必须自己提供** `Resources\GameCollectionConfig.ini`：
+
+```ini
+[CustomGames]
+0=ZB
+
+[ZB]
+InternalName=zb
+UIName=Zombie Mod
+ChatChannel=#cncnet-zb
+GameBroadcastChannel=#cncnet-zb-games
+; 可选：IconFilename=zbicon.png / ClientExecutableName= / RegistryInstallPath=
+```
+
+上游对缺失的 LocalGame 直接抛 `ClientConfigurationException`（表现为客户端卡死/白屏，异常只在浏览器控制台）。
+本移植版不抛异常：写入客户端日志 + 用 `#cncnet-<id>` 兜底条目继续运行，并在启动页给出醒目提示；
+但**不会**自动改写 ini 或猜测真实频道——频道等参数必须由模组提供，否则可能进入错误频道。
+
 ## 相关：翻译 stub 生成（给翻译者）
 
 与原版一致：在客户端用户设置 ini（通常是 `ClientSettings.ini`）的 `[Options]` 打开开关，

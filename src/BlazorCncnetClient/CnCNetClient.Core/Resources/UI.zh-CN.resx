@@ -1484,6 +1484,12 @@
   <data name="Client:UI:Index.NotFound" xml:space="preserve">
     <value>未找到</value>
   </data>
+  <data name="Client:UI:Index.GameCollectionMissingTitle" xml:space="preserve">
+    <value>游戏集合缺少对应条目</value>
+  </data>
+  <data name="Client:UI:Index.GameCollectionMissing" xml:space="preserve">
+    <value>LocalGame={0} 未在游戏集合中定义。请在 Resources\GameCollectionConfig.ini 的 [CustomGames] 中新增 InternalName={0} 的条目（并配置 UIName / ChatChannel / GameBroadcastChannel），或把 ClientDefinitions.ini 的 [Settings] LocalGame 改为内置游戏 ID。当前使用兜底频道 {1} 继续运行。</value>
+  </data>
   <data name="Client:UI:Index.NotInitialized" xml:space="preserve">
     <value>未初始化</value>
   </data>
