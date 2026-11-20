@@ -76,12 +76,41 @@ public sealed class EnvironmentCheck
         {
             _ = ClientConfiguration.Instance;
             ConfigurationReady = true;
+            ApplyGameVersion();
             Message = string.Format(UiText.T("Env.Ready", "Game resources ready: {0}"), GamePath);
         }
         catch (Exception ex)
         {
             ConfigurationReady = false;
             Message = string.Format(UiText.T("Env.ConfigInitFailed", "Failed to initialize the client configuration: {0}"), ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 与上游 LoadingScreen.Finish 一致：GAME_VERSION 取自本地 version 文件 [DTA] Version，
+    /// ModMode 时为 "N/A"。闪屏 BUILD 行、大厅版本串、存档与 LAN 兼容判断都读这个静态值，
+    /// 必须在首帧渲染（闪屏）之前就绪，不能等更新检查。
+    /// </summary>
+    private void ApplyGameVersion()
+    {
+        try
+        {
+            if (ClientConfiguration.Instance.ModMode)
+            {
+                ProgramConstants.GAME_VERSION = "N/A";
+                return;
+            }
+
+            string versionFile = SafePath.CombineFilePath(GamePath!, CnCNetClient.Updater.Updater.VERSION_FILE);
+            ProgramConstants.GAME_VERSION = File.Exists(versionFile)
+                ? new IniFile(versionFile).GetStringValue("DTA", "Version", "N/A")
+                : "N/A";
+        }
+        catch (Exception ex)
+        {
+            // 版本号只用于展示与兼容串，读失败不应影响环境检测结果。
+            ProgramConstants.GAME_VERSION = "N/A";
+            Logger.Log("读取游戏版本失败：" + ex);
         }
     }
 }

@@ -31,9 +31,9 @@
             {
                 <span class="splash-text">@Text</span>
             }
-            @if (Config.ShowVersion)
+            @if (Config.ShowVersion && VersionText.Length > 0)
             {
-                <span class="splash-ver">BUILD @ProgramConstants.GAME_VERSION</span>
+                <span class="splash-ver">BUILD @VersionText</span>
             }
         </div>
     </div>
@@ -57,6 +57,22 @@
     private string Text => string.IsNullOrWhiteSpace(Config.SplashTextKey)
         ? Config.SplashText
         : Config.SplashText.L10N(Config.SplashTextKey);
+
+    /// <summary>
+    /// 版本号取自本地 version 文件（GamePath\version 的 [DTA] Version，见 EnvironmentCheck）。
+    /// 未安装更新清单（无 version 文件）或 ModMode 时为 N/A，此时不显示 BUILD 行，
+    /// 避免出现 "BUILD Undefined" 之类的占位文字。
+    /// </summary>
+    private static string VersionText
+    {
+        get
+        {
+            string version = ProgramConstants.GAME_VERSION;
+            return string.IsNullOrWhiteSpace(version) || version is "Undefined" or "N/A"
+                ? string.Empty
+                : version;
+        }
+    }
 
     private static string T(string key, string fallback) => UiText.T(key, fallback);
 

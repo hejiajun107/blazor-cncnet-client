@@ -22,7 +22,7 @@ SplashImage=Resources/splash.png   ; 背景图（相对游戏根目录，默认�
 SplashVideo=Resources/splash.mp4   ; 背景视频（可选；存在时优先于图片）
 SplashDuration=2.0         ; 展示秒数；<=0 = 初始化完成即关闭（最短约 0.5s）
 ShowProgress=true          ; 是否显示初始化进度条（动画式，无真实百分比）
-ShowVersion=true           ; 是否显示版本号（BUILD xxx）
+ShowVersion=true           ; 是否显示版本号（BUILD xxx；取 version 文件 [DTA] Version，取不到则整行隐藏）
 SplashText=                ; 底部提示文案（TextKey 未命中时的兜底文本）
 SplashTextKey=             ; 底部文案翻译键（Translation.ini [Values]，如 INI:LoadingScreen:SplashText）
 BrandTitle=CNC NET         ; 品牌主标题
