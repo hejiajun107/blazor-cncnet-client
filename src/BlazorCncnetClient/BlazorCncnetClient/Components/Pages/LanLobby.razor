@@ -21,7 +21,7 @@
         </div>
         <div class="lt-mid">
             <span class="lt-title">@T("LanLobby.Title", "LAN lobby")</span>
-            <span class="lt-en">LAN LOBBY · @(LanSvc.LocalGame.Length > 0 ? LanSvc.LocalGame : "—")</span>
+            <span class="lt-en">@(LanSvc.LocalGame.Length > 0 ? LanSvc.LocalGame : "—")</span>
         </div>
         <div class="lt-right">
             <span class="lt-player">@ProgramConstants.PLAYERNAME</span>

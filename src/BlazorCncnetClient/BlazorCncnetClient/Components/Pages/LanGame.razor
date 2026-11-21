@@ -33,7 +33,7 @@ else
     <div class="groom page-anim">
         <header class="groom-top item-in">
             <div class="gt-left">
-                <span class="gt-badge @(Room.IsHost ? "host" : "")">@(Room.IsHost ? T("Lobby.Host", "Host") : T("Lobby.Join", "Join"))<span class="en">@(Room.IsHost ? "HOST" : "JOIN")</span></span>
+                <span class="gt-badge @(Room.IsHost ? "host" : "")">@(Room.IsHost ? T("Lobby.Host", "Host") : T("Lobby.Join", "Join"))</span>
                 <div class="gt-tbox">
                     <span class="gt-title">@Room.RoomName</span>
                     <span class="gt-en">@(Room.HostName.Length > 0 ? F("LanGame.HostName", "Host {0}", Room.HostName) : "—") · LAN · TCP @(ProgramConstants.LAN_GAME_LOBBY_PORT)</span>
@@ -44,7 +44,7 @@ else
                 @if (Room.IsHost)
                 {
                     <!-- 房间设置改为弹窗：锁定等房主专属项不再混在「选项」面板里 -->
-                    <button type="button" class="mb-btn" @onclick="OpenRoomSettings">@T("GameLobby.RoomSettings", "Room settings")<span class="en">SETUP</span></button>
+                    <button type="button" class="mb-btn" @onclick="OpenRoomSettings">@T("GameLobby.RoomSettings", "Room settings")</button>
                 }
                 <button class="mb-btn danger" @onclick="OnLeave">@T("GameLobby.LeaveRoom", "Leave room")</button>
             </div>
@@ -70,11 +70,11 @@ else
                     <div class="gl-body">
                         <!-- 与遭遇战页统一：PLAYER / SIDE / COLOR / START / TEAM 五列表格，自己的行可改 -->
                         <div class="gl-tr gl-tr-head">
-                            <span class="gl-tc-name">@T("Lobby.Player", "Player") <em>PLAYER</em></span>
-                            <span>@T("Skirmish.Side", "Side") <em>SIDE</em></span>
-                            <span>@T("Skirmish.Color", "Color") <em>COLOR</em></span>
-                            <span>@T("Skirmish.Start", "Start") <em>START</em></span>
-                            <span>@T("Skirmish.Team", "Team") <em>TEAM</em></span>
+                            <span class="gl-tc-name">@T("Lobby.Player", "Player")</span>
+                            <span>@T("Skirmish.Side", "Side")</span>
+                            <span>@T("Skirmish.Color", "Color")</span>
+                            <span>@T("Skirmish.Start", "Start")</span>
+                            <span>@T("Skirmish.Team", "Team")</span>
                         </div>
                         @for (int i = 0; i < Room.MaxPlayers; i++)
                         {
@@ -93,7 +93,7 @@ else
                                         <span class="nm">@slotPlayer.Name</span>
                                         @if (i == 0)
                                         {
-                                            <em class="slot-host">HOST</em>
+                                            <em class="slot-host">@T("Lobby.Host", "Host")</em>
                                         }
                                         <span class="slot-ready @(slotPlayer.Ready ? "on" : "")">@(slotPlayer.Ready ? "READY" : "…")</span>
                                     }
@@ -137,7 +137,7 @@ else
                          不再挤在「地图与规则」里把预览、设置和选项一起顶出视野。 -->
                     <section class="gl-panel gl-maplist item-in" style="animation-delay:80ms">
                         <header class="gl-ph">
-                            <span>@T("Skirmish.Maps", "Maps") <em>MAPS</em></span>
+                            <span>@T("Skirmish.Maps", "Maps")</span>
                         </header>
                         <div class="gl-body">
                             <!-- 游戏模式选择（原版 cmbGameMode：切换模式过滤地图列表） -->
@@ -187,7 +187,7 @@ else
                 <!-- 地图预览独占下方整行（跨中/右两列），与遭遇战页一致 -->
                 <section class="gl-panel gl-mapview item-in" style="animation-delay:100ms">
                     <header class="gl-ph">
-                        <span>@T("Lobby.Map", "Map") <em>MAP</em></span>
+                        <span>@T("Lobby.Map", "Map")</span>
                     </header>
                     <div class="gl-body">
                         <div class="cfg-map">
@@ -244,7 +244,7 @@ else
 
                 <section class="gl-panel gl-options gl-config item-in" style="animation-delay:150ms">
                     <header class="gl-ph">
-                        <span>@T("Skirmish.GameOptions", "Game options") <em>GAME OPTIONS</em></span>
+                        <span>@T("Skirmish.GameOptions", "Game options")</span>
                     </header>
                     <div class="gl-body">
 
@@ -278,12 +278,12 @@ else
 
                     <div class="cfg-actions">
                         <button class="mb-btn @(Self!.Ready ? "primary" : "") ready-btn" @onclick="OnToggleReady">
-                            @(Self!.Ready ? T("GameLobby.Ready", "Ready") : T("GameLobby.SetReady", "Set ready"))<span class="en">READY</span>
+                            @(Self!.Ready ? T("GameLobby.Ready", "Ready") : T("GameLobby.SetReady", "Set ready"))
                         </button>
                         @if (Room.IsHost)
                         {
                             <button class="mb-btn primary start-btn" disabled="@(Room.SelectedMap is null || !Room.Locked)" @onclick="OnStartGame">
-                                @T("Skirmish.StartGame", "Start game")<span class="en">START</span>
+                                @T("Skirmish.StartGame", "Start game")
                             </button>
                         }
                     </div>
@@ -335,7 +335,6 @@ else
             <div class="cr-panel roomset-panel pop-in">
                 <div class="cr-head">
                     <span>@T("GameLobby.RoomSettings", "Room settings")</span>
-                    <span class="cr-en">ROOM SETTINGS</span>
                     <button type="button" class="gop-close" @onclick="CloseRoomSettings" title="@T("Common.Close", "Close")">✕</button>
                 </div>
                 <div class="roomset-body">
@@ -348,7 +347,7 @@ else
                 </div>
                 <div class="cr-actions">
                     <button type="button" class="mb-btn primary" @onclick="CloseRoomSettings">
-                        @T("Common.Close", "Close")<span class="en">CLOSE</span>
+                        @T("Common.Close", "Close")
                     </button>
                 </div>
             </div>

@@ -14,15 +14,14 @@
     <div class="cr-panel gop-panel pop-in">
         <div class="cr-head">
             <span>@(_isLoad ? T("Preset.LoadTitle", "Load preset") : T("Preset.SaveTitle", "Save preset"))</span>
-            <span class="cr-en">GAME OPTION PRESET</span>
             <button type="button" class="gop-close" @onclick="OnClose" title="@T("Common.Close", "Close")">✕</button>
         </div>
         <div class="gop-mode">
             <button type="button" class="mb-btn @(_isLoad ? "primary" : "")" @onclick="() => SetMode(true)">
-                @T("Preset.Load", "Load")<span class="en">LOAD</span>
+                @T("Preset.Load", "Load")
             </button>
             <button type="button" class="mb-btn @(!_isLoad ? "primary" : "")" @onclick="() => SetMode(false)">
-                @T("Preset.Save", "Save")<span class="en">SAVE</span>
+                @T("Preset.Save", "Save")
             </button>
         </div>
         <div class="cr-field">
@@ -45,13 +44,13 @@
         }
         <div class="cr-actions">
             <button type="button" class="mb-btn primary" disabled="@(!CanAct)" @onclick="OnAct">
-                @(_isLoad ? T("Preset.Load", "Load") : T("Preset.Save", "Save"))<span class="en">@(_isLoad ? "LOAD" : "SAVE")</span>
+                @(_isLoad ? T("Preset.Load", "Load") : T("Preset.Save", "Save"))
             </button>
             <button type="button" class="mb-btn danger" disabled="@(!CanDelete)" @onclick="OnDelete">
-                @T("Preset.Delete", "Delete")<span class="en">DELETE</span>
+                @T("Preset.Delete", "Delete")
             </button>
             <button type="button" class="mb-btn" @onclick="OnClose">
-                @T("Common.Cancel", "Cancel")<span class="en">CANCEL</span>
+                @T("Common.Cancel", "Cancel")
             </button>
         </div>
     </div>

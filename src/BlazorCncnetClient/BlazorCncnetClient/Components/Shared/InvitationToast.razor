@@ -15,15 +15,14 @@
     <div class="inv-toast pop-in" role="alertdialog" aria-label="@T("Invite.Title", "Game invitation")">
         <div class="inv-head">
             <span>@T("Invite.Title", "Game invitation")</span>
-            <span class="en">GAME INVITATION</span>
         </div>
         <div class="inv-body">
             <span class="inv-sender">@_invitation.Sender</span>
             <span class="inv-text">@F("Invite.Body", "invites you to join \"{0}\". Accept?", _invitation.GameName)</span>
         </div>
         <div class="inv-actions">
-            <button type="button" class="mb-btn primary" @onclick="Accept">@T("Invite.Accept", "Accept")<span class="en">YES</span></button>
-            <button type="button" class="mb-btn" @onclick="Decline">@T("Invite.Decline", "Decline")<span class="en">NO</span></button>
+            <button type="button" class="mb-btn primary" @onclick="Accept">@T("Invite.Accept", "Accept")</button>
+            <button type="button" class="mb-btn" @onclick="Decline">@T("Invite.Decline", "Decline")</button>
         </div>
     </div>
 }

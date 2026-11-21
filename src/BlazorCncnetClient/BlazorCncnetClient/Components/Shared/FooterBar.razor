@@ -4,8 +4,15 @@
 
 <!-- 底栏（全局；SYSTEM STATUS 反映连接状态，M3.10）——F2 可替换槽位 layout.footer 默认实现 -->
 <footer class="foot">
-    <div>SYSTEM STATUS: <b class="foot-status @Mon.StatusClass">@Mon.StateText</b> <span>· @T("Footer.RenderEngine", "Render engine") ACTIVE</span></div>
-    <div class="r"><span>@T("Footer.ResolutionAdaptive", "Adaptive resolution")</span><span>60 FPS</span><span>WEBGL OK</span></div>
+    <div>
+        @T("Footer.SystemStatus", "SYSTEM STATUS:") <b class="foot-status @Mon.StatusClass">@Mon.StateCn</b>
+        <span>· @T("Footer.RenderEngine", "Render engine") @T("Footer.Active", "ACTIVE")</span>
+    </div>
+    <div class="r">
+        <span>@T("Footer.ResolutionAdaptive", "Adaptive resolution")</span>
+        <span>@string.Format(T("Footer.FrameRate", "{0} FPS"), 60)</span>
+        <span>@T("Footer.WebGlOk", "WEBGL OK")</span>
+    </div>
 </footer>
 
 @code {

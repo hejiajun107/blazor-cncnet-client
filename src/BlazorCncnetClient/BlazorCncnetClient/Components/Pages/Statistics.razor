@@ -11,10 +11,10 @@
 <div class="groom stats page-anim">
     <header class="groom-top item-in">
         <div class="gt-left">
-            <span class="gt-badge host">@T("MainMenu.stats", "Statistics")<span class="en">STATISTICS</span></span>
+            <span class="gt-badge host">@T("MainMenu.stats", "Statistics")</span>
             <div class="gt-tbox">
                 <span class="gt-title">@T("Statistics.Title", "Match statistics")</span>
-                <span class="gt-en">@F("Statistics.Subtitle", "SCORE DATABASE · {0} matches", Svc.Matches.Count)</span>
+                <span class="gt-en">@F("Statistics.Subtitle", "{0} matches", Svc.Matches.Count)</span>
             </div>
         </div>
         <div class="gt-right">
@@ -26,23 +26,23 @@
     <!-- 选项卡（参考原版 XNAClientTabControl：Game Statistics / Total Statistics） -->
     <div class="stats-tabs item-in" role="tablist" aria-label="@T("Statistics.TabsLabel", "Statistics views")">
         <button type="button" class="stats-tab @(_tabIndex == 0 ? "on" : "")" @onclick="() => SwitchTab(0)">
-            @T("Statistics.GamesTab", "Game statistics")<span class="en">GAMES</span>
+            @T("Statistics.GamesTab", "Game statistics")
         </button>
         <button type="button" class="stats-tab @(_tabIndex == 1 ? "on" : "")" @onclick="() => SwitchTab(1)">
-            @T("Statistics.TotalTab", "Total statistics")<span class="en">TOTAL</span>
+            @T("Statistics.TotalTab", "Total statistics")
         </button>
     </div>
 
     <!-- 筛选工具栏（窗口级：两个 Tab 共用，参考原版 cmbGameClassFilter / cmbGameModeFilter / chkIncludeSpectatedGames） -->
     <div class="stats-toolbar item-in" style="animation-delay:50ms">
-        <label>@T("Statistics.Class", "Class") <em class="en-tag">CLASS</em></label>
+        <label>@T("Statistics.Class", "Class")</label>
         <select class="gl-select" value="@((int)Svc.Filter)" @onchange="OnClassFilterChange">
             @for (int i = 0; i < ClassFilterLabels.Length; i++)
             {
                 <option value="@i">@ClassFilterLabels[i]</option>
             }
         </select>
-        <label>@T("Statistics.Mode", "Mode") <em class="en-tag">MODE</em></label>
+        <label>@T("Statistics.Mode", "Mode")</label>
         <select class="gl-select" value="@SelectedGameModeIndex" @onchange="OnGameModeChange">
             <option value="0">@T("Statistics.AllModes", "All modes")</option>
             @for (int i = 0; i < Svc.GameModes.Count; i++)
@@ -52,7 +52,7 @@
         </select>
         <label class="gl-check" style="margin-left:8px">
             <input type="checkbox" checked="@Svc.IncludeSpectated" @onchange="OnSpectatedChange" />
-            <span>@T("Statistics.IncludeSpectated", "Include spectated games")<span class="en">SPECTATED</span></span>
+            <span>@T("Statistics.IncludeSpectated", "Include spectated games")</span>
         </label>
     </div>
 
@@ -62,7 +62,7 @@
             <!-- 对局列表（参考原版 lbGameList：日期时间/地图/模式/FPS/时长/完成） -->
             <section class="gl-panel stats-matches item-in" style="animation-delay:100ms">
                 <header class="gl-ph">
-                    <span>@T("Statistics.Games", "Games") <em>GAMES</em></span>
+                    <span>@T("Statistics.Games", "Games")</span>
                     <span class="gl-mapname">@F("Statistics.MatchCount", "{0} matches", Svc.Matches.Count)</span>
                 </header>
                 <div class="stats-tr head">
@@ -101,7 +101,7 @@
             <!-- 玩家明细（参考原版 lbGameStatistics：名称/击杀/损失/经济/得分/获胜/阵营/队伍） -->
             <section class="gl-panel stats-players item-in" style="animation-delay:150ms">
                 <header class="gl-ph">
-                    <span>@T("Statistics.PlayerDetails", "Player statistics") <em>PLAYER STATISTICS</em></span>
+                    <span>@T("Statistics.PlayerDetails", "Player statistics")</span>
                     <span class="gl-mapname">@T("Statistics.SortedByScore", "Sorted by score")</span>
                 </header>
                 <div class="stats-tr p head">
@@ -163,8 +163,8 @@
 
     <!-- 底部操作（参考原版 btnClearStatistics / btnReturnToMenu） -->
     <div class="stats-actions item-in" style="animation-delay:200ms">
-        <button class="mb-btn danger" @onclick="OnClearStatistics">@T("Statistics.ClearAll", "Clear statistics")<span class="en">CLEAR ALL</span></button>
-        <button class="mb-btn primary" @onclick="BackToMenu">@T("Common.BackToMenu", "Back to main menu")<span class="en">MAIN MENU</span></button>
+        <button class="mb-btn danger" @onclick="OnClearStatistics">@T("Statistics.ClearAll", "Clear statistics")</button>
+        <button class="mb-btn primary" @onclick="BackToMenu">@T("Common.BackToMenu", "Back to main menu")</button>
     </div>
 </div>
 

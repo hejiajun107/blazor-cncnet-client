@@ -31,7 +31,7 @@ else
     <div class="groom page-anim">
         <header class="groom-top item-in">
             <div class="gt-left">
-                <span class="gt-badge host">@T("MainMenu.skirmish", "Skirmish")<span class="en">SKIRMISH</span></span>
+                <span class="gt-badge host">@T("MainMenu.skirmish", "Skirmish")</span>
                 <div class="gt-tbox">
                     <span class="gt-title">@T("Skirmish.LocalSetup", "Local match setup")</span>
                     <span class="gt-en">@(Svc.LocalGame?.UIName ?? "—") · @T("Skirmish.Singleplayer", "Single player") · @T("Skirmish.Humans", "Humans") @(1) + AI @(Svc.AIPlayers.Count)</span>
@@ -46,7 +46,7 @@ else
             <!-- 左列：地图选择（参考原版 lbMapList） -->
             <section class="gl-panel gl-maplist item-in" style="animation-delay:50ms">
                 <header class="gl-ph">
-                    <span>@T("Skirmish.MapSelection", "Map selection") <em>MAP LIST</em></span>
+                    <span>@T("Skirmish.MapSelection", "Map selection")</span>
                 </header>
                 <div class="gl-body">
                     <!-- 游戏模式选择（原版 cmbGameMode：切换模式过滤地图列表） -->
@@ -95,13 +95,13 @@ else
                     <div class="map-tools">
                         <input class="gl-input map-search" placeholder="@T("Skirmish.SearchMaps", "Search maps…")" value="@_mapSearch" @oninput="OnMapSearchInput" />
                         <button type="button" class="mt-btn @(_favOnly ? "on" : "")" title="@T("Skirmish.FavoritesOnly", "Show favorite maps only")" @onclick="OnToggleFavOnly">
-                            ★<span class="en">FAV</span>
+                            ★<span class="mt-label">@T("Skirmish.FavoritesShort", "Fav")</span>
                         </button>
                         <button type="button" class="mt-btn @(_sortMode != 0 ? "on" : "")" title="@T("Skirmish.SortByName", "Sort by name")" @onclick="OnCycleSort">
-                            <span class="en">@SortModeLabel</span>
+                            <span class="mt-label">@SortModeLabel</span>
                         </button>
                         <button type="button" class="mt-btn" title="@T("Skirmish.PickRandom", "Pick a random map")" @onclick="OnPickRandomMap">
-                            <span class="en">RND</span>
+                            <span class="mt-label">@T("Skirmish.RandomShort", "Random")</span>
                         </button>
                     </div>
                 </div>
@@ -114,7 +114,7 @@ else
                     <span class="gl-ph-right">
                         <span class="gl-lock">@(Svc.IsCoop ? T("Skirmish.Coop", "Co-op") : T("Skirmish.Versus", "Versus"))</span>
                         <button type="button" class="mb-btn gl-reset" @onclick="OnResetAI">
-                            @T("Skirmish.Reset", "Reset")<span class="en">RESET</span>
+                            @T("Skirmish.Reset", "Reset")
                         </button>
                     </span>
                 </header>
@@ -122,11 +122,11 @@ else
                 <div class="gl-body">
                     <!-- 表头行（参考原版 PLAYER/SIDE/COLOR/TEAM 标题） -->
                     <div class="gl-tr gl-tr-head">
-                        <span class="gl-tc-name">@T("Lobby.Player", "Player") <em>PLAYER</em></span>
-                        <span>@T("Skirmish.Side", "Side") <em>SIDE</em></span>
-                        <span>@T("Skirmish.Color", "Color") <em>COLOR</em></span>
-                        <span>@T("Skirmish.Start", "Start") <em>START</em></span>
-                        <span>@T("Skirmish.Team", "Team") <em>TEAM</em></span>
+                        <span class="gl-tc-name">@T("Lobby.Player", "Player")</span>
+                        <span>@T("Skirmish.Side", "Side")</span>
+                        <span>@T("Skirmish.Color", "Color")</span>
+                        <span>@T("Skirmish.Start", "Start")</span>
+                        <span>@T("Skirmish.Team", "Team")</span>
                     </div>
 
                     <!-- 人类玩家行 -->
@@ -142,7 +142,7 @@ else
                                 <span class="slot-color" style="background:@ToCss(GetColor(HumanColorId))"></span>
                             }
                             <span class="nm">@ProgramConstants.PLAYERNAME</span>
-                            <em class="slot-host">YOU</em>
+                            <em class="slot-host">@T("Skirmish.You", "YOU")</em>
                         </div>
                         <div class="gl-side">
                             <IconSelect CssClass="gl-select" Value="HumanSideId" ValueChanged="OnHumanSideChanged" Items="HumanSideItems" />
@@ -254,7 +254,7 @@ else
                             <input type="checkbox" checked="@Svc.UseTeamStartMappings"
                                    disabled="@(!Svc.TeamStartMappingsAllowed)"
                                    @onchange="OnToggleAutoAlly" />
-                            <span>@T("Skirmish.AutoAlly", "Auto ally")<span class="en">AUTO ALLY</span></span>
+                            <span>@T("Skirmish.AutoAlly", "Auto ally")</span>
                         </label>
                         <select class="gl-select ally-preset" value="0"
                                 disabled="@(!Svc.UseTeamStartMappings || Svc.TeamStartMappingPresets.Count == 0)"
@@ -272,9 +272,9 @@ else
             <!-- 右上·右：游戏选项（参考原版 GameOptionsPanel + 预设 LoadOrSaveGameOptionPresetWindow） -->
             <section class="gl-panel gl-options item-in" style="animation-delay:150ms">
                 <header class="gl-ph">
-                    <span>@T("Skirmish.GameOptions", "Game options") <em>GAME OPTIONS</em></span>
+                    <span>@T("Skirmish.GameOptions", "Game options")</span>
                     <button type="button" class="mb-btn go-preset-btn" @onclick="OpenPresetDialog">
-                        @T("Skirmish.Preset", "Preset")<span class="en">PRESET</span>
+                        @T("Skirmish.Preset", "Preset")
                     </button>
                 </header>
                 <div class="gl-body">
@@ -306,7 +306,7 @@ else
             <!-- 右下：地图预览（参考原版 MapPreviewBox，固定宽高比 + 下方出生点文字信息） -->
             <section class="gl-panel gl-preview item-in" style="animation-delay:200ms">
                 <header class="gl-ph">
-                    <span>@T("Skirmish.MapPreview", "Map preview") <em>MAP PREVIEW</em></span>
+                    <span>@T("Skirmish.MapPreview", "Map preview")</span>
                     <span class="gl-mapname">@(Svc.SelectedMap?.Map.Name ?? T("Skirmish.NoMapSelected", "No map selected"))</span>
                 </header>
                 <div class="gl-body">
@@ -389,10 +389,10 @@ else
         <!-- 底部操作条（原版 btnLaunchGame/btnLeaveGame：开始游戏在地图/地区选择区下方，返回主菜单在右） -->
         <div class="groom-actions item-in" style="animation-delay:250ms">
             <button class="mb-btn primary start-btn" disabled="@(Svc.SelectedMap is null)" @onclick="OnStartGame">
-                @T("Skirmish.StartGame", "Start game")<span class="en">START</span>
+                @T("Skirmish.StartGame", "Start game")
             </button>
             <button class="mb-btn" @onclick="BackToMenu">
-                @T("Common.BackToMenu", "Back to main menu")<span class="en">MAIN MENU</span>
+                @T("Common.BackToMenu", "Back to main menu")
             </button>
         </div>
 
@@ -405,22 +405,22 @@ else
             <div class="ctx-menu" style="left:@(_mapCtxX)px;top:@(_mapCtxY)px">
                 <div class="ctx-title">@m.Map.Name</div>
                 <button class="ctx-item" @onclick="() => ToggleMapFavorite(m)">
-                    <span>@(m.IsFavorite ? T("Skirmish.RemoveFavorite", "Remove from favorites") : T("Skirmish.Favorite", "Favorite"))</span><span class="en">@(m.IsFavorite ? "UNFAVORITE" : "FAVORITE")</span>
+                    <span>@(m.IsFavorite ? T("Skirmish.RemoveFavorite", "Remove from favorites") : T("Skirmish.Favorite", "Favorite"))</span>
                 </button>
                 <button class="ctx-item" @onclick="() => CopyMapName(m)">
-                    <span>@T("Skirmish.CopyMapName", "Copy map name")</span><span class="en">COPY NAME</span>
+                    <span>@T("Skirmish.CopyMapName", "Copy map name")</span>
                 </button>
                 <button class="ctx-item" @onclick="() => CopyMapName(m, true)">
-                    <span>@T("Skirmish.CopyOriginalName", "Copy original name")</span><span class="en">COPY ORIGINAL</span>
+                    <span>@T("Skirmish.CopyOriginalName", "Copy original name")</span>
                 </button>
                 @if (!m.Map.Official)
                 {
                     <div class="ctx-sep"></div>
                     <button class="ctx-item" @onclick="() => OpenMapFolder(m)">
-                        <span>@T("Skirmish.ShowInFolder", "Show in folder")</span><span class="en">SHOW IN FOLDER</span>
+                        <span>@T("Skirmish.ShowInFolder", "Show in folder")</span>
                     </button>
                     <button class="ctx-item warn" @onclick="() => DeleteMap(m)">
-                        <span>@T("Skirmish.DeleteMap", "Delete map")</span><span class="en">DELETE</span>
+                        <span>@T("Skirmish.DeleteMap", "Delete map")</span>
                     </button>
                 }
             </div>
@@ -928,8 +928,8 @@ else
     /// <summary>排序模式显示名（0=默认 1=A–Z 2=Z–A，随语言切换动态取文案）。</summary>
     private string SortModeLabel => _sortMode switch
     {
-        1 => "A–Z",
-        2 => "Z–A",
+        1 => T("Skirmish.SortAscending", "A–Z"),
+        2 => T("Skirmish.SortDescending", "Z–A"),
         _ => T("Skirmish.SortDefault", "Default"),
     };
 

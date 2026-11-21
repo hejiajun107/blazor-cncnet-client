@@ -121,6 +121,12 @@
   <data name="Client:UI:TopBar.Online" xml:space="preserve">
     <value>在线</value>
   </data>
+  <data name="Client:UI:TopBar.Build" xml:space="preserve">
+    <value>版本</value>
+  </data>
+  <data name="Client:UI:TopBar.Fps" xml:space="preserve">
+    <value>帧率</value>
+  </data>
   <data name="Client:UI:MainMenu.LogoTag" xml:space="preserve">
     <value>// 指挥视窗</value>
   </data>
@@ -494,6 +500,21 @@
   </data>
   <data name="Client:UI:Skirmish.PickRandom" xml:space="preserve">
     <value>随机选择地图</value>
+  </data>
+  <data name="Client:UI:Skirmish.FavoritesShort" xml:space="preserve">
+    <value>收藏</value>
+  </data>
+  <data name="Client:UI:Skirmish.RandomShort" xml:space="preserve">
+    <value>随机</value>
+  </data>
+  <data name="Client:UI:Skirmish.SortAscending" xml:space="preserve">
+    <value>升序</value>
+  </data>
+  <data name="Client:UI:Skirmish.SortDescending" xml:space="preserve">
+    <value>降序</value>
+  </data>
+  <data name="Client:UI:Skirmish.You" xml:space="preserve">
+    <value>你</value>
   </data>
   <data name="Client:UI:Skirmish.PlayerSetup" xml:space="preserve">
     <value>玩家配置</value>
@@ -1020,7 +1041,7 @@
     <value>已离开局域网大厅</value>
   </data>
   <data name="Client:UI:Settings.Terminal" xml:space="preserve">
-    <value>SETTINGS TERMINAL · 保存生效</value>
+    <value>保存后生效</value>
   </data>
   <data name="Client:UI:Settings.NotConnected" xml:space="preserve">
     <value>未连接</value>
@@ -1245,7 +1266,7 @@
     <value>战绩统计</value>
   </data>
   <data name="Client:UI:Statistics.Subtitle" xml:space="preserve">
-    <value>SCORE DATABASE · 共 {0} 局</value>
+    <value>共 {0} 局</value>
   </data>
   <data name="Client:UI:Statistics.TabsLabel" xml:space="preserve">
     <value>统计视图</value>
@@ -1422,7 +1443,7 @@
     <value>困难</value>
   </data>
   <data name="Client:UI:Campaign.HeaderMeta" xml:space="preserve">
-    <value>SINGLEPLAYER · 共 {0} 项 · 难度 {1}</value>
+    <value>单人战役 · 共 {0} 项 · 难度 {1}</value>
   </data>
   <data name="Client:UI:Campaign.Launch" xml:space="preserve">
     <value>开始任务</value>
@@ -1539,7 +1560,7 @@
     <value>删除</value>
   </data>
   <data name="Client:UI:LoadGame.HeaderMeta" xml:space="preserve">
-    <value>SINGLEPLAYER · 共 {0} 个存档</value>
+    <value>单人游戏 · 共 {0} 个存档</value>
   </data>
   <data name="Client:UI:LoadGame.Load" xml:space="preserve">
     <value>加载</value>
@@ -1678,7 +1699,7 @@
     <value>记住我</value>
   </data>
   <data name="Client:UI:Login.RememberMeHint" xml:space="preserve">
-    <value>REMEMBER ME · 下次跳过本页</value>
+    <value>下次跳过本页</value>
   </data>
   <data name="Client:UI:Login.PersistentMode" xml:space="preserve">
     <value>离开大厅保持连接</value>
@@ -1787,6 +1808,18 @@
   </data>
   <data name="Client:UI:Footer.ResolutionAdaptive" xml:space="preserve">
     <value>分辨率自适应</value>
+  </data>
+  <data name="Client:UI:Footer.SystemStatus" xml:space="preserve">
+    <value>系统状态：</value>
+  </data>
+  <data name="Client:UI:Footer.Active" xml:space="preserve">
+    <value>运行中</value>
+  </data>
+  <data name="Client:UI:Footer.FrameRate" xml:space="preserve">
+    <value>帧率 {0}</value>
+  </data>
+  <data name="Client:UI:Footer.WebGlOk" xml:space="preserve">
+    <value>WebGL 正常</value>
   </data>
   <data name="Client:UI:Splash.Loading" xml:space="preserve">
     <value>载入中</value>

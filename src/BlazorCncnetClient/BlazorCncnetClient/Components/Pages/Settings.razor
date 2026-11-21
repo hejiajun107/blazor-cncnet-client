@@ -24,7 +24,7 @@
         </div>
         <div class="st-mid">
             <span class="st-title">@Ui("Settings.Title", "Settings")</span>
-            <span class="st-en">@Ui("Settings.Terminal", "SETTINGS TERMINAL · Applies on save")</span>
+            <span class="st-en">@Ui("Settings.Terminal", "Applies on save")</span>
         </div>
         <div class="st-right">
             <span class="st-player">@(ProgramConstants.PLAYERNAME.Length > 0 ? ProgramConstants.PLAYERNAME : Ui("Settings.NotConnected", "Not connected"))</span>
@@ -37,7 +37,7 @@
             {
                 <button class="set-nav-item @(s.Key == Active ? "active" : "")" @onclick="() => Active = s.Key">
                     <span class="set-nav-ic">@s.Icon</span>
-                    <span class="set-nav-tx"><span class="cn">@Ui(SectionKey("Settings.Nav.", s.Key), s.En)</span><span class="en">@s.En</span></span>
+                    <span class="set-nav-tx"><span class="cn">@Ui(SectionKey("Settings.Nav.", s.Key), s.En)</span></span>
                 </button>
             }
             @* F4 追加型槽位：插件可在设置页侧栏追加自有内容（.plugin-slot 为 display:contents） *@

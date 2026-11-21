@@ -30,7 +30,7 @@
         </div>
         <div class="lt-mid">
             <span class="lt-title">@T("Lobby.Title", "CnCNet Online Lobby")</span>
-            <span class="lt-en">ONLINE LOBBY · @(LobbySvc.LocalGame?.UIName ?? "CnCNet")</span>
+            <span class="lt-en">@(LobbySvc.LocalGame?.UIName ?? "CnCNet")</span>
         </div>
         <div class="lt-right">
             <span class="lt-player">@ProgramConstants.PLAYERNAME</span>
@@ -213,24 +213,24 @@
         <div class="ctx-menu pop-in" style="left:@(_menuX)px;top:@(_menuY)px"
              @onmousedown:stopPropagation="true" @oncontextmenu:stopPropagation="true">
             <div class="ctx-title">@_menuUser.IRCUser.Name</div>
-            <button type="button" class="ctx-item" @onclick="OnPrivateMessage">@T("Lobby.Pm", "Private Message")<span class="en">PM</span></button>
+            <button type="button" class="ctx-item" @onclick="OnPrivateMessage">@T("Lobby.Pm", "Private Message")</button>
             <button type="button" class="ctx-item" disabled="@(!LobbySvc.CanInvite)" @onclick="OnInvite">
-                @T("Lobby.Invite", "Invite")<span class="en">INVITE</span></button>
+                @T("Lobby.Invite", "Invite")</button>
             @if (LobbySvc.IsCurrentChannelAdmin)
             {
                 <div class="ctx-sep"></div>
                 <button type="button" class="ctx-item warn" @onclick="OnKickPlayer">
-                    @T("Lobby.Kick", "Kick")<span class="en">KICK</span></button>
+                    @T("Lobby.Kick", "Kick")</button>
                 <button type="button" class="ctx-item warn" @onclick="OnBanPlayer">
-                    @T("Lobby.Ban", "Ban")<span class="en">BAN</span></button>
+                    @T("Lobby.Ban", "Ban")</button>
                 <button type="button" class="ctx-item warn" @onclick="OnToggleMute">
-                    @(_menuUser.HasVoice ? T("Lobby.Mute", "Mute") : T("Lobby.Unmute", "Unmute"))<span class="en">@(_menuUser.HasVoice ? "MUTE" : "VOICE")</span></button>
+                    @(_menuUser.HasVoice ? T("Lobby.Mute", "Mute") : T("Lobby.Unmute", "Unmute"))</button>
             }
             <div class="ctx-sep"></div>
             <button type="button" class="ctx-item" @onclick="OnToggleFriend">
-                @(_menuUser.IRCUser.IsFriend ? T("Lobby.RemoveFriend", "Remove friend") : T("Lobby.AddFriend", "Add friend"))<span class="en">FRIEND</span></button>
+                @(_menuUser.IRCUser.IsFriend ? T("Lobby.RemoveFriend", "Remove friend") : T("Lobby.AddFriend", "Add friend"))</button>
             <button type="button" class="ctx-item" @onclick="OnToggleIgnore">
-                @(_menuUser.IRCUser.IsIgnored ? T("Lobby.Unignore", "Unignore") : T("Lobby.Ignore", "Ignore"))<span class="en">IGNORE</span></button>
+                @(_menuUser.IRCUser.IsIgnored ? T("Lobby.Unignore", "Unignore") : T("Lobby.Ignore", "Ignore"))</button>
         </div>
     }
 
@@ -239,7 +239,7 @@
         <div class="ctx-backdrop" @onclick="ClosePm"></div>
         <div class="pm-panel pop-in">
             <div class="pm-head">
-                <span>@T("Lobby.PmCenter", "Messages")</span><span class="pm-en">PRIVATE MSG</span>
+                <span>@T("Lobby.PmCenter", "Messages")</span>
                 <button type="button" class="pm-close" @onclick="ClosePm" aria-label="@T("Common.Close", "Close")">✕</button>
             </div>
             <!-- 第七轮补缺：私聊 / 最近玩家 双 tab（原版 PrivateMessagingWindow 双标签） -->
@@ -338,12 +338,12 @@
         <div class="ctx-menu pop-in" style="left:@(_rpMenuX)px;top:@(_rpMenuY)px"
              @onmousedown:stopPropagation="true" @oncontextmenu:stopPropagation="true">
             <div class="ctx-title">@_rpMenuPlayer</div>
-            <button type="button" class="ctx-item" @onclick="OnRpmPrivateMessage">@T("Lobby.Pm", "Private Message")<span class="en">PM</span></button>
+            <button type="button" class="ctx-item" @onclick="OnRpmPrivateMessage">@T("Lobby.Pm", "Private Message")</button>
             <div class="ctx-sep"></div>
             <button type="button" class="ctx-item" @onclick="OnRpmToggleFriend">
-                @(LobbySvc.IsFriend(_rpMenuPlayer) ? T("Lobby.RemoveFriend", "Remove friend") : T("Lobby.AddFriend", "Add friend"))<span class="en">FRIEND</span></button>
+                @(LobbySvc.IsFriend(_rpMenuPlayer) ? T("Lobby.RemoveFriend", "Remove friend") : T("Lobby.AddFriend", "Add friend"))</button>
             <button type="button" class="ctx-item" @onclick="OnRpmToggleIgnore">
-                @(LobbySvc.IsIgnored(_rpMenuPlayer, null) ? T("Lobby.Unignore", "Unignore") : T("Lobby.Ignore", "Ignore"))<span class="en">IGNORE</span></button>
+                @(LobbySvc.IsIgnored(_rpMenuPlayer, null) ? T("Lobby.Unignore", "Unignore") : T("Lobby.Ignore", "Ignore"))</button>
         </div>
     }
 
@@ -380,7 +380,7 @@
     {
         <div class="ctx-backdrop" @onclick="CloseCreateDialog"></div>
         <div class="cr-panel pop-in">
-            <div class="cr-head">@T("Lobby.CreateRoom", "Create Room")<span class="cr-en">CREATE ROOM</span></div>
+            <div class="cr-head">@T("Lobby.CreateRoom", "Create Room")</div>
             <label class="cr-field">
                 <span>@T("Lobby.RoomName", "Room name")</span>
                 <input maxlength="40" value="@_createRoomName" @oninput="OnCreateRoomNameInput" />
@@ -411,7 +411,7 @@
     {
         <div class="ctx-backdrop" @onclick="CloseJoinPw"></div>
         <div class="cr-panel pop-in">
-            <div class="cr-head">@T("Lobby.JoinRoom", "Join room") · <b>@_selectedGame.RoomName</b><span class="cr-en">ENTER PASSWORD</span></div>
+            <div class="cr-head">@T("Lobby.JoinRoom", "Join room") · <b>@_selectedGame.RoomName</b></div>
             <label class="cr-field">
                 <span>@T("Lobby.RoomPassword", "Room password")</span>
                 <input maxlength="32" value="@_joinPassword" @oninput="OnJoinPasswordInput"

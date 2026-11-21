@@ -26,7 +26,7 @@ else
     <div class="groom page-anim">
         <header class="groom-top item-in">
             <div class="gt-left">
-                <span class="gt-badge host">@T("MainMenu.campaign", "Campaign")<span class="en">CAMPAIGN</span></span>
+                <span class="gt-badge host">@T("MainMenu.campaign", "Campaign")</span>
                 <div class="gt-tbox">
                     <span class="gt-title">@T("Campaign.SelectMission", "Mission selection")</span>
                     <span class="gt-en">@F("Campaign.HeaderMeta", "SINGLEPLAYER · {0} missions · Difficulty {1}", Svc.Missions.Count, CampaignService.GetDifficultyName(Svc.Difficulty))</span>
@@ -42,7 +42,7 @@ else
             <!-- 左列：任务列表（参考原版 lbCampaignList：header 不可选，任务可选，EMPTY 空行） -->
             <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
                 <header class="gl-ph">
-                    <span>@T("Campaign.MissionList", "Mission list") <em>MISSIONS</em></span>
+                    <span>@T("Campaign.MissionList", "Mission list")</span>
                 </header>
                 @if (Svc.TagSelectorEnabled)
                 {
@@ -92,7 +92,7 @@ else
             <!-- 右上：任务描述（参考原版 tbMissionDescription） -->
             <section class="gl-panel camp-desc item-in" style="animation-delay:100ms">
                 <header class="gl-ph">
-                    <span>@T("Campaign.MissionDescription", "Mission description") <em>MISSION DESCRIPTION</em></span>
+                    <span>@T("Campaign.MissionDescription", "Mission description")</span>
                 </header>
                 <div class="gl-body camp-desc-body">
                     @if (Selected is null)
@@ -124,7 +124,7 @@ else
             <!-- 右下：难度 + 启动（参考原版 trbDifficultySelector / btnLaunch / btnCancel） -->
             <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
                 <header class="gl-ph">
-                    <span>@T("Campaign.Difficulty", "Difficulty") <em>DIFFICULTY LEVEL</em></span>
+                    <span>@T("Campaign.Difficulty", "Difficulty")</span>
                 </header>
                 <div class="gl-body">
                     <div class="diff-seg">
@@ -141,9 +141,9 @@ else
                         <span>@T("Campaign.ComputerDifficulty", "Computer difficulty") <b>@CampaignService.GetDifficultyName(CampaignService.GetComputerDifficulty(Svc.Difficulty))</b></span>
                     </div>
                     <div class="cfg-actions">
-                        <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")<span class="en">CANCEL</span></button>
+                        <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")</button>
                         <button class="mb-btn primary start-btn" disabled="@(!CanLaunch)" @onclick="OnStartGame">
-                            @T("Campaign.Launch", "Launch mission")<span class="en">LAUNCH</span>
+                            @T("Campaign.Launch", "Launch mission")
                         </button>
                     </div>
                 </div>

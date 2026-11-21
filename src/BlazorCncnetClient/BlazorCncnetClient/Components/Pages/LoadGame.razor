@@ -15,7 +15,7 @@
 <div class="groom page-anim">
     <header class="groom-top item-in">
         <div class="gt-left">
-            <span class="gt-badge host">@T("MainMenu.load", "Load Game")<span class="en">LOAD GAME</span></span>
+            <span class="gt-badge host">@T("MainMenu.load", "Load Game")</span>
             <div class="gt-tbox">
                 <span class="gt-title">@(_tab == LoadTab.Saves ? T("LoadGame.Title", "Load save game") : T("Replays.Title", "Replays"))</span>
                 <span class="gt-en">
@@ -25,7 +25,7 @@
                     }
                     else
                     {
-                        @F("Replays.HeaderMeta", "SINGLEPLAYER · {0} replays", _replays.Count)
+                        @F("Replays.HeaderMeta", "{0} replays", _replays.Count)
                     }
                 </span>
             </div>
@@ -38,12 +38,12 @@
 
     <div class="load-tabs item-in">
         <button type="button" class="load-tab @(_tab == LoadTab.Saves ? "on" : "")" @onclick="() => SwitchTab(LoadTab.Saves)">
-            @T("LoadGame.SaveList", "Saved games")<em>SAVED GAMES</em>
+            @T("LoadGame.SaveList", "Saved games")
         </button>
         @if (ReplaySvc.IsSupported)
         {
             <button type="button" class="load-tab @(_tab == LoadTab.Replays ? "on" : "")" @onclick="() => SwitchTab(LoadTab.Replays)">
-                @T("Replays.List", "Replays")<em>REPLAYS</em>
+                @T("Replays.List", "Replays")
             </button>
         }
     </div>
@@ -54,7 +54,7 @@
             <!-- 左列：存档列表（参考原版 lbSaveGameList：名称 + 日期时间两列） -->
             <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
                 <header class="gl-ph">
-                    <span>@T("LoadGame.SaveList", "Saved games") <em>SAVED GAMES</em></span>
+                    <span>@T("LoadGame.SaveList", "Saved games")</span>
                 </header>
                 <div class="gl-body">
                     @if (_saves.Count == 0)
@@ -80,7 +80,7 @@
             <!-- 右列：选中详情 + 加载/删除/取消 -->
             <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
                 <header class="gl-ph">
-                    <span>@T("LoadGame.Actions", "Actions") <em>ACTIONS</em></span>
+                    <span>@T("LoadGame.Actions", "Actions")</span>
                 </header>
                 <div class="gl-body">
                     @if (_selected is { } sel)
@@ -100,12 +100,12 @@
                         <div class="camp-empty">@T("LoadGame.SelectHint", "Select a save game above")</div>
                     }
                     <div class="cfg-actions">
-                        <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")<span class="en">CANCEL</span></button>
+                        <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")</button>
                         <button class="mb-btn primary start-btn" disabled="@(_selected is null)" @onclick="OnLoad">
-                            @T("LoadGame.Load", "Load")<span class="en">LOAD</span>
+                            @T("LoadGame.Load", "Load")
                         </button>
                         <button class="mb-btn" disabled="@(_selected is null)" @onclick="OnDelete">
-                            @T("LoadGame.Delete", "Delete")<span class="en">DELETE</span>
+                            @T("LoadGame.Delete", "Delete")
                         </button>
                     </div>
                 </div>
@@ -116,7 +116,7 @@
             <!-- 左列：回放列表（参考原版 ReplaysPanel 列表：地图/模式/时间/时长） -->
             <section class="gl-panel camp-list item-in" style="animation-delay:50ms">
                 <header class="gl-ph">
-                    <span>@T("Replays.List", "Replays") <em>REPLAYS</em></span>
+                    <span>@T("Replays.List", "Replays")</span>
                 </header>
                 <div class="gl-body">
                     @if (_replays.Count == 0)
@@ -142,11 +142,11 @@
                 </div>
                 <div class="cfg-actions replay-actions">
                     <label class="mb-btn import-btn">
-                        @T("Replays.Import", "Import")<span class="en">IMPORT</span>
+                        @T("Replays.Import", "Import")
                         <InputFile OnChange="OnImportReplay" accept="@("." + ReplaySvc.FileExtension)" />
                     </label>
                     <button class="mb-btn" @onclick="() => ReplaySvc.OpenDirectory()">
-                        @T("Replays.OpenFolder", "Open folder")<span class="en">OPEN</span>
+                        @T("Replays.OpenFolder", "Open folder")
                     </button>
                 </div>
             </section>
@@ -154,7 +154,7 @@
             <!-- 右列：选中回放详情 + 播放选项 -->
             <section class="gl-panel camp-launch item-in" style="animation-delay:150ms">
                 <header class="gl-ph">
-                    <span>@T("Replays.Details", "Replay details") <em>DETAILS</em></span>
+                    <span>@T("Replays.Details", "Replay details")</span>
                 </header>
                 <div class="gl-body">
                     @if (_selectedReplay is { } rp)
@@ -237,12 +237,12 @@
                     }
 
                     <div class="cfg-actions">
-                        <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")<span class="en">CANCEL</span></button>
+                        <button class="mb-btn danger" @onclick="BackToMenu">@T("Lobby.Cancel", "Cancel")</button>
                         <button class="mb-btn primary start-btn" disabled="@(_selectedReplay is null || !_selectedReplay.IsPlayable)" @onclick="OnPlayReplay">
-                            @T("Replays.Play", "Play")<span class="en">PLAY</span>
+                            @T("Replays.Play", "Play")
                         </button>
                         <button class="mb-btn" disabled="@(_selectedReplay is null)" @onclick="OnDeleteReplay">
-                            @T("LoadGame.Delete", "Delete")<span class="en">DELETE</span>
+                            @T("LoadGame.Delete", "Delete")
                         </button>
                     </div>
                 </div>

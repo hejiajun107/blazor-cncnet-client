@@ -17,11 +17,10 @@
             <div class="mb-head kind-info">
                 <span class="mb-ic">⬡</span>
                 <span class="mb-title">@T("Login.Title", "Connect to CnCNet")</span>
-                <span class="mb-en">CONNECT TO CNCNET</span>
             </div>
             <div class="lg-body">
                 <label class="lg-field" for="lg-name">
-                    <span class="lg-k">@T("Login.PlayerName", "Player name") <em>PLAYER NAME</em></span>
+                    <span class="lg-k">@T("Login.PlayerName", "Player name")</span>
                     <input id="lg-name" class="lg-input @(Service.Error is not null ? "err" : "")"
                            maxlength="30" spellcheck="false" autocomplete="off"
                            value="@Service.PlayerName" disabled="@Service.IsConnecting"
@@ -32,18 +31,18 @@
                 <label class="lg-check">
                     <input type="checkbox" checked="@Service.RememberMe" disabled="@Service.IsConnecting"
                            @onchange="e => SetPref(x => x.RememberMe = e.Value is bool b && b)" />
-                    <span class="c"><span class="cn">@T("Login.RememberMe", "Remember me")</span><em>@T("Login.RememberMeHint", "REMEMBER ME · Skip this screen next time")</em></span>
+                    <span class="c"><span class="cn">@T("Login.RememberMe", "Remember me")</span><em>@T("Login.RememberMeHint", "Skip this screen next time")</em></span>
                 </label>
                 <label class="lg-check">
                     <input type="checkbox" checked="@Service.PersistentMode" disabled="@Service.IsConnecting"
                            @onchange="e => SetPref(x => x.PersistentMode = e.Value is bool b && b)" />
-                    <span class="c"><span class="cn">@T("Login.PersistentMode", "Stay connected when leaving the lobby")</span><em>STAY CONNECTED</em></span>
+                    <span class="c"><span class="cn">@T("Login.PersistentMode", "Stay connected when leaving the lobby")</span></span>
                 </label>
                 <label class="lg-check">
                     <input type="checkbox" checked="@Service.AutoConnect"
                            disabled="@(Service.IsConnecting || !(Service.RememberMe && Service.PersistentMode))"
                            @onchange="e => SetPref(x => x.AutoConnect = e.Value is bool b && b)" />
-                    <span class="c"><span class="cn">@T("Login.AutoConnect", "Connect automatically on startup")</span><em>AUTO CONNECT</em></span>
+                    <span class="c"><span class="cn">@T("Login.AutoConnect", "Connect automatically on startup")</span></span>
                 </label>
 
                 @if (!string.IsNullOrEmpty(Service.Error))

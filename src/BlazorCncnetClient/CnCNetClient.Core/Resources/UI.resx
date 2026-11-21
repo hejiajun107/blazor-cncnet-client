@@ -123,6 +123,12 @@ They interfere with the game/mod and must be removed before the client can start
   <data name="Client:UI:TopBar.Online" xml:space="preserve">
     <value>Online</value>
   </data>
+  <data name="Client:UI:TopBar.Build" xml:space="preserve">
+    <value>BUILD</value>
+  </data>
+  <data name="Client:UI:TopBar.Fps" xml:space="preserve">
+    <value>FPS</value>
+  </data>
   <!-- 主菜单（内置菜单项键 = MainMenu.&lt;key&gt;） -->
   <data name="Client:UI:MainMenu.LogoTag" xml:space="preserve">
     <value>// COMMAND VIEW</value>
@@ -499,6 +505,21 @@ They interfere with the game/mod and must be removed before the client can start
   </data>
   <data name="Client:UI:Skirmish.PickRandom" xml:space="preserve">
     <value>Pick a random map</value>
+  </data>
+  <data name="Client:UI:Skirmish.FavoritesShort" xml:space="preserve">
+    <value>Fav</value>
+  </data>
+  <data name="Client:UI:Skirmish.RandomShort" xml:space="preserve">
+    <value>Random</value>
+  </data>
+  <data name="Client:UI:Skirmish.SortAscending" xml:space="preserve">
+    <value>A–Z</value>
+  </data>
+  <data name="Client:UI:Skirmish.SortDescending" xml:space="preserve">
+    <value>Z–A</value>
+  </data>
+  <data name="Client:UI:Skirmish.You" xml:space="preserve">
+    <value>YOU</value>
   </data>
   <data name="Client:UI:Skirmish.PlayerSetup" xml:space="preserve">
     <value>Player setup</value>
@@ -1025,7 +1046,7 @@ They interfere with the game/mod and must be removed before the client can start
     <value>Left the LAN lobby</value>
   </data>
   <data name="Client:UI:Settings.Terminal" xml:space="preserve">
-    <value>SETTINGS TERMINAL · Applies on save</value>
+    <value>Applies on save</value>
   </data>
   <data name="Client:UI:Settings.NotConnected" xml:space="preserve">
     <value>Not connected</value>
@@ -1241,7 +1262,7 @@ They interfere with the game/mod and must be removed before the client can start
     <value>Match statistics</value>
   </data>
   <data name="Client:UI:Statistics.Subtitle" xml:space="preserve">
-    <value>SCORE DATABASE · {0} matches</value>
+    <value>{0} matches</value>
   </data>
   <data name="Client:UI:Statistics.TabsLabel" xml:space="preserve">
     <value>Statistics views</value>
@@ -1674,7 +1695,7 @@ Continue launching this mission?
     <value>Remember me</value>
   </data>
   <data name="Client:UI:Login.RememberMeHint" xml:space="preserve">
-    <value>REMEMBER ME · Skip this screen next time</value>
+    <value>Skip this screen next time</value>
   </data>
   <data name="Client:UI:Login.PersistentMode" xml:space="preserve">
     <value>Stay connected when leaving the lobby</value>
@@ -1783,6 +1804,18 @@ Continue launching this mission?
   </data>
   <data name="Client:UI:Footer.ResolutionAdaptive" xml:space="preserve">
     <value>Adaptive resolution</value>
+  </data>
+  <data name="Client:UI:Footer.SystemStatus" xml:space="preserve">
+    <value>SYSTEM STATUS:</value>
+  </data>
+  <data name="Client:UI:Footer.Active" xml:space="preserve">
+    <value>ACTIVE</value>
+  </data>
+  <data name="Client:UI:Footer.FrameRate" xml:space="preserve">
+    <value>{0} FPS</value>
+  </data>
+  <data name="Client:UI:Footer.WebGlOk" xml:space="preserve">
+    <value>WEBGL OK</value>
   </data>
   <data name="Client:UI:Splash.Loading" xml:space="preserve">
     <value>Loading</value>

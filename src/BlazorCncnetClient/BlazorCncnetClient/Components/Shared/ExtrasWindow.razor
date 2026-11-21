@@ -16,7 +16,6 @@
             <div class="mb-head">
                 <span class="mb-ic">▤</span>
                 <span class="mb-title">@T("Extras.Title", "Extras")</span>
-                <span class="mb-en">EXTRAS MENU</span>
             </div>
             <div class="exw-body">
                 @if (ShowExStatistics)
@@ -25,7 +24,7 @@
                             disabled="@(!EnableExStatistics)"
                             @onclick="() => OnAction(ActionKind.Statistics)">
                         <span class="exw-ic">▤</span>
-                        <span class="exw-txt"><span class="cn">@T("Extras.Statistics", "Statistics")</span><br><span class="en">STATISTICS</span></span>
+                        <span class="exw-txt"><span class="cn">@T("Extras.Statistics", "Statistics")</span></span>
                         <span class="exw-go">›</span>
                     </button>
                 }
@@ -35,14 +34,14 @@
                             disabled="@(!EnableExMapEditor)"
                             @onclick="() => OnAction(ActionKind.MapEditor)">
                         <span class="exw-ic">✎</span>
-                        <span class="exw-txt"><span class="cn">@T("Extras.MapEditor", "Map Editor")</span><br><span class="en">MAP EDITOR</span></span>
+                        <span class="exw-txt"><span class="cn">@T("Extras.MapEditor", "Map Editor")</span></span>
                         <span class="exw-go">›</span>
                     </button>
                 }
                 <button type="button" class="exw-btn item-in" style="animation-delay:140ms"
                         @onclick="() => OnAction(ActionKind.Changelog)">
                     <span class="exw-ic">↻</span>
-                    <span class="exw-txt"><span class="cn">@T("Extras.Changelog", "Changelog")</span><br><span class="en">CHANGELOG</span></span>
+                    <span class="exw-txt"><span class="cn">@T("Extras.Changelog", "Changelog")</span></span>
                     <span class="exw-go">›</span>
                 </button>
                 @if (ShowExCredits)
@@ -51,14 +50,14 @@
                             disabled="@(!EnableExCredits)"
                             @onclick="() => OnAction(ActionKind.Credits)">
                         <span class="exw-ic">✦</span>
-                        <span class="exw-txt"><span class="cn">@T("Extras.Credits", "Credits")</span><br><span class="en">CREDITS</span></span>
+                        <span class="exw-txt"><span class="cn">@T("Extras.Credits", "Credits")</span></span>
                         <span class="exw-go">›</span>
                     </button>
                 }
                 <button type="button" class="exw-btn item-in" style="animation-delay:240ms"
                         @onclick="() => OnAction(ActionKind.About)">
                     <span class="exw-ic">ⓘ</span>
-                    <span class="exw-txt"><span class="cn">@T("Extras.About", "About")</span><br><span class="en">ABOUT</span></span>
+                    <span class="exw-txt"><span class="cn">@T("Extras.About", "About")</span></span>
                     <span class="exw-go">›</span>
                 </button>
                 @if (ShowExCancel)
@@ -67,7 +66,7 @@
                             disabled="@(!EnableExCancel)"
                             @onclick="() => OnAction(ActionKind.Cancel)">
                         <span class="exw-ic">✕</span>
-                        <span class="exw-txt"><span class="cn">@T("Common.Cancel", "Cancel")</span><br><span class="en">CANCEL</span></span>
+                        <span class="exw-txt"><span class="cn">@T("Common.Cancel", "Cancel")</span></span>
                         <span class="exw-go">›</span>
                     </button>
                 }

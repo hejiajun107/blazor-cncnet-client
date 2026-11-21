@@ -24,17 +24,17 @@
     </div>
 
     <nav class="hud-menu">
-        <button type="button" class="hm" @onclick="GoSkirmish">@UiText.T("TopBar.Skirmish", "Skirmish")<span class="en">SKIRMISH · F2</span></button>
-        <button type="button" class="hm" @onclick="GoOnlineLobby">@UiText.T("TopBar.OnlineLobby", "CnCNet Lobby")<span class="en">CNCNET · F3</span></button>
-        <button type="button" class="hm" @onclick="GoPM">@UiText.T("TopBar.Pm", "Messages")<span class="en">PM · F4</span></button>
-        <button type="button" class="hm" @onclick="GoSettings">@UiText.T("TopBar.Settings", "Options")<span class="en">OPTIONS · F12</span></button>
+        <button type="button" class="hm" @onclick="GoSkirmish">@UiText.T("TopBar.Skirmish", "Skirmish")<span class="hm-key">F2</span></button>
+        <button type="button" class="hm" @onclick="GoOnlineLobby">@UiText.T("TopBar.OnlineLobby", "CnCNet Lobby")<span class="hm-key">F3</span></button>
+        <button type="button" class="hm" @onclick="GoPM">@UiText.T("TopBar.Pm", "Messages")<span class="hm-key">F4</span></button>
+        <button type="button" class="hm" @onclick="GoSettings">@UiText.T("TopBar.Settings", "Options")<span class="hm-key">F12</span></button>
         @if (_isConnected)
         {
-            <button type="button" class="hm hm-out" @onclick="OnLogout">@UiText.T("TopBar.Logout", "Log out")<span class="en">LOGOUT</span></button>
+            <button type="button" class="hm hm-out" @onclick="OnLogout">@UiText.T("TopBar.Logout", "Log out")</button>
         }
         else
         {
-            <button type="button" class="hm" @onclick="OnLogin">@UiText.T("TopBar.Login", "Log in")<span class="en">LOGIN</span></button>
+            <button type="button" class="hm" @onclick="OnLogin">@UiText.T("TopBar.Login", "Log in")</button>
         }
         @* F4 追加型槽位：插件可在顶栏菜单区追加按钮/指示器（.plugin-slot 为 display:contents，不破坏 flex 布局） *@
         <PluginSlot Key="layout.topbar" />
@@ -58,7 +58,7 @@
     /// <summary>状态灯修饰类：""=在线（青呼吸）、retry=重连（琥珀）、off=离线（红常亮）。</summary>
     [Parameter] public string StatusClass { get; set; } = string.Empty;
 
-    /// <summary>状态文本（如 ONLINE / RECONNECT / OFFLINE），空则省略。</summary>
+    /// <summary>当前语言的连接状态文本，空则省略。</summary>
     [Parameter] public string? StatusText { get; set; }
 
     /// <summary>当前玩家名（未连接时省略）。</summary>

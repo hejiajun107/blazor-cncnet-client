@@ -64,7 +64,7 @@ else
     </section>
 
     <aside class="panel">
-        <div class="ph"><span>@UiText.T("MainMenu.PanelTitle", "Command Menu")</span><span style="font-family:var(--font-orbitron)">MAIN TERMINAL</span></div>
+        <div class="ph"><span>@UiText.T("MainMenu.PanelTitle", "Command Menu")</span></div>
         @for (var i = 0; i < VisibleMenuItems.Length; i++)
         {
             var m = VisibleMenuItems[i];
@@ -91,7 +91,6 @@ else
     <div class="cr-panel privacy-panel pop-in">
         <div class="cr-head">
             <span>@UiText.T("Privacy.Title", "Privacy Notice")</span>
-            <span class="cr-en">PRIVACY NOTICE</span>
             <button type="button" class="gop-close" @onclick="OnPrivacyDismiss" title="@UiText.T("Common.Close", "Close")">✕</button>
         </div>
         <div class="privacy-body">
@@ -104,7 +103,7 @@ else
         </div>
         <div class="cr-actions">
             <button type="button" class="mb-btn primary" @onclick="OnPrivacyAccept">
-                @UiText.T("Privacy.Accept", "Got it")<span class="en">GOT IT</span>
+                @UiText.T("Privacy.Accept", "Got it")
             </button>
         </div>
     </div>
@@ -367,7 +366,7 @@ else
             {
                 await MessageBox.ShowAsync(
                     UiText.T("Replays.ImportFailedTitle", "Import failed"),
-                    UiText.T("Replays.ImportFailedText", "This file is not a readable replay."),
+                    UiText.T("Replays.ImportInvalidFile", "This file is not a readable replay."),
                     MessageBoxButtons.Ok, MessageBoxKind.Error);
                 return;
             }

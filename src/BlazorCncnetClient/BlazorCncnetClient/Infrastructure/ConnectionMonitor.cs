@@ -57,7 +57,7 @@ public sealed class ConnectionMonitor : IDisposable
 
     public bool IsConnected => State == ConnectionState.Online;
 
-    /// <summary>Orbitron 英文状态文本（顶栏 / 底栏）。</summary>
+    /// <summary>固定英文状态文本。</summary>
     public string StateText => State switch
     {
         ConnectionState.Online => "ONLINE",
@@ -66,7 +66,7 @@ public sealed class ConnectionMonitor : IDisposable
         _ => "OFFLINE"
     };
 
-    /// <summary>当前语言的状态文本（大厅指示）。</summary>
+    /// <summary>当前语言的状态文本（顶栏、底栏与大厅）。</summary>
     public string StateCn => State switch
     {
         ConnectionState.Online => UiText.T("Connection.Online", "Online"),

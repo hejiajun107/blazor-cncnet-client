@@ -12,9 +12,9 @@
 
 <!-- HUD 顶栏（全局，TopBar 通用组件，spec §5.3；状态灯/文本由 ConnectionMonitor 驱动，M3.10）。
      主题切换已移至设置页（Settings.razor），此处仅保留版本/帧率读数 -->
-<TopBar StatusClass="@Mon.StatusClass" StatusText="@Mon.StateText">
-    <span class="hud-build">BUILD <b>0.3.0</b></span>
-    <span class="hud-fps">FPS <b data-fps="1">—</b></span>
+<TopBar StatusClass="@Mon.StatusClass" StatusText="@Mon.StateCn">
+    <span class="hud-build">@T("TopBar.Build", "BUILD") <b>0.3.0</b></span>
+    <span class="hud-fps">@T("TopBar.Fps", "FPS") <b data-fps="1">—</b></span>
 </TopBar>
 
 <!-- 背景层（全局共享）：星粒 / 极光 / 网格 / 扫描线 / 暗角 -->
