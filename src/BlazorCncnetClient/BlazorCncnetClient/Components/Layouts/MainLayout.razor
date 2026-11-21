@@ -27,7 +27,9 @@
 <div class="shell">
     <!-- 页面切换过渡：@key 随路由变化强制重放 fade-slide（动效 tokens，spec §5.5） -->
     <div class="page-anim" @key="Nav.Uri">
-        @Body
+        <CascadingValue Name="SettingsReturnUri" Value="@_settingsReturnUri">
+            @Body
+        </CascadingValue>
     </div>
 </div>
 
@@ -50,6 +52,8 @@
 <ExtrasWindow />
 
 @code {
+    private string _settingsReturnUri = "/menu";
+
     /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
     private static string T(string key, string fallback) => UiText.T(key, fallback);
 
@@ -66,6 +70,7 @@
         Mon.Notification += OnMonNotification;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
         // 主菜单音乐跟随路由：离开游戏房间恢复，进入游戏房间按 StopMusicOnMenu 停止
+        RememberSettingsReturnUri(Nav.Uri);
         Nav.LocationChanged += OnLocationChanged;
     }
 
@@ -100,8 +105,20 @@
         StateHasChanged();
     });
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => InvokeAsync(
-        () => _ = SyncMenuMusicAsync());
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        RememberSettingsReturnUri(e.Location);
+        _ = InvokeAsync(SyncMenuMusicAsync);
+    }
+
+    private void RememberSettingsReturnUri(string location)
+    {
+        // 设置页内部的分区链接不能覆盖打开设置前的页面。
+        string relativeUri = Nav.ToBaseRelativePath(location);
+        string path = relativeUri.Split('?', '#')[0].TrimEnd('/');
+        if (!path.Equals("settings", StringComparison.OrdinalIgnoreCase))
+            _settingsReturnUri = location;
+    }
 
     /// <summary>
     /// 主菜单音乐同步（原版 PlayMainMenuMusic / StopMusicOnMenu 语义）：

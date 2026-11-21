@@ -94,6 +94,9 @@
         new("privacy", "PRIVACY", "⬢"),
     ];
 
+    [CascadingParameter(Name = "SettingsReturnUri")]
+    private string SettingsReturnUri { get; set; } = "/menu";
+
     private string Active { get; set; } = "display";
 
     /// <summary>M 草稿：尚未提交的设置改动（对齐原版控件值先于 Save 落盘的语义）。</summary>
@@ -689,12 +692,11 @@
         Nav.NavigateTo("/menu");
     }
 
-    /// <summary>取消：丢弃草稿（未写盘），直接返回（同原版 Cancel 按钮）。</summary>
+    /// <summary>取消：丢弃草稿并返回打开选项前的页面。</summary>
     private void OnCancel()
     {
         _draft.Clear();
-        StateHasChanged();
-        Nav.NavigateTo("/menu");
+        Nav.NavigateTo(SettingsReturnUri, replace: true);
     }
 
     /* ── 各分区渲染 ── */
