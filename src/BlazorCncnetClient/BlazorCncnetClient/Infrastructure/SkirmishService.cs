@@ -40,6 +40,28 @@ namespace BlazorCncnetClient.Infrastructure
         private readonly Random _random;
 
         private readonly List<PlayerInfo> _aiPlayers = new();
+        private SetupSnapshot? _setupBaseline;
+
+        private sealed record PlayerSetup(int Side, int Color, int Start, int Team, int AILevel)
+        {
+            public static PlayerSetup FromPlayer(PlayerInfo player) =>
+                new(player.SideId, player.ColorId, player.StartingLocation, player.TeamId, player.AILevel);
+        }
+
+        private sealed record SetupSnapshot(
+            (string MapPath, string Mode)? Map,
+            PlayerSetup? Human,
+            PlayerSetup[] AIPlayers,
+            string[] GameOptions,
+            bool UseTeamStartMappings,
+            (int Start, string Team)[] TeamStartMappings)
+        {
+            public bool Matches(SetupSnapshot other) =>
+                Map == other.Map && Human == other.Human && AIPlayers.SequenceEqual(other.AIPlayers)
+                && GameOptions.SequenceEqual(other.GameOptions)
+                && UseTeamStartMappings == other.UseTeamStartMappings
+                && TeamStartMappings.SequenceEqual(other.TeamStartMappings);
+        }
 
         public CnCNetGame? LocalGame { get; }
 
@@ -151,8 +173,24 @@ namespace BlazorCncnetClient.Infrastructure
             if (HumanPlayer is not null)
                 HumanPlayer.Name = ProgramConstants.PLAYERNAME;
 
+            AcknowledgeSetup();
             NotifyChanged();
         }
+
+        /// <summary>比较对局配置。页面切换、地图筛选和排序不影响比较基准。</summary>
+        public bool HasSetupChanges => _setupBaseline is not null && !_setupBaseline.Matches(CaptureSetup());
+
+        /// <summary>把当前对局配置作为下次检查的基准。</summary>
+        public void AcknowledgeSetup() => _setupBaseline = CaptureSetup();
+
+        private SetupSnapshot CaptureSetup() => new(
+            SelectedMap is { } map ? (map.Map.BaseFilePath, map.GameMode.Name) : null,
+            HumanPlayer is { } player ? PlayerSetup.FromPlayer(player) : null,
+            _aiPlayers.Select(PlayerSetup.FromPlayer).ToArray(),
+            GameOptions.Select(option => option.GetPersistedValue()).ToArray(),
+            UseTeamStartMappings,
+            GetActiveTeamStartMappings().OrderBy(mapping => mapping.Start)
+                .Select(mapping => (mapping.Start, mapping.Team)).ToArray());
 
         /// <summary>重新生成随机种子。原版在每次游戏进程退出后调用（<c>GameProcessExited</c>），
         /// 保证连续多局不共用同一 <c>Seed</c>（地图事件/资源分布随机性）。</summary>
@@ -575,6 +613,7 @@ namespace BlazorCncnetClient.Infrastructure
                 throw new InvalidOperationException(error);
 
             SaveSettings();
+            AcknowledgeSetup();
 
             // 原版按战绩统计 + 日月时分生成 GameID；本端无战绩库，取随机正数保证唯一性
             UniqueGameId = _random.Next(1, int.MaxValue);

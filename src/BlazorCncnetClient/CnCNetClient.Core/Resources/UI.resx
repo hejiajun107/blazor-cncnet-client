@@ -700,7 +700,7 @@ They interfere with the game/mod and must be removed before the client can start
     <value>Delete map</value>
   </data>
   <data name="Client:UI:Skirmish.LeaveBody" xml:space="preserve">
-    <value>Returning will discard the current unstarted skirmish setup. Return?</value>
+    <value>The current skirmish setup has changed. Return to the main menu?</value>
   </data>
   <data name="Client:UI:Skirmish.FavoriteAdded" xml:space="preserve">
     <value>Added to favorites: {0}</value>

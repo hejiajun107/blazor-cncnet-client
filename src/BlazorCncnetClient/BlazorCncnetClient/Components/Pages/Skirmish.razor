@@ -735,11 +735,17 @@ else
 
     private async Task BackToMenu()
     {
-        var confirm = await MessageBox.ShowAsync(T("Common.BackToMenu", "Back to main menu"),
-            T("Skirmish.LeaveBody", "Returning will discard the current unstarted skirmish setup. Return?"),
-            MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
-        if (!confirm)
-            return;
+        if (Svc.HasSetupChanges)
+        {
+            var confirm = await MessageBox.ShowAsync(T("Common.BackToMenu", "Back to main menu"),
+                T("Skirmish.LeaveBody", "The current skirmish setup has changed. Return to the main menu?"),
+                MessageBoxButtons.YesNo, MessageBoxKind.Confirm);
+            if (!confirm)
+                return;
+
+            Svc.AcknowledgeSetup();
+        }
+
         Nav.NavigateTo("/menu");
     }
 

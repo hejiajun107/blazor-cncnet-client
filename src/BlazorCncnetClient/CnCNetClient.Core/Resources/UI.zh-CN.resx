@@ -695,7 +695,7 @@
     <value>删除地图</value>
   </data>
   <data name="Client:UI:Skirmish.LeaveBody" xml:space="preserve">
-    <value>返回将丢失当前未开始的遭遇战配置。确认返回？</value>
+    <value>当前遭遇战配置有改动。确定返回主菜单？</value>
   </data>
   <data name="Client:UI:Skirmish.FavoriteAdded" xml:space="preserve">
     <value>已收藏：{0}</value>
