@@ -11,13 +11,13 @@
     let PAL_THEME = null;
     function refreshPalette() {
         const theme = document.documentElement.dataset.theme || 'menu';
-        if (theme === PAL_THEME) return false;
+        if (theme === PAL_THEME) return PAL;
         PAL_THEME = theme;
         const cs = getComputedStyle(document.documentElement);
         const v = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
         PAL = { cyan: v('--cyan', '#21e6ff'), cyanSoft: v('--cyan-soft', '#7af3ff'),
                 gold: v('--gold', '#ffd34d'), text: v('--text', '#dff6ff') };
-        return true;
+        return PAL;
     }
 
     /* ── 主题（IThemeProvider 桥接） ───────────────────────────── */
@@ -91,10 +91,10 @@
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        let bw, bh, stars;
+        let bw, bh, stars, starPalette;
 
         function resize() {
-            refreshPalette();
+            starPalette = refreshPalette();
             bw = canvas.width = window.innerWidth;
             bh = canvas.height = window.innerHeight;
             stars = Array.from({ length: Math.min(220, (window.innerWidth / 7) | 0) }, () => ({
@@ -111,8 +111,10 @@
         if (REDUCED) return;
 
         (function loop() {
-            if (refreshPalette()) {
-                for (const p of stars) p.c = Math.random() < .7 ? PAL.cyan : PAL.cyanSoft;
+            const palette = refreshPalette();
+            if (palette !== starPalette) {
+                starPalette = palette;
+                for (const p of stars) p.c = Math.random() < .7 ? palette.cyan : palette.cyanSoft;
             }
             ctx.clearRect(0, 0, bw, bh);
             for (const p of stars) {
@@ -213,6 +215,7 @@
         const BEAM_OVER = 1.05;  // 光束长到容器对角线外（防穿帮，被八边形裁切优雅截断）
         let app = null, sweep = null, beamG, R = 0;
         let ro = null, destroyed = false;
+        let radarPalette;
 
         function hexNum() { return parseInt((PAL.cyan || '#21e6ff').replace('#', ''), 16); }
 
@@ -239,6 +242,7 @@
         }
 
         function recolor() {
+            radarPalette = refreshPalette();
             // 单层光束：尾部微亮 → 前缘最亮（角度方向线性渐亮），无内/外层断层
             beamG = buildSector(7, u => .03 + .21 * u);
             sweep.removeChildren();
@@ -259,8 +263,6 @@
             const r = cv.getBoundingClientRect();
             if (r.width < 2 || r.height < 2) return;
             R = Math.hypot(r.width, r.height) * .5 * BEAM_OVER;
-            refreshPalette(); // 首帧即用当前主题色
-
             try {
                 app = new PIXI.Application();
                 await app.init({
@@ -289,7 +291,7 @@
 
             app.ticker.add((t) => {
                 if (!cv.isConnected) { destroy(); return; } // 离开主菜单即停（同 initGlobe）
-                if (refreshPalette()) recolor(); // 主题切换即时换色
+                if (refreshPalette() !== radarPalette) recolor();
                 sweep.rotation = (sweep.rotation + t.deltaMS / 1000 * (Math.PI * 2 / ROT_SECONDS)) % (Math.PI * 2);
             });
         }
