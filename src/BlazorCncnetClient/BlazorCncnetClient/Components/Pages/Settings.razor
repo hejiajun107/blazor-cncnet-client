@@ -20,7 +20,7 @@
 <div class="settings page-anim">
     <header class="settings-top item-in">
         <div class="st-left">
-            <button class="mb-btn item-in" @onclick="OnCancel">‹ @Ui("Settings.Back", "Back")</button>
+            <button class="mb-btn item-in" disabled="@_saving" @onclick="OnCancel">‹ @Ui("Settings.Back", "Back")</button>
         </div>
         <div class="st-mid">
             <span class="st-title">@Ui("Settings.Title", "Settings")</span>
@@ -75,8 +75,8 @@
     @* M 草稿-提交模式（对齐原版 OptionsWindow）：控件只改内存草稿，底部「保存/取消」统一提交。 *@
     <footer class="set-bar item-in" style="animation-delay:120ms">
         <span class="set-bar-status@(HasDraft ? " has-draft" : "")">@(HasDraft ? Ui("Settings.UnsavedChanges", "· Unsaved changes") : Ui("Settings.Synced", "Settings in sync"))</span>
-        <button class="mb-btn" @onclick="OnCancel">@Ui("Settings.Cancel", "Cancel")</button>
-        <button class="mb-btn primary" @onclick="OnSave">@Ui("Settings.Save", "Save settings")</button>
+        <button class="mb-btn" disabled="@_saving" @onclick="OnCancel">@Ui("Settings.Cancel", "Cancel")</button>
+        <button class="mb-btn primary" disabled="@_saving" @onclick="OnSave">@Ui("Settings.Save", "Save settings")</button>
     </footer>
 </div>
 
@@ -101,6 +101,7 @@
 
     /// <summary>M 草稿：尚未提交的设置改动（对齐原版控件值先于 Save 落盘的语义）。</summary>
     private readonly Dictionary<string, object> _draft = new();
+    private bool _saving;
 
     private bool HasDraft => _draft.Count > 0;
 
@@ -193,14 +194,14 @@
 
     private void OnLanguageChange(ChangeEventArgs e)
     {
-        if (e.Value?.ToString() is { Length: > 0 } code)
-            TranslationSvc.SetLanguage(code);
+        if (e.Value?.ToString() is { Length: > 0 } code && TranslationSvc.Languages.Any(language => language.Code == code))
+            SetDraft("language", code);
     }
 
-    private async Task OnThemeChange(ChangeEventArgs e)
+    private void OnThemeChange(ChangeEventArgs e)
     {
-        var key = e.Value?.ToString() ?? ThemeProvider.Current.Key;
-        await ThemeProvider.ApplyAsync(key);
+        if (e.Value?.ToString() is { Length: > 0 } key && ThemeProvider.Themes.Any(theme => theme.Key == key))
+            SetDraft("theme", key);
     }
 
     /* ── 游戏渲染器选择（原版 Display render options，草稿内暂存，保存时应用） ── */
@@ -553,8 +554,11 @@
     /* ── 保存 / 取消（原版 OptionsWindow.BtnSave_LeftClick / BtnBack_LeftClick） ── */
 
     /// <summary>保存草稿：全部写回 UserINISettings + 渲染器应用 + 落盘；涉及重启项时 toast 提示。</summary>
-    private void OnSave()
+    private async Task OnSave()
     {
+        if (_saving)
+            return;
+
         // 分辨率（游戏侧参数，直接落到游戏自身 INI，由 UserINISettings.SaveSettings 一并写盘）
         if (_draft.TryGetValue("ingameRes", out var ir) && ir is string ires && TryParseRes(ires, out int iw, out int ih))
         {
@@ -677,24 +681,51 @@
         // ini 注册的额外控件（OptionsWindow.ini [<面板>ExtraControls] + SettingSection/SettingKey 值绑定）
         CommitExtras();
 
-        SettingsSvc.Save();
+        var theme = GetStr("theme", ThemeProvider.Current.Key);
+        var language = GetStr("language", TranslationSvc.Current);
+        bool themeChanged = theme != ThemeProvider.Current.Key;
+        bool languageChanged = language != TranslationSvc.Current;
+        if (themeChanged)
+            SettingsSvc.Ini.ClientTheme.Value = theme;
+        if (languageChanged)
+            SettingsSvc.Ini.Translation.Value = language;
 
         // 需要重启客户端才生效的项：客户端分辨率 / 无边框窗口 / 渲染器（下次启动游戏应用）
         bool restartRequired = _draft.ContainsKey("clientRes")
             || _draft.ContainsKey("borderless")
             || _draft.ContainsKey("renderer");
-        string msg = restartRequired
-            ? Ui("Settings.SavedRestart", "Settings saved · some settings take effect after restarting the client")
-            : Ui("Settings.Saved", "Settings saved");
-        _ = JS.InvokeVoidAsync("cncnet.toast", msg, "ok");
 
-        _draft.Clear();
-        Nav.NavigateTo("/menu");
+        _saving = true;
+        try
+        {
+            SettingsSvc.Save();
+
+            // 先写入两个值，语言服务随后可按新主题加载翻译。
+            if (themeChanged)
+                await ThemeProvider.ApplyAsync(theme);
+            if (languageChanged)
+                TranslationSvc.SetLanguage(language);
+
+            string msg = restartRequired
+                ? Ui("Settings.SavedRestart", "Settings saved · some settings take effect after restarting the client")
+                : Ui("Settings.Saved", "Settings saved");
+            _ = JS.InvokeVoidAsync("cncnet.toast", msg, "ok");
+
+            _draft.Clear();
+            Nav.NavigateTo("/menu");
+        }
+        finally
+        {
+            _saving = false;
+        }
     }
 
     /// <summary>取消：丢弃草稿并返回打开选项前的页面。</summary>
     private void OnCancel()
     {
+        if (_saving)
+            return;
+
         _draft.Clear();
         Nav.NavigateTo(SettingsReturnUri, replace: true);
     }
@@ -705,9 +736,9 @@
     {
         <div class="set-sec-title">@CurrentSectionTitle()</div>
         <div class="set-row" data-setting="Options:Translation">
-            <div class="set-info"><span class="set-name">@Ui("Settings.Language", "Language")</span><span class="set-hint">@Ui("Settings.LanguageHint", "LANGUAGE · applies instantly")</span></div>
+            <div class="set-info"><span class="set-name">@Ui("Settings.Language", "Language")</span><span class="set-hint">@Ui("Settings.LanguageHint", "Interface and game text")</span></div>
             <div class="set-ctl">
-                <select class="set-select" value="@TranslationSvc.Current" @onchange="OnLanguageChange">
+                <select class="set-select" value="@GetStr("language", TranslationSvc.Current)" @onchange="OnLanguageChange">
                     @foreach (var lang in TranslationSvc.Languages)
                     {
                         <option value="@lang.Code">@lang.DisplayName</option>
@@ -718,7 +749,7 @@
         <div class="set-row" data-setting="MultiPlayer:Theme">
             <div class="set-info"><span class="set-name">@Ui("Settings.Theme", "Interface theme")</span><span class="set-hint">@Ui("Settings.ThemeHint", "THEME · global skin")</span></div>
             <div class="set-ctl">
-                <select class="set-select" value="@ThemeProvider.Current.Key" @onchange="OnThemeChange">
+                <select class="set-select" value="@GetStr("theme", ThemeProvider.Current.Key)" @onchange="OnThemeChange">
                     @foreach (var t in ThemeProvider.Themes)
                     {
                         <option value="@t.Key">@t.Name · @t.Hint</option>

@@ -1062,7 +1062,7 @@
     <value>0 = 不限制</value>
   </data>
   <data name="Client:UI:Settings.LanguageHint" xml:space="preserve">
-    <value>切换语言立即生效</value>
+    <value>界面和游戏文本</value>
   </data>
   <data name="Client:UI:Settings.Theme" xml:space="preserve">
     <value>界面主题</value>

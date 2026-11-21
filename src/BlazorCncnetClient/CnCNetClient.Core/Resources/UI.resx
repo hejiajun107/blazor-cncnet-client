@@ -1058,7 +1058,7 @@ They interfere with the game/mod and must be removed before the client can start
     <value>Settings in sync</value>
   </data>
   <data name="Client:UI:Settings.LanguageHint" xml:space="preserve">
-    <value>LANGUAGE · applies instantly</value>
+    <value>Interface and game text</value>
   </data>
   <data name="Client:UI:Settings.Theme" xml:space="preserve">
     <value>Interface theme</value>

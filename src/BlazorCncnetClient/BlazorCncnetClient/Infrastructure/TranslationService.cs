@@ -111,7 +111,8 @@ public sealed class TranslationService : ITranslationService
             return;
 
         ApplyLocale(localeCode);
-        _settings.SetAndSave(ini => ini.Translation.Value = localeCode);
+        if (_settings.Ini.Translation.Value != localeCode)
+            _settings.SetAndSave(ini => ini.Translation.Value = localeCode);
         LanguageChanged?.Invoke();
     }
 
