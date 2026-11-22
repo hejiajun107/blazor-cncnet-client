@@ -63,7 +63,9 @@
             {
                 <button class="btn" @onclick="ReDetect">@T("Index.ReDetect", "Check again")</button>
             }
+#if DEBUG
             <button class="btn" @onclick="PreviewMainMenu">@T("Index.PreviewMenu", "Preview main menu (dev)")</button>
+#endif
         </div>
     }
 </div>
@@ -77,6 +79,9 @@
         => string.Format(UiText.T(key, fallback), args);
 
     private bool _busy;
+
+    /// <summary>本次运行是否已自动进入主菜单（保证仅自动跳转一次，ESC 返回首页时仍停留检测页）。</summary>
+    private static bool _autoEnteredMainMenu;
 
     /// <summary>LocalGame 未配置时 GameCollection 使用的兜底 ID（null 表示配置正常）。</summary>
     private string? _localGameFallbackId;
@@ -104,6 +109,16 @@
                     "LocalGame={LocalGame} 未在 Resources/GameCollectionConfig.ini 中定义，已使用兜底频道 #{Channel} 继续运行",
                     _localGameFallbackId, "cncnet-" + _localGameFallbackId);
             }
+        }
+
+        // 环境就绪且无缺失文件时直接进入主菜单；检测页只在出错时停留。
+        // 仅自动跳转一次，之后从主菜单 ESC 返回首页时仍停留在检测页。
+        if (!_autoEnteredMainMenu && Env.IsReady && GameFiles.MissingFiles.Length == 0)
+        {
+            _autoEnteredMainMenu = true;
+            Logger.LogInformation("环境就绪，自动进入主菜单");
+            Nav.NavigateTo("/menu");
+            return;
         }
 
         TranslationSvc.LanguageChanged += OnLanguageChanged;
