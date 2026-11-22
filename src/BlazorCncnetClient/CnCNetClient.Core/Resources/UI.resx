@@ -1258,6 +1258,12 @@ They interfere with the game/mod and must be removed before the client can start
   <data name="Client:UI:Settings.Saved" xml:space="preserve">
     <value>Settings saved</value>
   </data>
+  <data name="Client:UI:Settings.RestartTitle" xml:space="preserve">
+    <value>Restart required</value>
+  </data>
+  <data name="Client:UI:Settings.RestartText" xml:space="preserve">
+    <value>The client needs to be restarted for some of the changes to take effect. Do you want to restart now?</value>
+  </data>
   <data name="Client:UI:Statistics.Title" xml:space="preserve">
     <value>Match statistics</value>
   </data>

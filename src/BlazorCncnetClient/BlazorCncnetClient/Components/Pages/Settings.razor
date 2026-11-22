@@ -16,6 +16,8 @@
 @inject ILogger<Settings> Logger
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject MessageBoxService MessageBox
+@inject AppExitNotifier ExitNotifier
 
 <div class="settings page-anim">
     <header class="settings-top item-in">
@@ -553,11 +555,35 @@
 
     /* ── 保存 / 取消（原版 OptionsWindow.BtnSave_LeftClick / BtnBack_LeftClick） ── */
 
-    /// <summary>保存草稿：全部写回 UserINISettings + 渲染器应用 + 落盘；涉及重启项时 toast 提示。</summary>
+    /// <summary>保存草稿：全部写回 UserINISettings + 渲染器应用 + 落盘；涉及重启项时询问是否立即重启。</summary>
     private async Task OnSave()
     {
         if (_saving)
             return;
+
+        // 需要重启客户端才生效的项（原版 DisplayOptionsPanel.Save 的 restartRequired 语义）：
+        // 与当前生效值比较，避免「改过又改回原值」也弹重启提示。
+        bool restartRequired = false;
+
+        if (_draft.TryGetValue("clientRes", out var clientResDraft) && clientResDraft is string clientResText &&
+            TryParseRes(clientResText, out int draftWidth, out int draftHeight) &&
+            (draftWidth != SettingsSvc.Ini.ClientResolutionX.Value ||
+             draftHeight != SettingsSvc.Ini.ClientResolutionY.Value))
+        {
+            restartRequired = true;
+        }
+
+        if (_draft.TryGetValue("borderless", out var borderlessDraft) && borderlessDraft is bool borderlessValue &&
+            borderlessValue != ReadBorderlessFromRenderer(CurrentRenderer))
+        {
+            restartRequired = true;
+        }
+
+        if (_draft.TryGetValue("renderer", out var rendererDraft) && rendererDraft is string rendererName &&
+            !string.Equals(rendererName, _renderers?.SelectedRenderer.InternalName, StringComparison.Ordinal))
+        {
+            restartRequired = true;
+        }
 
         // 分辨率（游戏侧参数，直接落到游戏自身 INI，由 UserINISettings.SaveSettings 一并写盘）
         if (_draft.TryGetValue("ingameRes", out var ir) && ir is string ires && TryParseRes(ires, out int iw, out int ih))
@@ -690,11 +716,6 @@
         if (languageChanged)
             SettingsSvc.Ini.Translation.Value = language;
 
-        // 需要重启客户端才生效的项：客户端分辨率 / 无边框窗口 / 渲染器（下次启动游戏应用）
-        bool restartRequired = _draft.ContainsKey("clientRes")
-            || _draft.ContainsKey("borderless")
-            || _draft.ContainsKey("renderer");
-
         _saving = true;
         try
         {
@@ -706,12 +727,33 @@
             if (languageChanged)
                 TranslationSvc.SetLanguage(language);
 
-            string msg = restartRequired
-                ? Ui("Settings.SavedRestart", "Settings saved · some settings take effect after restarting the client")
-                : Ui("Settings.Saved", "Settings saved");
-            _ = JS.InvokeVoidAsync("cncnet.toast", msg, "ok");
-
             _draft.Clear();
+
+            if (restartRequired)
+            {
+                // 原版 OptionsWindow.SaveSettings：需要重启时弹窗询问，而不是只给一句保存提示。
+                bool restartNow = await MessageBox.ShowAsync(
+                    Ui("Settings.RestartTitle", "Restart required"),
+                    Ui("Settings.RestartText", "The client needs to be restarted for some of the changes to take effect. Do you want to restart now?"),
+                    MessageBoxButtons.YesNo,
+                    MessageBoxKind.Confirm);
+
+                if (restartNow)
+                {
+                    // 先让订阅方持久化（与原版 GameClosing 同语义），再拉起新进程并退出。
+                    ExitNotifier.NotifyExiting();
+                    ClientRestart.Restart();
+                    return;
+                }
+
+                _ = JS.InvokeVoidAsync("cncnet.toast",
+                    Ui("Settings.SavedRestart", "Settings saved · some settings take effect after restarting the client"), "ok");
+            }
+            else
+            {
+                _ = JS.InvokeVoidAsync("cncnet.toast", Ui("Settings.Saved", "Settings saved"), "ok");
+            }
+
             Nav.NavigateTo("/menu");
         }
         finally
