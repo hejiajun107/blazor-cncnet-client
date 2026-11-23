@@ -44,6 +44,8 @@ else
                 <header class="gl-ph">
                     <span>@T("Campaign.MissionList", "Mission list")</span>
                 </header>
+                @* 追加型槽位：插件可接管任务列表渲染（如按阵营分组）；无贡献时不影响内置列表 *@
+                <PluginSlot Key="page.campaign.aside" />
                 @if (Svc.TagSelectorEnabled)
                 {
                     <!-- r9-2：标签筛选（原版 CampaignTagSelector：单选标签过滤；「全部」清除筛选） -->

@@ -5,6 +5,7 @@
 @using CnCNetClient.Online
 @using CnCNetClient.Updater
 @using CnCNetClient.Domain.Multiplayer.CnCNet
+@using CnCNetClient.Plugin.Abstractions
 @using System.IO
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -65,17 +66,25 @@ else
 
     <aside class="panel">
         <div class="ph"><span>@UiText.T("MainMenu.PanelTitle", "Command Menu")</span></div>
-        @for (var i = 0; i < VisibleMenuItems.Length; i++)
+        @if (_menuListOverride is not null)
         {
-            var m = VisibleMenuItems[i];
-            <button class="mbtn @(m.IsPrimary ? "primary" : "") item-in"
-                    style="animation-delay:@((120 + i * 50).ToString())ms"
-                    disabled="@(!m.IsEnabled)"
-                    @onclick="() => OnMenuClick(m)">
-                <span class="ic">@m.Icon</span>
-                <span class="txt"><span class="cn">@Label(m)</span></span>
-                <span class="go">›</span>
-            </button>
+            @* F4 替换槽位：插件接管菜单列表外观，条目数据与点击仍由宿主提供 *@
+            <DynamicComponent Type="_menuListOverride" Parameters="MenuSlotParams" />
+        }
+        else
+        {
+            @for (var i = 0; i < VisibleMenuItems.Length; i++)
+            {
+                var m = VisibleMenuItems[i];
+                <button class="mbtn @(m.IsPrimary ? "primary" : "") item-in"
+                        style="animation-delay:@((120 + i * 50).ToString())ms"
+                        disabled="@(!m.IsEnabled)"
+                        @onclick="() => OnMenuClick(m)">
+                    <span class="ic">@m.Icon</span>
+                    <span class="txt"><span class="cn">@Label(m)</span></span>
+                    <span class="go">›</span>
+                </button>
+            }
         }
         @* F4 追加型槽位：插件自定义渲染的菜单入口（勿与 AddMenuEntry 的按钮式入口重复声明） *@
         <PluginSlot Key="menu.entry" />
@@ -115,6 +124,29 @@ else
 
     /// <summary>F4：插件替换的主菜单主体组件（page.mainmenu），为空时渲染内置主体。</summary>
     private Type? _mainMenuOverride;
+
+    /// <summary>F4：插件替换的菜单列表组件（page.menu.list），为空时渲染内置按钮列表。</summary>
+    private Type? _menuListOverride;
+    private Dictionary<string, object>? _menuSlotParams;
+
+    /// <summary>槽位参数：条目数据 + 点击回调（缓存，语言切换时重建）。</summary>
+    private Dictionary<string, object> MenuSlotParams => _menuSlotParams ??= BuildMenuSlotParams();
+
+    private Dictionary<string, object> BuildMenuSlotParams() => new()
+    {
+        ["Items"] = VisibleMenuItems
+            .Select(m => new MainMenuTileItem(m.Key, Label(m), m.En, m.Icon, m.IsPrimary, m.IsEnabled))
+            .ToArray(),
+        ["OnActivated"] = EventCallback.Factory.Create<string>(this, OnMenuKeyActivatedAsync),
+    };
+
+    /// <summary>槽位点击回调：按 Key 找回宿主菜单项，仍走原有点击分发（登录/路由/退出等）。</summary>
+    private Task OnMenuKeyActivatedAsync(string key)
+    {
+        MenuItem? item = VisibleMenuItems.FirstOrDefault(m => m.Key == key);
+        return item is null ? Task.CompletedTask : OnMenuClick(item);
+    }
+
     private sealed record MenuItem(string Key, string Cn, string En, string Icon, bool IsPrimary = false, string? Route = null, bool IsEnabled = true);
 
     private static readonly MenuItem[] MenuItems =
@@ -186,6 +218,8 @@ else
     {
         // F4：插件可替换主菜单主体（内部渲染仍沿用宿主服务，自动连接/ESC/更新检查不受影响）
         _mainMenuOverride = Plugins.TryGetReplacement("page.mainmenu", out var overrideType) ? overrideType : null;
+        // F4：插件可替换菜单列表（只换外观，条目与点击仍由宿主提供）
+        _menuListOverride = Plugins.TryGetReplacement("page.menu.list", out var menuListType) ? menuListType : null;
         // 视口视频地址需在首帧渲染前确定（OnAfterRenderAsync 里赋值不会触发重渲染）
         _videoUrl = MainMenuVideo.ResolveUrl();
         // 品牌文案随主题切换刷新（红警 → RED ALERT）
@@ -317,7 +351,7 @@ else
             // 自动连接（3.1.3）：记住我已勾选 → 跳过登录浮窗直接连接
             TryAutoConnect();
             // M4.3 D6.1 启动检查：环境就绪且「启动时检查更新」开启（默认 true）→ 非阻塞检查
-            TryStartupUpdateCheck();
+            await TryStartupUpdateCheckAsync();
         }
     }
 
@@ -465,14 +499,32 @@ else
         }
     }
 
-    /// <summary>M4.3 D6.1 启动更新检查：由 [Options] CheckforUpdates（默认 true）控制。
-    /// 环境未就绪/正在检查时 UpdateService 内部安全降级；非阻塞，不干扰页面导航。</summary>
-    private void TryStartupUpdateCheck()
+    /// <summary>M4.3 D6.1 启动更新检查：[Options] CheckforUpdates（默认 true）控制，
+    /// 并先询问插件启动更新闸门（返回 false 时跳过在线更新）。</summary>
+    private async Task TryStartupUpdateCheckAsync()
     {
         try
         {
             if (!UserINISettings.Instance.CheckForUpdates.Value)
                 return;
+
+            if (Services.GetService(typeof(IStartupUpdateGate)) is IStartupUpdateGate gate)
+            {
+                bool runOnlineUpdate;
+                try
+                {
+                    runOnlineUpdate = await gate.ShouldRunOnlineUpdateAsync();
+                }
+                catch
+                {
+                    // 与旧客户端一致：判定失败时不进入在线更新
+                    return;
+                }
+
+                if (!runOnlineUpdate)
+                    return;
+            }
+
             UpdateSvc.CheckForUpdates();
         }
         catch
@@ -485,6 +537,7 @@ else
 
     private void OnLanguageChanged() => InvokeAsync(() =>
     {
+        _menuSlotParams = null; // 文案随语言变化，槽位参数需重建
         RefreshUpdateStatus();
         StateHasChanged();
     });
