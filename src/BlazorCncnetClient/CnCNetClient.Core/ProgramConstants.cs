@@ -122,7 +122,9 @@ namespace CnCNetClient.Core
         public static readonly List<string> TEAMS = new List<string> { "A", "B", "C", "D" };
 
         // Static fields might be initialized before the translation file is loaded. Change to readonly properties here.
-        public static List<string> AI_PLAYER_NAMES => new List<string> { "Easy AI".L10N("Client:Main:EasyAIName"), "Medium AI".L10N("Client:Main:MediumAIName"), "Hard AI".L10N("Client:Main:HardAIName") };
+        // 键改用客户端 UI 资源（Client:UI:Skirmish.*）：原 Client:Main:*AIName 在资源包与 Translation.ini
+        // 中均不存在，L10N 会回退英文原文，导致选完难度后名字变英文、并写进 spawn.ini。
+        public static List<string> AI_PLAYER_NAMES => new List<string> { "Easy AI".L10N("Client:UI:Skirmish.EasyAI"), "Medium AI".L10N("Client:UI:Skirmish.MediumAI"), "Hard AI".L10N("Client:UI:Skirmish.HardAI") };
 
         public static string LogFileName { get; set; }
 

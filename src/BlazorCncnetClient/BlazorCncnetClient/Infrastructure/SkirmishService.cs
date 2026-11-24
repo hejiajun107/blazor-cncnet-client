@@ -294,12 +294,12 @@ namespace BlazorCncnetClient.Infrastructure
         public IReadOnlyList<TeamStartMappingPreset> TeamStartMappingPresets =>
             SelectedMap?.Map.TeamStartMappingPresets ?? new List<TeamStartMappingPreset>();
 
-        /// <summary>自动结盟是否可用：有预设且非 coop / ForceNoTeams（原版 UseTeamStartMappingsAllowChecking）。</summary>
+        /// <summary>自动结盟是否可用：非 coop / ForceNoTeams 即可（对齐原版 UseTeamStartMappingsAllowChecking——
+        /// 只要不是 coop 就允许勾选）；地图预设只影响预设下拉的内容，不决定开关能否操作。</summary>
         public bool TeamStartMappingsAllowed =>
             SelectedMap is not null
             && !SelectedMap.IsCoop
-            && !SelectedMap.ForceNoTeams
-            && TeamStartMappingPresets.Count > 0;
+            && !SelectedMap.ForceNoTeams;
 
         /// <summary>地图允许的出生点（升序，1..MaxPlayers；未选图时为通用范围）。
         /// 玩家行「出生点」下拉数据源（同原版 ddStartLocation 选项）。</summary>

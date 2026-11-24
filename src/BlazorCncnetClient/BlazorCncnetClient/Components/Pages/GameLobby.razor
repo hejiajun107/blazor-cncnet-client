@@ -133,18 +133,22 @@ else
                                     else if (aiPlayer is not null)
                                     {
                                         <span class="slot-color ai-color" style="background:@ToCss(GetColor(aiPlayer.ColorId))"></span>
-                                        <span class="nm">@aiPlayer.Name</span>
-                                        <em class="slot-ai">AI</em>
                                         @if (Room.IsHost)
                                         {
-                                            <select class="gl-select ai-level" title="@T("GameLobby.AILevelTip", "AI difficulty")"
-                                                    value="@aiPlayer.AILevel" @onchange="(e) => OnAILevelChange(aiPlayer, e)">
+                                            @* 名字即难度（同遭遇战）：整块用下拉铺满名字列，点击任意位置直接展开 *@
+                                            <select class="gl-select ai-level" title="@aiPlayer.Name"
+                                                    value="@aiPlayer.AILevel" @onchange="(e) => OnAILevelChange(aiPlayer, e)" @onclick:stopPropagation="true">
                                                 @for (int l = 0; l < AiLevels.Length; l++)
                                                 {
                                                     <option value="@l">@AiLevels[l]</option>
                                                 }
                                             </select>
                                             <button type="button" class="ai-remove" title="@T("GameLobby.RemoveAI", "Remove AI")" @onclick="() => OnAIRemove(aiPlayer)">✕</button>
+                                        }
+                                        else
+                                        {
+                                            <span class="nm">@aiPlayer.Name</span>
+                                            <em class="slot-ai">AI</em>
                                         }
                                     }
                                     else if (unavailable)
@@ -1287,9 +1291,9 @@ else
     /// <summary>AI 难度显示名（随语言切换动态取文案）。</summary>
     private static string[] AiLevels => new[]
     {
-        T("Skirmish.Easy", "Easy"),
-        T("Skirmish.Medium", "Medium"),
-        T("Skirmish.Hard", "Hard"),
+        T("Skirmish.EasyAI", "Easy AI"),
+        T("Skirmish.MediumAI", "Medium AI"),
+        T("Skirmish.HardAI", "Hard AI"),
     };
 
     /// <summary>自己是否选择了观战（Spectator）阵营。</summary>

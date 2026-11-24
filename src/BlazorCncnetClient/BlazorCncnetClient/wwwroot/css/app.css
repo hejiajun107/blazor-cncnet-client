@@ -928,9 +928,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .go-dd .gl-select:disabled{opacity:.55;cursor:not-allowed}
 
 /* 玩家配置紧凑槽位表格（参考原版 PlayerOptionsPanel：PLAYER|SIDE|COLOR|START|TEAM，固定 8 行）。
-   固定列总宽控制在 ~250px（1280×720 下第 2 列可用 ~300px，玩家名列余量不足），
-   避免 5 列后玩家名列被挤没导致列表「满」/溢出。 */
-.gl-tr{display:grid;grid-template-columns:minmax(0,1fr) 94px 62px 38px 38px;gap:4px;align-items:center;
+   固定列总宽控制在 ~252px（出生/队伍各 48px，避免数字/队伍字母被原生下拉箭头截断；
+   玩家名列因此缩短约 20%，仍保留省略号），避免 5 列后玩家名列被挤没导致列表「满」/溢出。 */
+.gl-tr{display:grid;grid-template-columns:minmax(0,1fr) 94px 62px 48px 48px;gap:4px;align-items:center;
   padding:3px 2px;border-bottom:1px solid rgba(255,255,255,.05)}
 .gl-tr-head{font-size:10px;color:var(--text-3);letter-spacing:1px;border-bottom:1px solid var(--line)}
 .gl-tr-head em{font-style:normal;font-family:var(--font-orbitron);font-size:8px;color:var(--dim)}
@@ -945,10 +945,10 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .gl-tc-name{display:flex;align-items:center;gap:6px;min-width:0}
 .gl-tc-name .nm{flex:1;min-width:0;font-size:12px;font-weight:700;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
-.gl-tr .gl-select{padding:2px 6px;font-size:11px;min-width:0}
+.gl-tr .gl-select{padding:2px 4px;font-size:11px;min-width:0}
 .gl-tr .icon-sel-btn{padding-right:14px}
 .gl-tr .gl-select:disabled{opacity:.45;cursor:not-allowed}
-.gl-tc-name .ai-level{width:auto;flex:none;padding:2px 6px;font-size:11px}
+.gl-tc-name .ai-level{flex:1;min-width:0;width:100%;padding:2px 6px;font-size:11px}
 .gl-tc-name .ai-remove{flex:none;width:18px;height:18px;padding:0;border-radius:3px;font-size:10px}
 .gl-tc-name .ai-add-sel{flex:1;min-width:0;border-style:dashed;border-color:color-mix(in srgb,var(--cyan) 40%,transparent);
   color:var(--text-3);font-size:11px}
