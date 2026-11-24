@@ -17,12 +17,8 @@
     <span class="hud-fps">@T("TopBar.Fps", "FPS") <b data-fps="1">—</b></span>
 </TopBar>
 
-<!-- 背景层（全局共享）：星粒 / 极光 / 网格 / 扫描线 / 暗角 -->
-<canvas id="bg-canvas"></canvas>
-<div class="aurora"></div>
-<div class="grid"></div>
-<div class="scan"></div>
-<div class="vig"></div>
+<!-- 背景层（全局共享）：星粒 / 极光 / 网格 / 扫描线 / 暗角 —— F2 可替换槽位 layout.background（默认 BackgroundLayers） -->
+<ReplaceableComponent Key="layout.background" />
 
 <div class="shell">
     <!-- 页面切换过渡：@key 随路由变化强制重放 fade-slide（动效 tokens，spec §5.5） -->

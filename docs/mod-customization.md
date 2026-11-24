@@ -170,12 +170,15 @@ Style=plugin.css
 | `page.mainmenu` | 替换 | 内置主菜单 | 主菜单主体整块（含地球/斜切菜单等自定义首页）；仅插件 `ReplaceSlot` 可接管，不支持 `[Components]` |
 | `layout.footer` | 替换 | `FooterBar` | 全局底栏（SYSTEM STATUS / 分辨率等） |
 | `layout.splash` | 替换 | `SplashScreen` | 启动闪屏；`[Components]` 可切内置实现，插件也可 `ReplaceSlot` 整体接管（轻量换内容用 `SetLoadingScreenContent`） |
+| `layout.background` | 替换 | `BackgroundLayers` | 全局背景层（星粒 canvas / 极光 / 网格 / 扫描线 / 暗角）；默认实现即原内联写法，DOM 完全一致 |
 | `layout.topbar` | 追加 | — | 全局顶栏菜单区（插件按钮/指示器），经 `PluginSlot` 渲染 |
 | `menu.entry` | 追加 | — | 主菜单按钮列表之后、页脚之前（自定义渲染的菜单入口） |
 | `page.settings.aside` | 追加 | — | 设置页左侧栏（插件内容卡片），经 `PluginSlot` 渲染 |
 | `page.lobby.aside` | 追加 | — | 在线大厅 `.lobby-grid` 内（三列网格；用 `grid-column:1/-1` 可占满整行） |
+| `page.campaign.aside` | 追加 | — | 战役页侧栏（任务/说明区域旁），经 `PluginSlot` 渲染 |
+| `page.skirmish.map.tools` | 追加 | — | 地图工具条（`.map-tools`，与「收藏 / 排序 / 随机」按钮同行）；同时挂载于遭遇战与在线/局域网房间的房主地图面板 |
 
-- **替换型**（`layout.footer`）：宿主用 `<ReplaceableComponent Key="…"/>` 渲染，`Resolve` 只取一个类型，
+- **替换型**（`layout.footer` / `layout.splash` / `layout.background`）：宿主用 `<ReplaceableComponent Key="…"/>` 渲染，`Resolve` 只取一个类型，
   来源优先级 = `[Components]` ini → 插件 `ReplaceSlot` → 内置默认。
 - **替换型 · 仅插件**（`page.mainmenu`）：宿主 `MainMenu` 用 `Plugins.TryGetReplacement` 解析，
   同一 key 后加载的插件胜出；被替换的只是页面主体，自动连接、ESC、更新检查、隐私弹窗仍由宿主执行。

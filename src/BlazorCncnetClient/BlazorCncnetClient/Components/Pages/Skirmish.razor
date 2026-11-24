@@ -103,6 +103,8 @@ else
                         <button type="button" class="mt-btn" title="@T("Skirmish.PickRandom", "Pick a random map")" @onclick="OnPickRandomMap">
                             <span class="mt-label">@T("Skirmish.RandomShort", "Random")</span>
                         </button>
+                        @* F4 追加型槽位：插件工具按钮（与 .mt-btn 同行渲染） *@
+                        <PluginSlot Key="page.skirmish.map.tools" />
                     </div>
                 </div>
             </section>

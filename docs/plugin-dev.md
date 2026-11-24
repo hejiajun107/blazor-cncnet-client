@@ -366,11 +366,15 @@ new PluginMenuEntry(
 | slotKey | 类型 | 宿主渲染位置 |
 |---|---|---|
 | `layout.footer` | 替换 | 全局底栏（`ReplaceableComponent`）；默认 `FooterBar` |
+| `layout.splash` | 替换 | 启动闪屏（`ReplaceableComponent`）；默认 `SplashScreen`，轻量换内容用 `SetLoadingScreenContent` |
+| `layout.background` | 替换 | 全局背景层（`ReplaceableComponent`）；默认 `BackgroundLayers`（星粒/极光/网格/扫描线/暗角） |
 | `page.mainmenu` | 替换 | 主菜单主体（`MainMenu.razor` 的 `DynamicComponent`）；宿主自动连接 / ESC / 更新检查 / 隐私声明仍生效，示例见 `samples/Cnc3Home` |
 | `layout.topbar` | 追加 | 全局悬浮顶栏的菜单区（`PluginSlot`） |
 | `menu.entry` | 追加 | 主菜单按钮列表之后、页脚之前（自定义渲染的菜单入口） |
 | `page.settings.aside` | 追加 | 设置页左侧栏（`PluginSlot`） |
 | `page.lobby.aside` | 追加 | 在线大厅 `.lobby-grid`（三列网格；`grid-column:1/-1` 可占满整行） |
+| `page.campaign.aside` | 追加 | 战役页侧栏（任务/说明区域旁） |
+| `page.skirmish.map.tools` | 追加 | 地图工具条 `.map-tools`（收藏/排序/随机按钮同行）；遭遇战与在线、局域网房间的房主地图面板共用 |
 
 > 追加型槽位的外层容器 `.plugin-slot` 为 `display:contents`，其子元素**直接参与父容器布局**，
 > 因此你的组件根元素应是一个（或一组）与所在容器风格一致的块/按钮 —— 顶栏与主菜单建议用宿主的
@@ -378,7 +382,7 @@ new PluginMenuEntry(
 >
 > 新增槽位 key 需要宿主侧加一行 `<PluginSlot Key="…"/>`；如需更多挂载点请提需求。
 
-**替换型槽位的约定**（`page.mainmenu` / `layout.footer`）：
+**替换型槽位的约定**（`page.mainmenu` / `layout.footer` / `layout.splash` / `layout.background`）：
 
 - 由宿主的 `DynamicComponent` 渲染，**不向组件传参**；所需数据用 `@inject` 取宿主服务。
 - 同一 key 只有一个组件生效：**后加载的插件胜出**，宿主按 `TryGetReplacement` 倒序解析；
@@ -471,8 +475,9 @@ new PluginMenuEntry(
   组件内引用图片等资源用 `IPluginContext.ContentUrl("Plugins/<id>/assets/x.png")` 或
   `<img src="@Url">`（`Microsoft.AspNetCore.Components.WebAssembly.Services` 之外无特殊要求）。
   同理，`@import`/`url()` 的相对路径以**插件目录**为基准（内容伺服以游戏根为根，插件目录是它的一段）。
-- **槽位数量有限**：当前为 `page.mainmenu` / `layout.footer`（替换）+ `layout.topbar` /
-  `menu.entry` / `page.settings.aside` / `page.lobby.aside`（追加），共 6 个挂载点。
+- **槽位数量有限**：当前为 `page.mainmenu` / `layout.footer` / `layout.splash` /
+  `layout.background`（替换）+ `layout.topbar` / `menu.entry` / `page.settings.aside` /
+  `page.lobby.aside` / `page.campaign.aside` / `page.skirmish.map.tools`（追加），共 10 个挂载点。
   需要更多挂载点在宿主侧加一行 `<PluginSlot Key="…"/>` 即可。
 - **内容伺服的 MIME 是白名单制**：非常见扩展名（`.wasm`、`.glb`、`.hdr` 等）按
   `application/octet-stream` 返回，只影响流式实例化一类的用法，详见 §2.7。

@@ -30,6 +30,7 @@ public sealed class ReplaceableComponentService
         _plugins = plugins;
         _defaults["layout.footer"] = typeof(FooterBar);
         _defaults["layout.splash"] = typeof(SplashScreen);
+        _defaults["layout.background"] = typeof(BackgroundLayers);
     }
 
     /// <summary>解析槽位组件类型（ini 覆盖 → 插件替换 → 内置默认）。未知槽位抛异常（配置错误应尽早暴露）。</summary>
