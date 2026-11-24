@@ -188,6 +188,11 @@ a,.btn-link{color:var(--cyan)}
   transition:border-color .15s var(--ease-out),color .15s var(--ease-out),box-shadow .15s var(--ease-out)}
 .hud .hm .hm-key{font-family:var(--font-orbitron);font-size:8px;letter-spacing:2px;color:var(--dim)}
 .hud .hm:hover{border-color:var(--cyan);color:#fff;box-shadow:0 0 10px color-mix(in srgb,var(--cyan) 25%,transparent)}
+/* 未读私聊角标（顶栏「消息」） */
+.hud .hm{position:relative}
+.hud .hm-badge{position:absolute;top:-7px;right:-7px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;
+  background:var(--red);color:#fff;font-family:var(--font-orbitron);font-size:10px;line-height:16px;text-align:center;
+  box-shadow:0 0 8px rgba(255,80,80,.55)}
 .hud .hm:hover .hm-key{color:var(--cyan-soft)}
 .hud .hm.hm-out:hover{border-color:var(--red);box-shadow:0 0 10px rgba(255,80,80,.25)}
 .hud .hm.hm-out:hover .en{color:var(--red)}
@@ -724,6 +729,14 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .cr-field input::placeholder{color:var(--text-3)}
 .cr-row{display:flex;gap:10px}
 .cr-row .cr-field{flex:1;min-width:0}
+/* 建房「高级选项」（原版 GameCreationWindow 折叠的隧道列表） */
+.cr-adv-toggle{display:flex;align-items:center;gap:6px;margin:14px 16px 0;padding:0;background:none;border:0;
+  color:var(--cyan-soft);font-size:12px;font-family:var(--font-cn);letter-spacing:1px;cursor:pointer}
+.cr-adv-toggle:hover{color:var(--cyan)}
+.cr-adv-caret{font-size:10px;color:var(--text-3)}
+.cr-adv{margin-top:8px;border-top:1px solid var(--line)}
+.cr-adv-h{margin:10px 16px 0;font-size:12px;color:var(--text-3);letter-spacing:1px}
+.cr-adv-tunnels{max-height:min(30vh,210px)}
 .cr-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px}
 .cr-actions .mb-btn{min-width:96px}
 
@@ -928,9 +941,9 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .go-dd .gl-select:disabled{opacity:.55;cursor:not-allowed}
 
 /* 玩家配置紧凑槽位表格（参考原版 PlayerOptionsPanel：PLAYER|SIDE|COLOR|START|TEAM，固定 8 行）。
-   固定列总宽控制在 ~252px（出生/队伍各 48px，避免数字/队伍字母被原生下拉箭头截断；
-   玩家名列因此缩短约 20%，仍保留省略号），避免 5 列后玩家名列被挤没导致列表「满」/溢出。 */
-.gl-tr{display:grid;grid-template-columns:minmax(0,1fr) 94px 62px 48px 48px;gap:4px;align-items:center;
+   玩家名与阵营按 1.3 : 1 分享剩余宽度（玩家名比阵营略宽，避免阵营下拉白占空间），
+   颜色 60px、出生/队伍各 52px 固定（容纳色块与数字/队伍字母，留出箭头位）。 */
+.gl-tr{display:grid;grid-template-columns:minmax(84px,1.3fr) minmax(0,1fr) 60px 52px 52px;gap:4px;align-items:center;
   padding:3px 2px;border-bottom:1px solid rgba(255,255,255,.05)}
 .gl-tr-head{font-size:10px;color:var(--text-3);letter-spacing:1px;border-bottom:1px solid var(--line)}
 .gl-tr-head em{font-style:normal;font-family:var(--font-orbitron);font-size:8px;color:var(--dim)}

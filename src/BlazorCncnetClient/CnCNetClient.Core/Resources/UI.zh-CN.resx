@@ -415,6 +415,15 @@
   <data name="Client:UI:Lobby.Create" xml:space="preserve">
     <value>创建</value>
   </data>
+  <data name="Client:UI:Lobby.AdvancedOptions" xml:space="preserve">
+    <value>高级选项</value>
+  </data>
+  <data name="Client:UI:Lobby.TunnelServer" xml:space="preserve">
+    <value>隧道服务器</value>
+  </data>
+  <data name="Client:UI:Lobby.TunnelAuto" xml:space="preserve">
+    <value>自动（最优线路）</value>
+  </data>
   <data name="Client:UI:Lobby.JoinRoom" xml:space="preserve">
     <value>加入房间</value>
   </data>

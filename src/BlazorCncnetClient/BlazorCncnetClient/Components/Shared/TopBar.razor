@@ -8,6 +8,7 @@
 @inject NavigationManager Nav
 @inject IServiceProvider Services
 @inject CnCNetManager CncNet
+@inject BlazorCncnetClient.Infrastructure.LobbyService LobbySvc
 @inject LoginService Login
 @inject ITranslationService TranslationSvc
 
@@ -26,7 +27,7 @@
     <nav class="hud-menu">
         <button type="button" class="hm" @onclick="GoSkirmish">@UiText.T("TopBar.Skirmish", "Skirmish")<span class="hm-key">F2</span></button>
         <button type="button" class="hm" @onclick="GoOnlineLobby">@UiText.T("TopBar.OnlineLobby", "CnCNet Lobby")<span class="hm-key">F3</span></button>
-        <button type="button" class="hm" @onclick="GoPM">@UiText.T("TopBar.Pm", "Messages")<span class="hm-key">F4</span></button>
+        <button type="button" class="hm" @onclick="GoPM">@UiText.T("TopBar.Pm", "Messages")<span class="hm-key">F4</span>@if (_pmUnread > 0){<span class="hm-badge">@(_pmUnread > 99 ? "99+" : _pmUnread.ToString())</span>}</button>
         <button type="button" class="hm" @onclick="GoSettings">@UiText.T("TopBar.Settings", "Options")<span class="hm-key">F12</span></button>
         @if (_isConnected)
         {
@@ -75,6 +76,7 @@
     private System.Threading.Timer? _timer;
     private CancellationTokenSource? _playerCountCts;
     private int _onlineTotal = -1;
+    private int _pmUnread;
     private bool _isConnected;
     private DotNetObjectReference<TopBar>? _dotNetRef;
 
@@ -87,6 +89,10 @@
         _isConnected = CncNet.IsConnected;
         CncNet.Connected += OnConnected;
         CncNet.Disconnected += OnDisconnected;
+
+        // 未读私聊角标：私聊在任意页面收到都会累计（原版 PrivateMessagingWindow 全局提示）
+        LobbySvc.PmChanged += OnPmChanged;
+        _pmUnread = LobbySvc.PmUnreadTotal;
 
         // 在线人数：全局唯一启动源（原版 TopBar 持有 CnCNetPlayerCountTask，各页仅订阅）。
         // MainMenu 页不再自行启动，避免双线程重复拉取 status API。
@@ -140,7 +146,13 @@
             Nav.NavigateTo("/online/lobby");
     }
 
-    /// <summary>私信（原版 F4）：迁移版无独立私信窗口，进入大厅聊天区；未连接先登录。</summary>
+    private void OnPmChanged() => _ = InvokeAsync(() =>
+    {
+        _pmUnread = LobbySvc.PmUnreadTotal;
+        StateHasChanged();
+    });
+
+    /// <summary>私信（原版 F4）：迁移版私聊中心在大厅页，这里跳转后自动展开私聊面板（含未读会话）。</summary>
     private async Task GoPM()
     {
         if (!_isConnected)
@@ -149,6 +161,7 @@
             if (result != LoginResult.Connected)
                 return;
         }
+        LobbySvc.RequestPmCenter();
         Nav.NavigateTo("/online/lobby");
     }
 
@@ -197,6 +210,7 @@
     {
         _timer?.Dispose();
         TranslationSvc.LanguageChanged -= OnLanguageChanged;
+        LobbySvc.PmChanged -= OnPmChanged;
         CncNet.Connected -= OnConnected;
         CncNet.Disconnected -= OnDisconnected;
         CnCNetPlayerCountTask.CnCNetGameCountUpdated -= OnPlayerCountUpdated;

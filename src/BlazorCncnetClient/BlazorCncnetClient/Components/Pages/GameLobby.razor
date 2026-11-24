@@ -1011,7 +1011,7 @@ else
             }
             if (NavData.PendingCreate is { } create)
             {
-                Room.CreateGame(create.RoomName, create.MaxPlayers, create.Password);
+                Room.CreateGame(create.RoomName, create.MaxPlayers, create.Password, create.Tunnel);
                 return;
             }
         }

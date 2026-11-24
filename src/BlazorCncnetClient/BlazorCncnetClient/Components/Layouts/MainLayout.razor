@@ -9,6 +9,7 @@
 @inject PluginAssetInjector PluginAssets
 @inject ITranslationService TranslationSvc
 @inject UiSoundService UiSound
+@inject BlazorCncnetClient.Infrastructure.LobbyService LobbySvc
 
 <!-- HUD 顶栏（全局，TopBar 通用组件，spec §5.3；状态灯/文本由 ConnectionMonitor 驱动，M3.10）。
      主题切换已移至设置页（Settings.razor），此处仅保留版本/帧率读数 -->
@@ -59,6 +60,10 @@
 
     protected override void OnInitialized()
     {
+        // 私聊/频道事件订阅必须早于页面存在：原版 PrivateMessagingWindow 是全局窗口，
+        // 在大厅以外的页面（主菜单、游戏房间）也要能收到私信并累计未读；
+        // 此前只有进入大厅页才 Wire，非大厅页收到的私聊直接丢失。
+        LobbySvc.Initialize();
         // 主题切换后刷新切换控件高亮态
         ThemeProvider.ThemeChanged += OnThemeChanged;
         // 连接状态（M3.10 D2.7）：状态灯/底栏刷新 + 断线/重连 Toast

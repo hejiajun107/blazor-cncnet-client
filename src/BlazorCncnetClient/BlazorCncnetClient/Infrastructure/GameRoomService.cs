@@ -361,7 +361,8 @@ namespace BlazorCncnetClient.Infrastructure
         // ── 建房间 / 加入 / 离开 ──
 
         /// <summary>创建房间并加入（迁移自原版 Gcw_GameCreated）。</summary>
-        public void CreateGame(string roomName, int maxPlayers, string password = "")
+        /// <param name="tunnel">建房前指定的隧道服务器；null 表示清除旧选择并自动择优（原版 TunnelListBox 默认行为）。</param>
+        public void CreateGame(string roomName, int maxPlayers, string password = "", CnCNetTunnel? tunnel = null)
         {
             if (IsInGameRoom)
                 throw new InvalidOperationException(UiText.T("Room.AlreadyInRoom", "Already in a game room. Please leave the current room first."));
@@ -399,6 +400,8 @@ namespace BlazorCncnetClient.Infrastructure
 
             // M3.11：隧道列表已就绪则建房时立即选优并广播（房间列表显示真实隧道）；
             // 列表未就绪时由 OnTunnelsRefreshed 在下次刷新兜底（此前仍为 [DYN]）。
+            // 建房对话框显式指定隧道时直接沿用（EnsureTunnelSelected 对非空 CurrentTunnel 不覆盖）。
+            _tunnelHandler.CurrentTunnel = tunnel;
             EnsureTunnelSelected();
             BroadcastGame();
 

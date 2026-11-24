@@ -1,3 +1,5 @@
+using CnCNetClient.Domain.Multiplayer.CnCNet;
+
 namespace BlazorCncnetClient.Infrastructure
 {
     /// <summary>
@@ -13,8 +15,13 @@ namespace BlazorCncnetClient.Infrastructure
         public GameJoinRequest? PendingJoin { get; set; }
     }
 
-    /// <summary>创建房间请求参数（对应原版 Gcw_GameCreated 弹窗输入）。</summary>
-    public sealed record CreateRoomRequest(string RoomName, int MaxPlayers, string Password);
+    /// <summary>创建房间请求参数（对应原版 Gcw_GameCreated 弹窗输入）。
+    /// <paramref name="Tunnel"/> 为 null 表示由宿主自动择优（原版 TunnelListBox 默认行为）。</summary>
+    public sealed record CreateRoomRequest(
+        string RoomName,
+        int MaxPlayers,
+        string Password,
+        CnCNetTunnel? Tunnel = null);
 
     /// <summary>加入房间请求参数（来自大厅 GAME 广播条目 + 用户输入的密码）。</summary>
     public sealed record GameJoinRequest(

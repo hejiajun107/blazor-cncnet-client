@@ -52,6 +52,8 @@ namespace BlazorCncnetClient.Infrastructure
         private Timer? _cleanupTimer;
         private bool _initialized;
         private bool _wired;
+        private bool _rejoinPending;
+        private bool _pmCenterRequested;
 
         public CnCNetGame? LocalGame { get; }
         public Channel? CurrentChannel { get; private set; }
@@ -63,6 +65,26 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>私聊会话列表（M3.8）：按最近活动时间倒序，供多标签栏渲染。</summary>
         public IReadOnlyList<PmSession> PmSessions =>
             _pmSessions.Values.OrderByDescending(s => s.LastActivity).ToList();
+
+        /// <summary>未读私聊总数（顶栏「消息」角标）。</summary>
+        public int PmUnreadTotal => _pmSessions.Values.Sum(s => s.UnreadCount);
+
+        /// <summary>请求打开私聊中心（原版 F4）：大厅页已打开时立即响应，否则由页面初始化时消费。</summary>
+        public event Action? PmCenterRequested;
+
+        public void RequestPmCenter()
+        {
+            _pmCenterRequested = true;
+            PmCenterRequested?.Invoke();
+        }
+
+        /// <summary>取走并清除「打开私聊中心」请求（页面初始化时调用）。</summary>
+        public bool ConsumePmCenterRequest()
+        {
+            bool requested = _pmCenterRequested;
+            _pmCenterRequested = false;
+            return requested;
+        }
 
         public LobbyService(CnCNetManager manager, GameCollection gameCollection, CnCNetUserData userData, IDispatcher dispatcher, GameRoomService room)
         {
@@ -99,6 +121,8 @@ namespace BlazorCncnetClient.Infrastructure
         /// <summary>离开大厅：断开连接并清理状态。</summary>
         public void Logout()
         {
+            // 主动登出不涉及「重连补 JOIN」，避免下次手动登录时重复 JOIN。
+            _rejoinPending = false;
             foreach (var channel in _channels)
             {
                 _manager.LeaveFromChannel(channel);
@@ -129,18 +153,34 @@ namespace BlazorCncnetClient.Infrastructure
 
         private void OnConnected(object? sender, EventArgs e)
         {
+            // 断线重连：manager 只清理非持久频道，持久聊天/广播频道对象仍留在 channels 里，
+            // ClearState 也会丢掉本地引用。因此重连后必须重新 JOIN，否则客户端「以为」在频道里，
+            // 服务器侧实际未加入（PRIVMSG 401/404、成员列表为空），只能重启客户端恢复。
+            bool rejoin = _rejoinPending;
+            _rejoinPending = false;
+
             JoinDefaultChannels();
+
+            if (rejoin)
+            {
+                foreach (var channel in _channels)
+                    channel.Join();
+                BroadcastChannel?.Join();
+            }
+
             NotifyChanged();
         }
 
         private void OnDisconnected(object? sender, EventArgs e)
         {
+            _rejoinPending = true;
             ClearState();
             NotifyChanged();
         }
 
         private void OnConnectionLost(object? sender, ConnectionLostEventArgs e)
         {
+            _rejoinPending = true;
             ClearState();
             NotifyChanged();
         }
@@ -153,7 +193,8 @@ namespace BlazorCncnetClient.Infrastructure
             BroadcastChannel = null;
             CurrentChannel = null;
             ClearGames();
-            _pmSessions.Clear();
+            // 私聊会话不在断线时清空：重连后仍需保留历史（原版 PrivateMessagingWindow 同样跨重连保留），
+            // 仅登出（Logout）时清空。
         }
 
         private void ClearGames()

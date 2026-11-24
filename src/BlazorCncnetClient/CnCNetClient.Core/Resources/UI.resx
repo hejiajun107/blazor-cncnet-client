@@ -420,6 +420,15 @@ They interfere with the game/mod and must be removed before the client can start
   <data name="Client:UI:Lobby.Create" xml:space="preserve">
     <value>Create</value>
   </data>
+  <data name="Client:UI:Lobby.AdvancedOptions" xml:space="preserve">
+    <value>Advanced options</value>
+  </data>
+  <data name="Client:UI:Lobby.TunnelServer" xml:space="preserve">
+    <value>Tunnel server</value>
+  </data>
+  <data name="Client:UI:Lobby.TunnelAuto" xml:space="preserve">
+    <value>Automatic (best ping / load)</value>
+  </data>
   <data name="Client:UI:Lobby.JoinRoom" xml:space="preserve">
     <value>Join room</value>
   </data>

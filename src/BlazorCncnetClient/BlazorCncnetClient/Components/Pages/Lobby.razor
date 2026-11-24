@@ -16,6 +16,7 @@
 @inject DiscordPresenceService Discord
 @inject ITranslationService TranslationSvc
 @inject UiSoundService Snd
+@inject CnCNetClient.Online.TunnelHandler TunnelSvc
 
 <div class="lobby page-anim">
     <header class="lobby-top item-in">
@@ -400,6 +401,36 @@
                     <input maxlength="32" placeholder="@T("Lobby.PublicRoomHint", "Leave empty for a public room")" value="@_createPassword" @oninput="OnCreatePasswordInput" />
                 </label>
             </div>
+            <button type="button" class="cr-adv-toggle" @onclick="ToggleCreateAdvanced">
+                <span class="cr-adv-caret">@(_createAdvancedOpen ? "▾" : "▸")</span>
+                @T("Lobby.AdvancedOptions", "Advanced options")
+            </button>
+            @if (_createAdvancedOpen)
+            {
+                <div class="cr-adv">
+                    <div class="cr-adv-h">@T("Lobby.TunnelServer", "Tunnel server")</div>
+                    <div class="tunnel-list cr-adv-tunnels">
+                        <button type="button" class="tunnel-item @(_createTunnel is null ? "sel" : "")"
+                                @onclick="() => SelectCreateTunnel(null)">
+                            <span class="t-name">@T("Lobby.TunnelAuto", "Automatic (best ping / load)")</span>
+                        </button>
+                        @foreach (var t in TunnelSvc.Tunnels)
+                        {
+                            <button type="button" class="tunnel-item @(IsCreateTunnel(t) ? "sel" : "")"
+                                    @onclick="() => SelectCreateTunnel(t)">
+                                <span class="t-flag">@t.CountryCode</span>
+                                <span class="t-name">@(t.Official ? "◈ " : t.Recommended ? "◇ " : "")@t.Name</span>
+                                <span class="t-meta">@t.Clients/@t.MaxClients</span>
+                                <span class="t-ping">@(t.PingInMs > -1 ? t.PingInMs + "ms" : "—")</span>
+                            </button>
+                        }
+                        @if (TunnelSvc.Tunnels.Count == 0)
+                        {
+                            <div class="tunnel-empty">@T("GameLobby.TunnelLoading", "Loading tunnel list, please wait…")</div>
+                        }
+                    </div>
+                </div>
+            }
             <div class="cr-actions">
                 <button type="button" class="mb-btn" @onclick="CloseCreateDialog">@T("Lobby.Cancel", "Cancel")</button>
                 <button type="button" class="mb-btn primary" @onclick="OnCreateGame">@T("Lobby.Create", "Create")</button>
@@ -479,6 +510,8 @@
     private string _createRoomName = string.Empty;
     private int _createMaxPlayers = 8;
     private string _createPassword = string.Empty;
+    private bool _createAdvancedOpen;
+    private CnCNetTunnel? _createTunnel;
     private bool _joinPwOpen;
     private string _joinPassword = string.Empty;
 
@@ -585,6 +618,7 @@
         LobbySvc.Changed += OnChanged;
         LobbySvc.PmChanged += OnPmChanged;
         LobbySvc.PmReceived += OnPmReceived;
+        LobbySvc.PmCenterRequested += OnPmCenterRequested;
         LobbySvc.UiSoundRequested += OnUiSound;
         ThemeProvider.ThemeChanged += OnThemeChanged;
         TranslationSvc.LanguageChanged += OnLanguageChanged;
@@ -595,12 +629,19 @@
         // 连接状态变化时刷新左侧状态条（lt-conn），否则停留在进入页面时的旧值（顶栏/底栏已实时刷新）
         Mon.StateChanged += OnMonConnectionChanged;
 
-        // 2-2 从在线房间跳转而来：?pm=<昵称> 直达私聊会话
+        // 2-2 从在线房间跳转而来：?pm=<昵称> 直达私聊会话；顶栏「消息」跳转则展开私聊面板
+        bool pmCenterRequested = LobbySvc.ConsumePmCenterRequest();
         var pmName = GetQueryParam(Nav.ToAbsoluteUri(Nav.Uri), "pm");
         if (!string.IsNullOrWhiteSpace(pmName))
         {
             LobbySvc.OpenPmSession(pmName);
             _activePmName = pmName;
+            _pmOpen = true;
+            LobbySvc.MarkPmRead(pmName);
+        }
+        else if (pmCenterRequested)
+        {
+            OpenPmCenter();
         }
 
         // r9-4：Discord 呈现恢复为「In Client」（从游戏房间/对局返回大厅时覆盖房间状态）
@@ -672,6 +713,22 @@
         _pmOpen = true;
         _activePmName = name;
         LobbySvc.MarkPmRead(name);
+        _pmScroll = true;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>顶栏「消息」/F4 请求：展开私聊面板，并激活最近的未读会话（原版 F4 打开私聊窗口）。</summary>
+    private void OnPmCenterRequested() => OpenPmCenter();
+
+    private void OpenPmCenter()
+    {
+        _pmOpen = true;
+        var recent = LobbySvc.PmSessions.FirstOrDefault();
+        if (recent is not null)
+        {
+            _activePmName = recent.UserName;
+            LobbySvc.MarkPmRead(recent.UserName);
+        }
         _pmScroll = true;
         _ = InvokeAsync(StateHasChanged);
     }
@@ -761,8 +818,19 @@
             LobbySvc.LocalGame?.UIName ?? "CnCNet");
         _createMaxPlayers = 8;
         _createPassword = string.Empty;
+        // 原版 GameCreationWindow：隧道列表默认折叠，[MultiPlayer] AlwaysDisplayTunnelList=true 时展开。
+        _createAdvancedOpen = UserINISettings.Instance.AlwaysDisplayTunnelList.Value;
+        _createTunnel = null; // 默认自动择优
         _createOpen = true;
     }
+
+    private void ToggleCreateAdvanced() => _createAdvancedOpen = !_createAdvancedOpen;
+
+    private void SelectCreateTunnel(CnCNetTunnel? tunnel) => _createTunnel = tunnel;
+
+    private bool IsCreateTunnel(CnCNetTunnel tunnel) => _createTunnel is not null
+        && string.Equals(tunnel.Address, _createTunnel.Address, StringComparison.OrdinalIgnoreCase)
+        && tunnel.Port == _createTunnel.Port;
 
     private void CloseCreateDialog() => _createOpen = false;
 
@@ -784,7 +852,7 @@
             _ = JS.InvokeVoidAsync("cncnet.toast", T("Lobby.RoomNameRequired", "Please enter a room name"));
             return;
         }
-        NavData.PendingCreate = new CreateRoomRequest(name, _createMaxPlayers, _createPassword);
+        NavData.PendingCreate = new CreateRoomRequest(name, _createMaxPlayers, _createPassword, _createTunnel);
         CloseCreateDialog();
         Nav.NavigateTo("/online/game");
     }
@@ -1107,6 +1175,7 @@
         LobbySvc.PmChanged -= OnPmChanged;
         MapLoader.MapLoadingComplete -= OnMapLoadingComplete;
         LobbySvc.PmReceived -= OnPmReceived;
+        LobbySvc.PmCenterRequested -= OnPmCenterRequested;
         LobbySvc.UiSoundRequested -= OnUiSound;
         ThemeProvider.ThemeChanged -= OnThemeChanged;
         TranslationSvc.LanguageChanged -= OnLanguageChanged;

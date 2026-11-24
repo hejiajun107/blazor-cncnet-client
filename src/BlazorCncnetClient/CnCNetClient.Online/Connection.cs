@@ -26,30 +26,30 @@ namespace CnCNetClient.Online
         private const int MAXIMUM_LATENCY = 400;
         private const int BYTE_ARRAY_MSG_LEN = 1024;
 
-        public Connection(IConnectionManager connectionManager, Random random)
+        public Connection(IConnectionManager connectionManager, Random random, IIrcServerListProvider ircServerListProvider = null)
         {
             this.connectionManager = connectionManager;
             this.Rng = random;
+            this.ircServerListProvider = ircServerListProvider;
         }
 
         IConnectionManager connectionManager;
 
+        /// <summary>服务器列表选择器（插件扩展口），为空时使用宿主默认行为。</summary>
+        private readonly IIrcServerListProvider ircServerListProvider;
+
         public Random Rng;
 
-        private static IList<Server> _servers = null;
         /// <summary>
         /// The list of CnCNet / GameSurge IRC servers to connect to.
         /// </summary>
-        private static IList<Server> Servers
+        private IList<Server> Servers
         {
             get
             {
-                if (_servers is not null)
-                    return _servers;
-
-                IEnumerable<string> serversList;
+                IReadOnlyList<string> serversList;
                 if (ClientConfiguration.Instance.IRCServers.Count > 0)
-                    serversList = ClientConfiguration.Instance.IRCServers;
+                    serversList = ClientConfiguration.Instance.IRCServers.ToList();
                 else
                 {
                     // fallback to the hardcoded servers list
@@ -58,8 +58,12 @@ namespace CnCNetClient.Online
                     ];
                 }
 
-                _servers = serversList.Select(Server.Deserialize).ToList();
-                return _servers;
+                // 每次连接都重新询问选择器（不缓存），插件切换节点后下次重连即生效。
+                IReadOnlyList<string> selected = ircServerListProvider?.SelectServers(serversList);
+                if (selected is { Count: > 0 })
+                    serversList = selected;
+
+                return serversList.Select(Server.Deserialize).ToList();
             }
         }
 
@@ -277,6 +281,15 @@ namespace CnCNetClient.Online
                 }
                 catch (IOException ex)
                 {
+                    // 主动断开（Disconnect）会先置 disconnect=true 再关闭 NetworkStream，
+                    // 阻塞中的 Read 因此可能抛 IOException；按正常断开处理，避免误判为断线并自动重连。
+                    if (disconnect)
+                    {
+                        connectionManager.OnDisconnected();
+                        connectionCut = false;
+                        break;
+                    }
+
                     errorTimes++;
 
                     if (errorTimes > MAX_ERROR_COUNT)
@@ -292,6 +305,14 @@ namespace CnCNetClient.Online
                 }
                 catch (Exception ex)
                 {
+                    // 同上：主动断开导致的 ObjectDisposedException（NetworkStream 已关闭）不算异常断线。
+                    if (disconnect)
+                    {
+                        connectionManager.OnDisconnected();
+                        connectionCut = false;
+                        break;
+                    }
+
                     const string errorMessage = "Disconnected from CnCNet due to an internal error.";
                     Logger.Log(errorMessage + Environment.NewLine + "Message: " + ex.ToString());
                     failedServerIPs.Add(currentConnectedServerIP);
@@ -816,7 +837,9 @@ namespace CnCNetClient.Online
                         {
                             if (recipient.StartsWith("#"))
                                 connectionManager.OnChatMessageReceived(recipient, pmsgUserName, pmsgIdent, privmsg);
-                            else if (recipient == ProgramConstants.PLAYERNAME)
+                            // IRC 昵称大小写不敏感：服务器回传的收件人大小写可能与本地昵称不同，
+                            // 精确比较会丢弃私聊（表现为「对方说发了，这边收不到」）。
+                            else if (string.Equals(recipient, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                                 connectionManager.OnPrivateMessageReceived(pmsgUserName, privmsg);
                             //else if (pmsgUserName == ProgramConstants.PLAYERNAME)
                             //{
