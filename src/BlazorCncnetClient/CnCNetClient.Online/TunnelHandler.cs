@@ -48,6 +48,8 @@ namespace CnCNetClient.Online
 
         private readonly IDispatcher dispatcher;
         private readonly CnCNetManager connectionManager;
+        /// <summary>插件扩展口：非空时优先使用其返回的隧道列表。</summary>
+        private readonly ITunnelListProvider tunnelListProvider;
         private readonly PeriodicTimer timer;
         private readonly CancellationTokenSource cts = new();
         private readonly Stopwatch refreshTimer = Stopwatch.StartNew();
@@ -55,10 +57,11 @@ namespace CnCNetClient.Online
         private uint skipCount = 0;
         private bool started = false;
 
-        public TunnelHandler(IDispatcher dispatcher, CnCNetManager connectionManager)
+        public TunnelHandler(IDispatcher dispatcher, CnCNetManager connectionManager, ITunnelListProvider tunnelListProvider = null)
         {
             this.dispatcher = dispatcher;
             this.connectionManager = connectionManager;
+            this.tunnelListProvider = tunnelListProvider;
 
             // Drive the update loop at the refresh interval (replaces GameComponent.Update + GameTime).
             timer = new PeriodicTimer(tunnelRefreshInterval);
@@ -279,6 +282,25 @@ namespace CnCNetClient.Online
 
         private byte[] GetRawTunnelData(int retryCount = 2)
         {
+            // 插件扩展口：自定义来源优先（内部可自行实现“官方 → 镜像 → 内置”降级）；
+            // 返回空或异常时继续走宿主的下载 / 缓存逻辑。
+            if (tunnelListProvider is not null)
+            {
+                try
+                {
+                    string provided = tunnelListProvider.GetTunnelList();
+                    if (!string.IsNullOrWhiteSpace(provided))
+                    {
+                        Logger.Log("Using tunnel list provided by plugin.");
+                        return Encoding.UTF8.GetBytes(provided);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log("Tunnel list provider failed: " + ex.Message);
+                }
+            }
+
             Logger.Log("Fetching tunnel server info.");
 
             if (OnlineTunnelDataAvailable)

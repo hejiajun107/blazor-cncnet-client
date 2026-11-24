@@ -221,16 +221,22 @@ namespace BlazorCncnetClient
             // 首次发起登录/自动连接时（此时已在主菜单）才解析构造。Random 显式提供（DI 无法解析）。
             appBuilder.Services.AddSingleton<GameCollection>();
             appBuilder.Services.AddSingleton<CnCNetUserData>();
+            // IRC 服务器列表选择器（插件扩展口）：默认原样使用配置列表；
+            // 插件在 RegisterServices 中注册同接口即覆盖（解析时取最后一个注册）。
+            appBuilder.Services.AddSingleton<IIrcServerListProvider, DefaultIrcServerListProvider>();
             appBuilder.Services.AddSingleton<CnCNetManager>(sp =>
                 new CnCNetManager(
                     sp.GetRequiredService<IDispatcher>(),
                     sp.GetRequiredService<GameCollection>(),
                     sp.GetRequiredService<CnCNetUserData>(),
-                    new Random()));
+                    new Random(),
+                    sp.GetRequiredService<IIrcServerListProvider>()));
 
             // 隧道服务器（M3.11 D2.3）：刷新/选择隧道列表并为多人对局下发端口；
             // 随 CnCNetManager 连接生命周期单例运行（Connected 自动 Start，懒实例化时若已连接也立即启动）。
             appBuilder.Services.AddSingleton<TunnelHandler>();
+            // 隧道列表来源扩展口：默认不提供数据（走原下载 / 缓存逻辑）；插件注册同接口即覆盖。
+            appBuilder.Services.AddSingleton<ITunnelListProvider, DefaultTunnelListProvider>();
 
             // 在线大厅（M3.2 spec §5.3.2）：聚合频道/聊天/房间/玩家状态，供 /online/lobby 读取
             appBuilder.Services.AddScoped<LobbyService>();

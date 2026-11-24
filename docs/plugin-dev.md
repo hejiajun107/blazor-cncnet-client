@@ -22,6 +22,7 @@
 | 新增独立页面 | 是 | `IPluginUiRegistrar.AddPageAssembly` + `@page` |
 | 追加主菜单项 | 是 | `IPluginUiRegistrar.AddMenuEntry` |
 | 注册自有服务 | 是 | `IPluginContext.Services` |
+| 覆盖宿主扩展点（IRC 服务器选择 / 隧道列表来源） | 是 | `RegisterServices` 注册同接口实现（后注册者胜，见 §3） |
 | 访问 CnCNet / 游戏服务 | 是 | 组件 `@inject` / `Initialize(IServiceProvider)` |
 
 **信任模型**：本地目录即信任（不做签名/沙箱）。**无热插拔**：改动后需重启客户端。
@@ -402,6 +403,43 @@ new PluginMenuEntry(
 - 请使用专属前缀（如 `/plugin/<id>/…`）。与内置路由重复时宿主只在日志告警，行为不可预期。
 - 页面内可直接 `@inject` 宿主服务（见下节）。
 
+### 宿主服务扩展点（DI 覆盖）
+
+除 UI 槽位外，宿主对少数**策略型行为**暴露接口：宿主先注册默认实现，插件在 `RegisterServices`
+（`Build()` 之前）注册同接口即可覆盖 —— 解析时取**最后一个注册**，因此插件实现天然生效。
+
+| 接口 | 程序集 | 默认实现 | 用途 |
+|---|---|---|---|
+| `IIrcServerListProvider` | `CnCNetClient.Online` | `DefaultIrcServerListProvider`（原样返回配置列表） | 建立 IRC 连接前挑选服务器条目，可实现“国内 / 国际节点”切换 |
+| `ITunnelListProvider` | `CnCNetClient.Online` | `DefaultTunnelListProvider`（返回 `null`，宿主走下载 / 缓存） | 直接提供隧道服务器列表文本，可自行实现“官方 → 镜像 → 内置名单”降级与排序 |
+
+```csharp
+// RegisterServices（Build 之前）
+context.Services.AddSingleton<IIrcServerListProvider, MyIrcServerListProvider>();
+context.Services.AddSingleton<ITunnelListProvider, MyTunnelListProvider>();
+
+public sealed class MyIrcServerListProvider : IIrcServerListProvider
+{
+    // configuredServers 为 NetworkDefinitions(.local).ini [IRCServers] 的条目（Host|Name|ports）。
+    // 返回空集合时宿主按原列表处理。
+    public IReadOnlyList<string> SelectServers(IReadOnlyList<string> configuredServers)
+        => configuredServers;
+}
+
+public sealed class MyTunnelListProvider : ITunnelListProvider
+{
+    // 返回 null / 空字符串（或抛异常）= 交给宿主原有逻辑。
+    // 返回内容首行可为表头，其余每行 address;country;countrycode;name;...
+    public string GetTunnelList() => null;
+}
+```
+
+- 服务器列表**每次建连都会重新询问选择器**（不缓存）：插件切换节点后，下次重连立即生效，无需重启客户端。
+- 隧道列表在**每次刷新时**调用 `GetTunnelList()`，插件应自行做缓存（避免频繁外网请求）；异常会被宿主记录并回退默认逻辑。
+- 编译这些接口需引用发布目录的 `ClientApp\CnCNetClient.Online.dll`（`<Private>false</Private>`，不要复制进插件目录）。
+- 不注册即为宿主原有行为，对既有插件零影响。
+- ⚠️ 不要用“改写 `NetworkDefinitions.local.ini` 指向本地 HTTP 端口”的方式提供隧道列表：`ClientConfiguration` 在插件 `RegisterServices` **之前**就已加载缓存，端口冲突时会表现为本次会话与 ini 不一致、降级链失效；直接用 `ITunnelListProvider` 即可。
+
 ---
 
 ## 4. 访问宿主服务
@@ -424,6 +462,9 @@ new PluginMenuEntry(
 > ⚠️ `Initialize(IServiceProvider)` 收到的根容器**不能解析 Scoped 服务**
 > （如 `GameRoomService`）；需要 scoped 服务请在 `Build()` 之后的自有 `AddSingleton` 里
 > 通过 `IServiceScopeFactory` 建 scope，或直接在组件里 `@inject`（组件运行在电路 scope 内，推荐）。
+
+若需改变宿主的**策略型行为**（不只是消费其服务），覆盖宿主声明的扩展点接口即可
+（如 `IIrcServerListProvider`），用法见 §3「宿主服务扩展点（DI 覆盖）」。
 
 ---
 

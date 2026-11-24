@@ -48,11 +48,11 @@ namespace CnCNetClient.Online
         public event EventHandler<UserNameIndexEventArgs> UserRemoved;
         public event EventHandler MultipleUsersAdded;
 
-        public CnCNetManager(IDispatcher dispatcher, GameCollection gc, CnCNetUserData cncNetUserData, Random random)
+        public CnCNetManager(IDispatcher dispatcher, GameCollection gc, CnCNetUserData cncNetUserData, Random random, IIrcServerListProvider ircServerListProvider = null)
         {
             gameCollection = gc;
             this.cncNetUserData = cncNetUserData;
-            connection = new Connection(this, random);
+            connection = new Connection(this, random, ircServerListProvider);
 
             this.dispatcher = dispatcher;
 
