@@ -3,12 +3,15 @@
 @using System.Globalization
 @using CnCNetClient.Core
 @using CnCNetClient.Domain
+@using CnCNetClient.Domain.Multiplayer.CnCNet
 @using CnCNetClient.Tools
 @using CnCNetClient.Updater
 @using BlazorCncnetClient.Infrastructure.Options
 @using BlazorCncnetClient.Infrastructure.Theme
 @using Microsoft.Extensions.Logging
 @inject SettingsService SettingsSvc
+@inject LobbyService LobbySvc
+@inject GameCollection GameCollection
 @inject ITranslationService TranslationSvc
 @inject IThemeProvider ThemeProvider
 @inject UpdateService UpdateSvc
@@ -241,6 +244,21 @@
     private bool AutoConnectAllowed =>
         GetBool("skipConnectDialog", SettingsSvc.Ini.SkipConnectDialog.Value) &&
         GetBool("persistentMode", SettingsSvc.Ini.PersistentMode.Value);
+
+    /// <summary>
+    /// 可跟随的游戏列表（原版 CnCNetOptionsPanel：<c>Supported</c> 且有房间广播频道的游戏，
+    /// 本机游戏排最前）。勾选值写入设置 INI 的 <c>[Channels] &lt;INTERNALNAME&gt;</c>。
+    /// </summary>
+    private IEnumerable<CnCNetGame> FollowableGames =>
+        GameCollection.GameList
+            .Where(g => g.Supported && !string.IsNullOrEmpty(g.ChatChannel) && !string.IsNullOrEmpty(g.GameBroadcastChannel))
+            .OrderBy(g => IsLocalGame(g) ? 0 : 1)
+            .ThenBy(g => g.UIName, StringComparer.CurrentCultureIgnoreCase);
+
+    private static string FollowKey(string gameId) => "follow:" + gameId;
+
+    private bool IsLocalGame(CnCNetGame game) =>
+        string.Equals(game.InternalName, ClientConfiguration.Instance.LocalGame, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>旧版 DisplayOptionsPanel：渲染器 UsesCustomWindowedOption 时窗口化状态存其配置 INI（如 dxwnd.ini [DxWnd] RunInWindow）。</summary>
     private bool ReadWindowedFromRenderer(DirectDrawWrapper? renderer)
@@ -717,6 +735,14 @@
         Bool("mapSharing", v => SettingsSvc.Ini.EnableMapSharing.Value = v);
         Bool("tunnelList", v => SettingsSvc.Ini.AlwaysDisplayTunnelList.Value = v);
 
+        // 跟随的游戏（原版 CnCNetOptionsPanel.Save）：写设置 INI 的 [Channels] <INTERNALNAME>。
+        foreach (var game in FollowableGames)
+        {
+            string gameId = (game.InternalName ?? string.Empty).ToUpperInvariant();
+            bool follow = IsLocalGame(game) || GetBool(FollowKey(gameId), SettingsSvc.Ini.IsGameFollowed(gameId));
+            SettingsSvc.Ini.SettingsIni.SetBooleanValue("Channels", gameId, follow);
+        }
+
         Bool("checkUpdates", v => SettingsSvc.Ini.CheckForUpdates.Value = v);
 
         Bool("privacyAccepted", v => SettingsSvc.Ini.PrivacyPolicyAccepted.Value = v);
@@ -742,6 +768,9 @@
         try
         {
             SettingsSvc.Save();
+
+            // 已连接时即时应用「跟随的游戏」变化（原版 Instance_SettingsSaved），无需重连。
+            LobbySvc.ApplyFollowedGames();
 
             // 先写入两个值，语言服务随后可按新主题加载翻译。
             if (themeChanged)
@@ -1168,6 +1197,30 @@
             </div>
         </div>
         <PluginSlot Key="settings.option.tunnelList" />
+        @* 跟随的游戏（原版 CnCNet 面板底部「Show game rooms from the following games」）：
+           决定连接时加入哪些游戏的聊天/房间广播频道，大厅频道下拉随此选择变化。 *@
+        <div class="set-sec-title">@Ui("Settings.FollowedGames", "Show game rooms from the following games")</div>
+        <div class="set-hint-block">@Ui("Settings.FollowedGamesHint", "Checked games are joined on connect; the lobby channel list follows this selection.")</div>
+        <div class="set-game-grid">
+            @foreach (var game in FollowableGames)
+            {
+                string gameId = (game.InternalName ?? string.Empty).ToUpperInvariant();
+                bool isLocal = IsLocalGame(game);
+                <div class="set-game-item @(isLocal ? "is-local" : "")" data-setting="@($"Channels:{gameId}")"
+                     title="@(isLocal ? Ui("Settings.LocalGameBadge", "LOCAL GAME · ALWAYS ON") : null)">
+                    <img class="set-game-ic" src="@GameAssetIcons.GameIconUrl(game)" alt="" />
+                    <span class="set-game-name">@(game.UIName ?? gameId)</span>
+                    <label class="set-toggle">
+                        <input type="checkbox"
+                               checked="@(isLocal || GetBool(FollowKey(gameId), SettingsSvc.Ini.IsGameFollowed(gameId)))"
+                               disabled="@isLocal"
+                               @onchange="@(e => SetDraftBool(FollowKey(gameId), e))" />
+                        <span class="tk"></span>
+                    </label>
+                </div>
+                <PluginSlot Key="@($"settings.option.followedGame.{gameId.ToLowerInvariant()}")" />
+            }
+        </div>
         <PluginSlot Key="page.settings.network" />
         @Extras("network")
     };

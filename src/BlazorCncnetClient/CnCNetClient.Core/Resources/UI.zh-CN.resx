@@ -1292,6 +1292,15 @@
   <data name="Client:UI:Settings.FriendsOnlyInvites" xml:space="preserve">
     <value>仅接收好友的游戏邀请</value>
   </data>
+  <data name="Client:UI:Settings.FollowedGames" xml:space="preserve">
+    <value>显示以下游戏的房间</value>
+  </data>
+  <data name="Client:UI:Settings.FollowedGamesHint" xml:space="preserve">
+    <value>勾选的游戏会在连接后加入；大厅频道列表随此选择变化。</value>
+  </data>
+  <data name="Client:UI:Settings.LocalGameBadge" xml:space="preserve">
+    <value>本机游戏 · 始终启用</value>
+  </data>
   <data name="Client:UI:Settings.SavedRestart" xml:space="preserve">
     <value>设置已保存 · 部分设置重启客户端后生效</value>
   </data>

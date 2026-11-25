@@ -438,7 +438,7 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 /* ── 在线大厅（M3.2 spec §5.3.2：频道/房间/聊天/玩家 四区布局） ── */
 .lobby{position:relative;z-index:5;height:100vh;display:flex;flex-direction:column;
   padding:var(--lay-lobby-pad);gap:var(--lay-lobby-gap)}
-.lobby-top{display:flex;align-items:center;justify-content:space-between;gap:16px;
+.lobby-top{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:10px 16px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(12px)}
 .lt-left{display:flex;align-items:center;gap:10px;font-family:var(--font-orbitron);font-size:11px;
   letter-spacing:2px;color:var(--text-2);min-width:0}
@@ -446,6 +446,26 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
   padding:6px 10px;font-family:var(--font-orbitron);font-size:12px;letter-spacing:1px;outline:none;cursor:pointer;
   max-width:300px}
 .lt-select:focus{border-color:var(--cyan)}
+/* 频道下拉（自定义，带游戏 logo；原生 select 的 option 无法显示图片） */
+.lt-chan{position:relative;min-width:0}
+.lt-chan-btn{display:flex;align-items:center;gap:8px;max-width:300px;padding:5px 10px;border:1px solid var(--line);
+  background:color-mix(in srgb,var(--surface-field) 90%,transparent);color:var(--text);
+  font-family:var(--font-orbitron);font-size:12px;letter-spacing:1px;cursor:pointer}
+.lt-chan-btn:hover{border-color:var(--cyan)}
+.lt-chan-ic{width:18px;height:18px;flex:none;object-fit:contain;image-rendering:pixelated}
+.lt-chan-ic[src=""]{display:none}
+.lt-chan-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lt-chan-cnt{flex:none;font-size:10px;color:var(--dim)}
+.lt-chan-caret{flex:none;font-size:9px;color:var(--dim)}
+.lt-chan-backdrop{position:fixed;inset:0;z-index:39}
+.lt-chan-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:220px;max-height:300px;overflow-y:auto;
+  padding:4px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(12px);
+  box-shadow:0 12px 32px rgba(0,0,0,.45)}
+.lt-chan-item{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;background:transparent;
+  color:var(--text-2);font-family:var(--font-orbitron);font-size:11px;letter-spacing:1px;cursor:pointer;text-align:left}
+.lt-chan-item:hover{background:color-mix(in srgb,var(--cyan) 12%,transparent);color:var(--text)}
+.lt-chan-item.active{color:var(--cyan-soft)}
+.lt-game-ic{width:14px;height:14px;object-fit:contain;image-rendering:pixelated;vertical-align:-2px;margin-right:5px}
 .lt-mid{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
 .lt-title{font-family:var(--font-orbitron);font-size:15px;font-weight:700;letter-spacing:3px;color:#fff}
 .lt-en{font-family:var(--font-orbitron);font-size:10px;letter-spacing:2px;color:var(--dim)}
@@ -1339,6 +1359,15 @@ body.theme-fade .shell{animation:themeFade var(--t-page) var(--ease-out)}
 .set-ctl{flex:none;display:flex;align-items:center;gap:10px}
 .set-val{font-family:var(--font-orbitron);font-size:11px;color:var(--cyan-soft);min-width:38px;text-align:right}
 .set-hint-block{margin:16px 2px;font-size:12px;color:var(--text-3);letter-spacing:1px;line-height:1.6;white-space:pre-line}
+/* 跟随游戏（原版 CnCNet 面板底部列表）：两列紧凑布局，名称前显示游戏 logo */
+.set-game-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:2px 0 12px}
+.set-game-item{display:flex;align-items:center;gap:8px;min-width:0;padding:5px 10px;border:1px solid var(--line);
+  background:color-mix(in srgb,var(--surface-popup) 35%,transparent)}
+.set-game-ic{width:18px;height:18px;flex:none;object-fit:contain;image-rendering:pixelated}
+.set-game-ic[src=""]{display:none}
+.set-game-name{flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.set-game-item.is-local{border-color:color-mix(in srgb,var(--cyan) 40%,var(--line))}
+.set-game-item.is-local .set-game-name{color:var(--cyan-soft)}
 /* 更新面板（M4.3）：进度条 + 操作区 */
 .upd-progress{position:relative;height:6px;margin:10px 0 6px;border:1px solid var(--line);background:color-mix(in srgb,var(--surface-field) 90%,transparent)}
 .upd-progress i{position:absolute;inset:0 auto 0 0;width:0;transition:width var(--t-item) var(--ease-out)}

@@ -23,6 +23,13 @@
     <PackageReference Include="Ude.NetStandard" Version="1.2.0" />
   </ItemGroup>
 
+  <!-- 游戏图标（原版 DXMainClient.csproj：<EmbeddedResource Include="Icons\*.png" />）。
+       逻辑名保持上游的 DTAClient.Icons.*，DefaultCnCNetGame / CustomCnCNetGame 按此名称读取。 -->
+  <ItemGroup>
+    <None Remove="Icons\*.png" />
+    <EmbeddedResource Include="Icons\*.png" LogicalName="DTAClient.Icons.%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\CnCNetClient.Core\CnCNetClient.Core.csproj" />
     <ProjectReference Include="..\CnCNetClient.Tools\CnCNetClient.Tools.csproj" />

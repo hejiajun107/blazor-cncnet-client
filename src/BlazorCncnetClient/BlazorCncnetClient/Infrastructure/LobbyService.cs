@@ -47,6 +47,7 @@ namespace BlazorCncnetClient.Infrastructure
         private readonly GameRoomService _room;
 
         private readonly List<Channel> _channels = new();
+        private readonly List<Channel> _broadcastChannels = new();
         private readonly List<LobbyGameItem> _games = new();
         private readonly Dictionary<string, LobbyGameItem> _gamesByHost = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, PmSession> _pmSessions = new(StringComparer.OrdinalIgnoreCase);
@@ -58,7 +59,6 @@ namespace BlazorCncnetClient.Infrastructure
 
         public CnCNetGame? LocalGame { get; }
         public Channel? CurrentChannel { get; private set; }
-        public Channel? BroadcastChannel { get; private set; }
         public bool IsConnected => _manager.IsConnected;
         public IReadOnlyList<Channel> Channels => _channels;
         public IReadOnlyList<LobbyGameItem> Games => _games;
@@ -129,8 +129,13 @@ namespace BlazorCncnetClient.Infrastructure
                 _manager.LeaveFromChannel(channel);
                 UnwireChannel(channel);
             }
+            foreach (var channel in _broadcastChannels)
+            {
+                channel.CTCPReceived -= OnBroadcastCTCP;
+                _manager.LeaveFromChannel(channel);
+            }
             _channels.Clear();
-            BroadcastChannel = null;
+            _broadcastChannels.Clear();
             ClearGames();
             _pmSessions.Clear();
             if (_manager.IsConnected)
@@ -166,7 +171,8 @@ namespace BlazorCncnetClient.Infrastructure
             {
                 foreach (var channel in _channels)
                     channel.Join();
-                BroadcastChannel?.Join();
+                foreach (var channel in _broadcastChannels)
+                    channel.Join();
             }
 
             NotifyChanged();
@@ -190,8 +196,10 @@ namespace BlazorCncnetClient.Infrastructure
         {
             foreach (var channel in _channels)
                 UnwireChannel(channel);
+            foreach (var channel in _broadcastChannels)
+                channel.CTCPReceived -= OnBroadcastCTCP;
             _channels.Clear();
-            BroadcastChannel = null;
+            _broadcastChannels.Clear();
             CurrentChannel = null;
             ClearGames();
             // 私聊会话不在断线时清空：重连后仍需保留历史（原版 PrivateMessagingWindow 同样跨重连保留），
@@ -206,15 +214,14 @@ namespace BlazorCncnetClient.Infrastructure
 
         private void JoinDefaultChannels()
         {
-            foreach (var game in _gameCollection.GameList.Where(g => g.AlwaysEnabled && !string.IsNullOrEmpty(g.ChatChannel)))
-                EnsureChannel(game.UIName ?? game.InternalName ?? "CnCNet", game.ChatChannel!, persistent: true);
-
-            if (LocalGame is not null)
+            foreach (var game in _gameCollection.GameList.Where(ShouldFollowGame))
             {
-                if (!string.IsNullOrEmpty(LocalGame.ChatChannel))
-                    EnsureChannel(LocalGame.UIName ?? LocalGame.InternalName ?? "CnCNet", LocalGame.ChatChannel!, persistent: true);
-                if (!string.IsNullOrEmpty(LocalGame.GameBroadcastChannel))
-                    EnsureBroadcastChannel(LocalGame.UIName ?? LocalGame.InternalName ?? "CnCNet", LocalGame.GameBroadcastChannel!);
+                string uiName = game.UIName ?? game.InternalName ?? "CnCNet";
+
+                if (!string.IsNullOrEmpty(game.ChatChannel))
+                    EnsureChannel(uiName, game.ChatChannel!, persistent: true);
+                if (!string.IsNullOrEmpty(game.GameBroadcastChannel))
+                    EnsureBroadcastChannel(uiName, game.GameBroadcastChannel!);
             }
 
             var target = _channels.FirstOrDefault(c => c.ChannelName == LocalGame?.ChatChannel)
@@ -224,6 +231,97 @@ namespace BlazorCncnetClient.Infrastructure
                 CurrentChannel = target;
                 target.RequestUserInfo();
             }
+        }
+
+        /// <summary>
+        /// 是否应加入该游戏频道：始终启用的通用频道、本机游戏、以及设置里勾选跟随的游戏
+        /// （原版 CnCNetLobby：本地游戏固定加入，其余游戏按 UserINISettings.IsGameFollowed）。
+        /// </summary>
+        private bool ShouldFollowGame(CnCNetGame game)
+        {
+            if (!game.Supported || string.IsNullOrEmpty(game.ChatChannel))
+                return false;
+
+            if (game.AlwaysEnabled || LocalGame is null)
+                return true;
+
+            if (string.Equals(game.InternalName, LocalGame.InternalName, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return !string.IsNullOrEmpty(game.InternalName)
+                && UserINISettings.Instance.IsGameFollowed(game.InternalName.ToUpperInvariant());
+        }
+
+        /// <summary>
+        /// 应用「跟随的游戏」设置（原版 CnCNetLobby.Instance_SettingsSaved）：已连接时即时加入/离开对应游戏的
+        /// 聊天与房间广播频道，无需重连；大厅频道下拉由 <see cref="Channels"/> 驱动，随勾选同步变化。
+        /// </summary>
+        public void ApplyFollowedGames()
+        {
+            if (!_manager.IsConnected || LocalGame is null)
+                return;
+
+            var followedChatNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var followedBroadcastNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var game in _gameCollection.GameList.Where(ShouldFollowGame))
+            {
+                if (!string.IsNullOrEmpty(game.ChatChannel))
+                    followedChatNames.Add(game.ChatChannel!);
+                if (!string.IsNullOrEmpty(game.GameBroadcastChannel))
+                    followedBroadcastNames.Add(game.GameBroadcastChannel!);
+            }
+
+            // 取消跟随：离开并从频道列表移除（#cncnet 等 AlwaysEnabled 频道永不取消）。
+            foreach (var channel in _channels.ToList())
+            {
+                if (followedChatNames.Contains(channel.ChannelName))
+                    continue;
+                channel.Leave();
+                UnwireChannel(channel);
+                _channels.Remove(channel);
+            }
+
+            foreach (var channel in _broadcastChannels.ToList())
+            {
+                if (followedBroadcastNames.Contains(channel.ChannelName))
+                    continue;
+                channel.CTCPReceived -= OnBroadcastCTCP;
+                channel.Leave();
+                _broadcastChannels.Remove(channel);
+            }
+
+            // 新勾选：加入聊天与广播频道（已存在但此前 PART 过的频道需重新 JOIN）。
+            foreach (var game in _gameCollection.GameList.Where(ShouldFollowGame))
+            {
+                string uiName = game.UIName ?? game.InternalName ?? "CnCNet";
+
+                if (!string.IsNullOrEmpty(game.ChatChannel))
+                {
+                    var existing = _manager.FindChannel(game.ChatChannel!);
+                    bool listed = existing is not null && _channels.Contains(existing);
+                    var channel = EnsureChannel(uiName, game.ChatChannel!, persistent: true);
+                    if (existing is not null && !listed)
+                        channel.Join();
+                }
+
+                if (!string.IsNullOrEmpty(game.GameBroadcastChannel))
+                {
+                    var existing = _manager.FindChannel(game.GameBroadcastChannel!);
+                    bool listed = existing is not null && _broadcastChannels.Contains(existing);
+                    var channel = EnsureBroadcastChannel(uiName, game.GameBroadcastChannel!);
+                    if (existing is not null && !listed)
+                        channel.Join();
+                }
+            }
+
+            if (CurrentChannel is null || !_channels.Contains(CurrentChannel))
+            {
+                CurrentChannel = _channels.FirstOrDefault(c => c.ChannelName == LocalGame.ChatChannel)
+                    ?? _channels.FirstOrDefault();
+                CurrentChannel?.RequestUserInfo();
+            }
+
+            NotifyChanged();
         }
 
         private Channel EnsureChannel(string uiName, string channelName, bool persistent)
@@ -253,11 +351,15 @@ namespace BlazorCncnetClient.Infrastructure
             {
                 channel = _manager.CreateChannel(string.Format(UiText.T("LobbySvc.BroadcastChannelName", "{0} Broadcast"), uiName), channelName, persistent: true, isChatChannel: false, password: null);
                 _manager.AddChannel(channel);
-                channel.CTCPReceived += OnBroadcastCTCP;
                 channel.Join();
             }
 
-            BroadcastChannel = channel;
+            if (!_broadcastChannels.Contains(channel))
+            {
+                channel.CTCPReceived += OnBroadcastCTCP;
+                _broadcastChannels.Add(channel);
+            }
+
             return channel;
         }
 
@@ -291,6 +393,12 @@ namespace BlazorCncnetClient.Infrastructure
             channel.RequestUserInfo();
             NotifyChanged();
         }
+
+        /// <summary>频道对应的游戏（用于在大厅频道名旁显示游戏 logo）；通用频道等找不到时返回 null。</summary>
+        public CnCNetGame? GetGameForChannel(Channel channel) =>
+            _gameCollection.GameList.FirstOrDefault(g =>
+                !string.IsNullOrEmpty(g.ChatChannel) &&
+                string.Equals(g.ChatChannel, channel.ChannelName, StringComparison.OrdinalIgnoreCase));
 
         /// <summary>向当前频道发送聊天消息；以 / 开头的输入按频道指令处理（M3.9）。</summary>
         public void SendMessage(string text)

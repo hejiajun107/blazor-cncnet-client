@@ -22,16 +22,33 @@
     <header class="lobby-top item-in">
         <div class="lt-left">
             <span class="lt-t">@T("Lobby.Channel", "Channel")</span>
-            <select class="lt-select" value="@CurrentChannelName" @onchange="OnChannelChanged">
-                @foreach (var c in LobbySvc.Channels)
+            @* 自定义频道下拉：原生 select 无法在选项里显示游戏 logo *@
+            <div class="lt-chan">
+                <button class="lt-chan-btn" @onclick="ToggleChannelMenu">
+                    <img class="lt-chan-ic" src="@GameAssetIcons.GameIconUrl(LobbySvc.GetGameForChannel(CurrentChannel))" alt="" />
+                    <span class="lt-chan-name">@(CurrentChannel?.UIName ?? CurrentChannelName)</span>
+                    <span class="lt-chan-cnt">@(CurrentChannel?.Users.Count ?? 0)</span>
+                    <span class="lt-chan-caret">▾</span>
+                </button>
+                @if (_chanOpen)
                 {
-                    <option value="@c.ChannelName">@c.UIName · @c.ChannelName (@c.Users.Count)</option>
+                    <div class="lt-chan-backdrop" @onclick="CloseChannelMenu"></div>
+                    <div class="lt-chan-menu">
+                        @foreach (var c in LobbySvc.Channels)
+                        {
+                            <button class="lt-chan-item @(c == CurrentChannel ? "active" : "")" @onclick="() => SelectChannel(c)">
+                                <img class="lt-chan-ic" src="@GameAssetIcons.GameIconUrl(LobbySvc.GetGameForChannel(c))" alt="" />
+                                <span class="lt-chan-name">@(c.UIName ?? c.ChannelName)</span>
+                                <span class="lt-chan-cnt">@c.Users.Count</span>
+                            </button>
+                        }
+                    </div>
                 }
-            </select>
+            </div>
         </div>
         <div class="lt-mid">
             <span class="lt-title">@T("Lobby.Title", "CnCNet Online Lobby")</span>
-            <span class="lt-en">@(LobbySvc.LocalGame?.UIName ?? "CnCNet")</span>
+            <span class="lt-en"><img class="lt-game-ic" src="@GameAssetIcons.GameIconUrl(LobbySvc.LocalGame)" alt="" />@(LobbySvc.LocalGame?.UIName ?? "CnCNet")</span>
         </div>
         <div class="lt-right">
             <span class="lt-player">@ProgramConstants.PLAYERNAME</span>
@@ -103,7 +120,7 @@
 
         <section class="lb-panel lb-chat item-in" style="animation-delay:110ms">
             <header class="lb-ph">
-                <span>@T("Lobby.ChannelChat", "Channel chat") <em>@CurrentChannelName</em></span>
+                <span>@T("Lobby.ChannelChat", "Channel chat") <em><img class="lt-game-ic" src="@GameAssetIcons.GameIconUrl(LobbySvc.GetGameForChannel(CurrentChannel))" alt="" />@CurrentChannelName</em></span>
             </header>
             @if (!Mon.IsConnected)
             {
@@ -746,12 +763,16 @@
 
     private void OnMapLoadingComplete(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
 
-    private void OnChannelChanged(ChangeEventArgs e)
+    private bool _chanOpen;
+
+    private void ToggleChannelMenu() => _chanOpen = !_chanOpen;
+
+    private void CloseChannelMenu() => _chanOpen = false;
+
+    private void SelectChannel(Channel channel)
     {
-        var name = e.Value?.ToString();
-        var channel = LobbySvc.Channels.FirstOrDefault(c => c.ChannelName == name);
-        if (channel is not null)
-            LobbySvc.SwitchChannel(channel);
+        _chanOpen = false;
+        LobbySvc.SwitchChannel(channel);
     }
 
     private void OnDraftInput(ChangeEventArgs e) => _draft = e.Value?.ToString() ?? string.Empty;

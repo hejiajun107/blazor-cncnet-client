@@ -1288,6 +1288,15 @@ They interfere with the game/mod and must be removed before the client can start
   <data name="Client:UI:Settings.FriendsOnlyInvites" xml:space="preserve">
     <value>Only receive game invitations from friends</value>
   </data>
+  <data name="Client:UI:Settings.FollowedGames" xml:space="preserve">
+    <value>Show game rooms from the following games</value>
+  </data>
+  <data name="Client:UI:Settings.FollowedGamesHint" xml:space="preserve">
+    <value>Checked games are joined on connect; the lobby channel list follows this selection.</value>
+  </data>
+  <data name="Client:UI:Settings.LocalGameBadge" xml:space="preserve">
+    <value>LOCAL GAME · ALWAYS ON</value>
+  </data>
   <data name="Client:UI:Settings.SavedRestart" xml:space="preserve">
     <value>Settings saved · some settings take effect after restarting the client</value>
   </data>

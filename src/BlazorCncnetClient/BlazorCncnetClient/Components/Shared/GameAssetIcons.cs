@@ -1,7 +1,9 @@
 using BlazorCncnetClient.Infrastructure;
 using CnCNetClient.Core;
 using CnCNetClient.Core.Extensions;
+using CnCNetClient.Domain.Multiplayer.CnCNet;
 using CnCNetClient.Tools;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace BlazorCncnetClient.Components.Shared;
@@ -12,6 +14,42 @@ namespace BlazorCncnetClient.Components.Shared;
 /// </summary>
 internal static class GameAssetIcons
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> gameIconCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 游戏图标的 data URL（内置游戏来自嵌入资源，自定义游戏来自 Resources\&lt;IconFilename&gt;）。
+    /// 图很小，按 InternalName 缓存，避免每次渲染重复编码。
+    /// </summary>
+    public static string GameIconUrl(CnCNetGame? game)
+    {
+        if (game is null)
+            return string.Empty;
+
+        string key = game.InternalName ?? game.UIName ?? string.Empty;
+        if (key.Length > 0 && gameIconCache.TryGetValue(key, out string? cached))
+            return cached;
+
+        string url = string.Empty;
+        try
+        {
+            if (game.Image is { } image)
+            {
+                using var ms = new System.IO.MemoryStream();
+                image.SaveAsPng(ms);
+                url = "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
+            }
+        }
+        catch
+        {
+            // 图标缺失/解码失败时保持空串，UI 只显示文字。
+        }
+
+        if (key.Length > 0)
+            gameIconCache[key] = url;
+
+        return url;
+    }
+
     /// <summary>在 Resources/ThemeDefault 与 Resources 根下依次查找第一个存在的图标。</summary>
     public static string Url(GameContentServer server, params string[] fileNames)
     {
