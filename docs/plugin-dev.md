@@ -22,7 +22,7 @@
 | 新增独立页面 | 是 | `IPluginUiRegistrar.AddPageAssembly` + `@page` |
 | 追加主菜单项 | 是 | `IPluginUiRegistrar.AddMenuEntry` |
 | 注册自有服务 | 是 | `IPluginContext.Services` |
-| 覆盖宿主扩展点（IRC 服务器选择 / 隧道列表来源） | 是 | `RegisterServices` 注册同接口实现（后注册者胜，见 §3） |
+| 覆盖宿主扩展点（IRC 服务器选择 / 隧道列表来源 / spawnmap.ini 补丁 / 昵称处理） | 是 | `RegisterServices` 注册同接口实现（后注册者胜，见 §3） |
 | 访问 CnCNet / 游戏服务 | 是 | 组件 `@inject` / `Initialize(IServiceProvider)` |
 
 **信任模型**：本地目录即信任（不做签名/沙箱）。**无热插拔**：改动后需重启客户端。
@@ -412,11 +412,15 @@ new PluginMenuEntry(
 |---|---|---|---|
 | `IIrcServerListProvider` | `CnCNetClient.Online` | `DefaultIrcServerListProvider`（原样返回配置列表） | 建立 IRC 连接前挑选服务器条目，可实现“国内 / 国际节点”切换 |
 | `ITunnelListProvider` | `CnCNetClient.Online` | `DefaultTunnelListProvider`（返回 `null`，宿主走下载 / 缓存） | 直接提供隧道服务器列表文本，可自行实现“官方 → 镜像 → 内置名单”降级与排序 |
+| `ISpawnMapPatcher` | `CnCNetClient.Tools` | `DefaultSpawnMapPatcher`（不修改任何内容） | 在 `spawnmap.ini` 写盘前直接修改地图 INI，可实现节日限定代码、活动单位替换等；上下文含地图名、人类/AI 数量、是否合作 |
+| `IPlayerNameProcessor` | `CnCNetClient.Tools` | `DefaultPlayerNameProcessor`（原样返回） | 登录连接与设置页保存昵称前做标准化（非法字符替换、强制专属名称等）；返回值仍会走宿主名称校验 |
 
 ```csharp
 // RegisterServices（Build 之前）
 context.Services.AddSingleton<IIrcServerListProvider, MyIrcServerListProvider>();
 context.Services.AddSingleton<ITunnelListProvider, MyTunnelListProvider>();
+context.Services.AddSingleton<ISpawnMapPatcher, MySpawnMapPatcher>();
+context.Services.AddSingleton<IPlayerNameProcessor, MyPlayerNameProcessor>();
 
 public sealed class MyIrcServerListProvider : IIrcServerListProvider
 {
@@ -432,7 +436,28 @@ public sealed class MyTunnelListProvider : ITunnelListProvider
     // 返回内容首行可为表头，其余每行 address;country;countrycode;name;...
     public string GetTunnelList() => null;
 }
+
+public sealed class MySpawnMapPatcher : ISpawnMapPatcher
+{
+    // context: MapName / HumanPlayerCount / AiPlayerCount / IsCoop
+    // 可直接改 spawnMapIni 的任意节键，宿主随后写盘；抛异常会被记录并忽略，不影响开局。
+    public void Patch(IniFile spawnMapIni, SpawnMapPatchContext context)
+    {
+        if (context.AiPlayerCount > 0)
+            spawnMapIni.SetStringValue("V5", "Prerequisite", "ZGKXY");
+    }
+}
+
+public sealed class MyPlayerNameProcessor : IPlayerNameProcessor
+{
+    // 登录连接前与设置页保存时调用；返回空串或非法名称仍会被宿主校验拒绝。
+    // 不需要改名的 MOD 不注册本接口即可（默认原样返回）。
+    public string Process(string name)
+        => NameValidator.SanitizePlayerName(name); // CnCNetClient.Domain.Multiplayer.CnCNet
+}
 ```
+
+- spawnmap.ini 补丁在**每次开局写地图 INI 时**调用（多人 / 局域网 / 遭遇战三条链路都走），适合按日期或条件改键值；不要做耗时 I/O。
 
 - 服务器列表**每次建连都会重新询问选择器**（不缓存）：插件切换节点后，下次重连立即生效，无需重启客户端。
 - 隧道列表在**每次刷新时**调用 `GetTunnelList()`，插件应自行做缓存（避免频繁外网请求）；异常会被宿主记录并回退默认逻辑。

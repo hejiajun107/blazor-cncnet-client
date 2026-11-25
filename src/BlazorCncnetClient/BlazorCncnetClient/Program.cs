@@ -237,6 +237,10 @@ namespace BlazorCncnetClient
             appBuilder.Services.AddSingleton<TunnelHandler>();
             // 隧道列表来源扩展口：默认不提供数据（走原下载 / 缓存逻辑）；插件注册同接口即覆盖。
             appBuilder.Services.AddSingleton<ITunnelListProvider, DefaultTunnelListProvider>();
+            // spawnmap.ini 补丁扩展口：默认不修改（保持原行为）；插件注册同接口即覆盖（后注册者胜）。
+            appBuilder.Services.AddSingleton<ISpawnMapPatcher, DefaultSpawnMapPatcher>();
+            // 昵称处理扩展口：默认原样返回；插件注册同接口即覆盖（如非法字符替换、专属名称）。
+            appBuilder.Services.AddSingleton<IPlayerNameProcessor, DefaultPlayerNameProcessor>();
 
             // 在线大厅（M3.2 spec §5.3.2）：聚合频道/聊天/房间/玩家状态，供 /online/lobby 读取
             appBuilder.Services.AddScoped<LobbyService>();

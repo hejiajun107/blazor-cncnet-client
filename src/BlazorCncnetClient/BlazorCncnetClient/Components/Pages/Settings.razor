@@ -18,6 +18,7 @@
 @inject IJSRuntime JS
 @inject MessageBoxService MessageBox
 @inject AppExitNotifier ExitNotifier
+@inject IPlayerNameProcessor NameProcessor
 
 <div class="settings page-anim">
     <header class="settings-top item-in">
@@ -690,7 +691,7 @@
         Int("maxReplayFolderSizeMB", v => SettingsSvc.Ini.MaxReplayFolderSizeMB.Value = v);
         Int("replayKeyframeStorageLimitMB", v => SettingsSvc.Ini.ReplayKeyframeStorageLimitMB.Value = v);
 
-        Str("playerName", v => SettingsSvc.Ini.PlayerName.Value = v);
+        Str("playerName", v => SettingsSvc.Ini.PlayerName.Value = NameProcessor.Process(v));
         Bool("skipConnectDialog", v => SettingsSvc.Ini.SkipConnectDialog.Value = v);
         Bool("persistentMode", v => SettingsSvc.Ini.PersistentMode.Value = v);
         Bool("autoConnect", v => SettingsSvc.Ini.AutomaticCnCNetLogin.Value = v);

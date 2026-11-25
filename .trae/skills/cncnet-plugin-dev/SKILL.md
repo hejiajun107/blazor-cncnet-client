@@ -17,7 +17,7 @@ description: Scaffold, debug, and package CnCNet client plugins (theme packs and
 | 新增独立页面 + 主菜单入口 | 编译型（RCL） | 是 |
 | 覆盖页脚等替换型槽位 | 编译型（RCL） | 是 |
 | 替换整个主菜单主体（首页） | 编译型（RCL），槽位 `page.mainmenu` | 是 |
-| 覆盖宿主策略型扩展点（如 IRC 服务器选择 `IIrcServerListProvider`、隧道列表 `ITunnelListProvider`） | 编译型（RCL），`RegisterServices` 注册同接口实现 | 是 |
+| 覆盖宿主策略型扩展点（如 IRC 服务器选择 `IIrcServerListProvider`、隧道列表 `ITunnelListProvider`、spawnmap.ini 补丁 `ISpawnMapPatcher`、昵称处理 `IPlayerNameProcessor`） | 编译型（RCL），`RegisterServices` 注册同接口实现 | 是 |
 
 拿不准时先问用户要哪一档；纯资源能解决就不要建工程。
 

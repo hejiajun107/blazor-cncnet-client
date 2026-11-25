@@ -3,8 +3,10 @@
 @using CnCNetClient.Core
 @using CnCNetClient.Domain.Multiplayer.CnCNet
 @using CnCNetClient.Online
+@using CnCNetClient.Tools
 @inject LoginService Service
 @inject SettingsService Settings
+@inject IPlayerNameProcessor NameProcessor
 @inject IJSRuntime JS
 @inject IServiceProvider Services
 @inject ITranslationService TranslationSvc
@@ -101,6 +103,14 @@
     {
         if (Service.IsConnecting || Service.IsClosing)
             return;
+
+        // 昵称标准化交给宿主扩展点（默认不改；插件可替换非法字符或强制专属名称）。
+        string processed = NameProcessor.Process(Service.PlayerName);
+        if (!string.Equals(processed, Service.PlayerName, StringComparison.Ordinal))
+        {
+            Service.PlayerName = processed;
+            Service.NotifyChanged();
+        }
 
         var error = NameValidator.IsNameValid(Service.PlayerName, out var msg);
         if (error != NameValidationError.None)

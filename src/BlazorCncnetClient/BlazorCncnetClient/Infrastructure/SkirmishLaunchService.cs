@@ -4,6 +4,7 @@ using CnCNetClient.Domain;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Integration;
 using CnCNetClient.Integration.Threading;
+using CnCNetClient.Tools;
 using InfiniFrame;
 using Microsoft.AspNetCore.Components;
 
@@ -23,6 +24,7 @@ public sealed class SkirmishLaunchService : IDisposable
     private readonly SkirmishService _skirmish;
     private readonly MessageBoxService _messageBox;
     private readonly IDispatcher _dispatcher;
+    private readonly ISpawnMapPatcher _spawnMapPatcher;
 
     /// <summary>一次对局是否正在启动/运行（用于过滤游戏进程退出时的重复/无关回调）。</summary>
     private bool _launchInProgress;
@@ -32,13 +34,15 @@ public sealed class SkirmishLaunchService : IDisposable
         NavigationManager nav,
         SkirmishService skirmish,
         MessageBoxService messageBox,
-        IDispatcher dispatcher)
+        IDispatcher dispatcher,
+        ISpawnMapPatcher spawnMapPatcher)
     {
         _window = window;
         _nav = nav;
         _skirmish = skirmish;
         _messageBox = messageBox;
         _dispatcher = dispatcher;
+        _spawnMapPatcher = spawnMapPatcher;
 
         _skirmish.GameStartRequested += OnGameStartRequested;
         GameProcessLogic.GameProcessStarted += OnGameProcessStarted;
@@ -72,7 +76,8 @@ public sealed class SkirmishLaunchService : IDisposable
                 teamStartMappings: _skirmish.GetActiveTeamStartMappings(), // G6 自动结盟（出生点→队伍）
                 gameOptions: _skirmish.GameOptions); // G7 游戏选项（复选/下拉 → spawn.ini [Settings]）
             SpawnIniGenerator.WriteMap(new[] { humanPlayer }, gameModeMap,
-                _skirmish.GameOptions); // G7 游戏选项自定义地图代码（AlliesAllowed 等）
+                _skirmish.GameOptions, // G7 游戏选项自定义地图代码（AlliesAllowed 等）
+                aiPlayers.Count, _spawnMapPatcher); // 宿主扩展点：spawnmap.ini 写盘前补丁（节日限定等）
 
             // 2. 标记对局进行中并跳转加载等待页
             _launchInProgress = true;

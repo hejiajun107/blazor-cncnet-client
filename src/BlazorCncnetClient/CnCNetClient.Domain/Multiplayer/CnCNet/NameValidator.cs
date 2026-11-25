@@ -144,6 +144,27 @@ namespace CnCNetClient.Domain.Multiplayer.CnCNet
         }
 
         /// <summary>
+        /// 将不受支持的字符替换为 '-'（旧客户端 eca835c 的行为），供 <c>IPlayerNameProcessor</c>
+        /// 的插件实现复用，避免玩家因输入法标点或全角字符被直接拒绝。仍会保留首字符为数字/连字符等其它校验。
+        /// </summary>
+        /// <param name="name">待纠正的昵称。</param>
+        /// <returns>非法字符已替换为 '-'、并裁剪到最大长度的昵称。</returns>
+        public static string SanitizePlayerName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return name;
+
+            char[] allowedCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_[]|\\{}^`".ToCharArray();
+            char[] sanitized = name.Trim().Select(c => allowedCharacters.Contains(c) ? c : '-').ToArray();
+            string result = new string(sanitized);
+
+            if (result.Length > ClientConfiguration.Instance.MaxNameLength)
+                return result.SubstringSurrogateAware(0, ClientConfiguration.Instance.MaxNameLength);
+
+            return result;
+        }
+
+        /// <summary>
         /// Checks if a lobby room name is valid.
         /// </summary>
         /// <param name="name">The lobby name to validate.</param>

@@ -4,6 +4,7 @@ using CnCNetClient.Domain;
 using CnCNetClient.Domain.Multiplayer;
 using CnCNetClient.Integration;
 using CnCNetClient.Integration.Threading;
+using CnCNetClient.Tools;
 using InfiniFrame;
 using Microsoft.AspNetCore.Components;
 
@@ -23,6 +24,7 @@ public sealed class LanGameLaunchService : IDisposable
     private readonly LanGameRoomService _room;
     private readonly MessageBoxService _messageBox;
     private readonly IDispatcher _dispatcher;
+    private readonly ISpawnMapPatcher _spawnMapPatcher;
 
     /// <summary>一次对局是否正在启动/运行（用于过滤游戏进程退出时的重复/无关回调）。</summary>
     private bool _launchInProgress;
@@ -32,13 +34,15 @@ public sealed class LanGameLaunchService : IDisposable
         NavigationManager nav,
         LanGameRoomService room,
         MessageBoxService messageBox,
-        IDispatcher dispatcher)
+        IDispatcher dispatcher,
+        ISpawnMapPatcher spawnMapPatcher)
     {
         _window = window;
         _nav = nav;
         _room = room;
         _messageBox = messageBox;
         _dispatcher = dispatcher;
+        _spawnMapPatcher = spawnMapPatcher;
 
         _room.GameStartRequested += OnGameStartRequested;
         GameProcessLogic.GameProcessStarted += OnGameProcessStarted;
@@ -70,7 +74,8 @@ public sealed class LanGameLaunchService : IDisposable
                 _room.UniqueGameId, _room.IsHost,
                 tunnelIp: string.Empty, tunnelPort: 0,
                 gameOptions: _room.GameOptions);
-            SpawnIniGenerator.WriteMap(roster.Players, gameModeMap, _room.GameOptions);
+            SpawnIniGenerator.WriteMap(roster.Players, gameModeMap, _room.GameOptions,
+                roster.Players.Count(player => player.IsAI), _spawnMapPatcher);
 
             // 2. 标记对局进行中并跳转加载等待页
             _launchInProgress = true;

@@ -177,6 +177,22 @@ public static class SpawnIniGenerator
                 option.ApplySpawnIniCode(spawnIni);
         }
 
+        // FrameSendRate（order lag）：GameOptions.ini 的 cmbFrameSendRate 只提供选项值、没有 SpawnIniOption，
+        // 原版由 GameLobbyBase 单独写入并钳制到 1..7（旧客户端 e02401f），此处对齐该行为。
+        int frameSendRate = 7;
+        GameSessionDropDownOption? frameSendRateOption = gameOptions?
+            .OfType<GameSessionDropDownOption>()
+            .FirstOrDefault(option => string.Equals(option.Name, "cmbFrameSendRate", StringComparison.OrdinalIgnoreCase));
+        if (frameSendRateOption is not null
+            && frameSendRateOption.SelectedIndex >= 0
+            && frameSendRateOption.SelectedIndex < frameSendRateOption.Items.Count
+            && int.TryParse(frameSendRateOption.Items[frameSendRateOption.SelectedIndex], out int selectedFrameSendRate))
+        {
+            frameSendRate = Math.Clamp(selectedFrameSendRate, 1, 7);
+        }
+
+        spawnIni.SetIntValue("Settings", "FrameSendRate", frameSendRate);
+
         // 对齐旧版：GameOptions.ini [ForcedSpawnIniOptions] 强制选项（原版 L1722-1733）
         var forcedGameOptionsIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), ClientConfiguration.GAME_OPTIONS));
         List<string> forcedSpawnKeys = forcedGameOptionsIni.GetSectionKeys("ForcedSpawnIniOptions");
@@ -288,7 +304,9 @@ public static class SpawnIniGenerator
     public static void WriteMap(
         IReadOnlyList<PlayerInfo> players,
         GameModeMap gameModeMap,
-        IReadOnlyList<GameSessionOption>? gameOptions = null)
+        IReadOnlyList<GameSessionOption>? gameOptions = null,
+        int aiPlayerCount = 0,
+        ISpawnMapPatcher? spawnMapPatcher = null)
     {
         FileInfo spawnMapIniFile = SafePath.GetFile(ProgramConstants.GamePath, ProgramConstants.SPAWNMAP_INI);
         spawnMapIniFile.Delete();
@@ -311,6 +329,25 @@ public static class SpawnIniGenerator
         }
 
         mapIni.MoveSectionToFirst("MultiplayerDialogSettings"); // Required by YR
+
+        // 宿主扩展点：spawnmap.ini 写盘前的最后修改（节日限定代码等）
+        if (spawnMapPatcher is not null)
+        {
+            try
+            {
+                spawnMapPatcher.Patch(mapIni, new SpawnMapPatchContext
+                {
+                    MapName = gameModeMap.Map.UntranslatedName,
+                    HumanPlayerCount = players.Count,
+                    AiPlayerCount = aiPlayerCount,
+                    IsCoop = gameModeMap.IsCoop
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Spawn map patcher failed: " + ex.Message);
+            }
+        }
 
         mapIni.WriteIniFile(spawnMapIniFile.FullName);
 
