@@ -78,6 +78,8 @@ description: Scaffold, debug, and package CnCNet client plugins (theme packs and
 | `layout.topbar` | 追加 | 全局悬浮顶栏菜单区 |
 | `menu.entry` | 追加 | 主菜单按钮列表之后 |
 | `page.settings.aside` | 追加 | 设置页左侧栏 |
+| `page.settings.<tab>` | 追加 | 设置页各分区末尾（display/audio/game/network/update/components/privacy） |
+| `settings.option.<id>` | 追加 | 每个自带设置项之后；id 清单见 `docs/plugin-dev.md` 槽位小节 |
 | `page.lobby.aside` | 追加 | 在线大厅网格（`grid-column:1/-1` 可占整行） |
 
 追加型槽位外层是 `display:contents`，组件根元素直接参与父容器布局；顶栏/主菜单建议复用

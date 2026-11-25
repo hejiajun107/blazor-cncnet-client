@@ -373,6 +373,8 @@ new PluginMenuEntry(
 | `layout.topbar` | 追加 | 全局悬浮顶栏的菜单区（`PluginSlot`） |
 | `menu.entry` | 追加 | 主菜单按钮列表之后、页脚之前（自定义渲染的菜单入口） |
 | `page.settings.aside` | 追加 | 设置页左侧栏（`PluginSlot`） |
+| `page.settings.<tab>` | 追加 | 设置页各分区末尾（`tab` = `display` / `audio` / `game` / `network` / `update` / `components` / `privacy`） |
+| `settings.option.<id>` | 追加 | 设置页每个自带选项之后（`id` 见下方清单；用于在某项旁追加说明/联动控件） |
 | `page.lobby.aside` | 追加 | 在线大厅 `.lobby-grid`（三列网格；`grid-column:1/-1` 可占满整行） |
 | `page.campaign.aside` | 追加 | 战役页侧栏（任务/说明区域旁） |
 | `page.skirmish.map.tools` | 追加 | 地图工具条 `.map-tools`（收藏/排序/随机按钮同行）；遭遇战与在线、局域网房间的房主地图面板共用 |
@@ -382,6 +384,18 @@ new PluginMenuEntry(
 > `.hm` / `.mbtn` 类，设置侧栏与大厅面板建议用普通卡片 / `.lb-panel`（示例见 `samples/HelloPlugin`）。
 >
 > 新增槽位 key 需要宿主侧加一行 `<PluginSlot Key="…"/>`；如需更多挂载点请提需求。
+
+**`settings.option.<id>` 清单**（按分区）：
+
+- display：`language` `theme` `ingameResolution` `clientResolution` `windowed` `borderless` `minimizeOnStart` `forceLowDetail` `renderer`
+- audio：`soundVolume` `scoreVolume` `voiceVolume` `mainMenuMusic` `stopMusicOnMenu` `messageSound`
+- game：`scrollRate` `doubleTapInterval` `gameSpeed` `autoTrimUnderscores` `recordReplays` `maxKeptReplays` `maxReplayFolderSize` `replayKeyframeStorage`
+- network：`playerName` `skipConnectDialog` `persistentMode` `autoConnect` `pingCustomTunnels` `mapSharing` `tunnelList`
+- update：`checkUpdates` `localVersion` `serverVersion`
+- privacy：`privacyAccepted` `discord` `steam`
+
+> 注意：宿主设置页是「草稿 → 保存」模型，`settings.option.*` 槽位里的自定义控件不受该草稿管理；
+> 若要随保存一起提交，请自行写入 INI 或在组件内直接持久化（与设置页自带的即时生效项一致）。
 
 **替换型槽位的约定**（`page.mainmenu` / `layout.footer` / `layout.splash` / `layout.background`）：
 

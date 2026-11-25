@@ -789,6 +789,7 @@
                 </select>
             </div>
         </div>
+        <PluginSlot Key="settings.option.language" />
         <div class="set-row" data-setting="MultiPlayer:Theme">
             <div class="set-info"><span class="set-name">@Ui("Settings.Theme", "Interface theme")</span><span class="set-hint">@Ui("Settings.ThemeHint", "THEME · global skin")</span></div>
             <div class="set-ctl">
@@ -800,6 +801,7 @@
                 </select>
             </div>
         </div>
+        <PluginSlot Key="settings.option.theme" />
         @* 游戏分辨率（原版 ddIngameResolution；保存时写回游戏 INI ScreenWidth/ScreenHeight） *@
         <div class="set-row" data-setting="@(IsRA ? "Options:Width" : "Video:ScreenWidth")">
             <div class="set-info"><span class="set-name">@Ui("Settings.IngameResolution", "In-game resolution")</span><span class="set-hint">@Ui("Settings.IngameResolutionHint", "IN-GAME RESOLUTION · applies next game launch")</span></div>
@@ -813,6 +815,7 @@
             </div>
         </div>
         @* 客户端窗口分辨率（原版 ddClientResolution；重启客户端生效） *@
+        <PluginSlot Key="settings.option.ingameResolution" />
         <div class="set-row @(IniRowClass("clientRes"))" data-setting="Video:ClientResolutionX">
             <div class="set-info"><span class="set-name">@IniText("clientRes", Ui("Settings.ClientResolution", "Client window resolution"))</span><span class="set-hint">@Ui("Settings.ClientResolutionHint", "CLIENT RESOLUTION · restart client to apply")</span></div>
             <div class="set-ctl">
@@ -824,6 +827,7 @@
                 </select>
             </div>
         </div>
+        <PluginSlot Key="settings.option.clientResolution" />
         <div class="set-row" data-setting="@($"Video:{ClientConfiguration.Instance.WindowedModeKey}")">
             <div class="set-info"><span class="set-name">@Ui("Settings.Windowed", "Run windowed")</span></div>
             <div class="set-ctl">
@@ -834,6 +838,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.windowed" />
         <div class="set-row" data-setting="Video:NoWindowFrame">
             <div class="set-info"><span class="set-name">@Ui("Settings.Borderless", "Borderless window")</span><span class="set-hint">@Ui("Settings.BorderlessHint", "BORDERLESS WINDOW · requires windowed mode")</span></div>
             <div class="set-ctl">
@@ -844,6 +849,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.borderless" />
         <div class="set-row" data-setting="Options:MinimizeWindowsOnGameStart">
             <div class="set-info"><span class="set-name">@Ui("Settings.MinimizeOnStart", "Minimize window when the game starts")</span></div>
             <div class="set-ctl">
@@ -854,6 +860,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.minimizeOnStart" />
         <div class="set-row" data-setting="Video:ForceLowestDetailLevel">
             <div class="set-info"><span class="set-name">@Ui("Settings.ForceLowDetail", "Force lowest detail")</span></div>
             <div class="set-ctl">
@@ -864,6 +871,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.forceLowDetail" />
         @* 游戏渲染器选择（原版 Display 选项卡 render options：按 OS 兼容列表选 ddraw 渲染器，
             保存时经 DirectDrawWrapperManager.Save 应用配置。资源未就绪时下拉禁用并提示）。 *@
         <div class="set-row" data-setting="Compatibility:Renderer">
@@ -885,6 +893,8 @@
                 </select>
             </div>
         </div>
+        <PluginSlot Key="settings.option.renderer" />
+        <PluginSlot Key="page.settings.display" />
         @Extras("display")
     };
 
@@ -900,6 +910,7 @@
                 <span class="set-val">@((int)(GetDouble("soundVolume", SettingsSvc.Ini.SoundVolume.Value) * 100))%</span>
             </div>
         </div>
+        <PluginSlot Key="settings.option.soundVolume" />
         <div class="set-row" data-setting="@(IsRA ? "Options:ScoreVolume" : "Audio:ScoreVolume")">
             <div class="set-info"><span class="set-name">@Ui("Settings.ScoreVolume", "Music volume")</span></div>
             <div class="set-ctl">
@@ -909,6 +920,7 @@
                 <span class="set-val">@((int)(GetDouble("scoreVolume", SettingsSvc.Ini.ScoreVolume.Value) * 100))%</span>
             </div>
         </div>
+        <PluginSlot Key="settings.option.scoreVolume" />
         <div class="set-row" data-setting="Audio:VoiceVolume">
             <div class="set-info"><span class="set-name">@Ui("Settings.VoiceVolume", "Voice volume")</span></div>
             <div class="set-ctl">
@@ -918,6 +930,7 @@
                 <span class="set-val">@((int)(GetDouble("voiceVolume", SettingsSvc.Ini.VoiceVolume.Value) * 100))%</span>
             </div>
         </div>
+        <PluginSlot Key="settings.option.voiceVolume" />
         <div class="set-row" data-setting="Audio:PlayMainMenuMusic">
             <div class="set-info"><span class="set-name">@Ui("Settings.MainMenuMusic", "Main menu music")</span></div>
             <div class="set-ctl">
@@ -928,6 +941,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.mainMenuMusic" />
         <div class="set-row" data-setting="Audio:StopMusicOnMenu">
             <div class="set-info"><span class="set-name">@Ui("Settings.StopMusicOnMenu", "Don't play music in game rooms")</span></div>
             <div class="set-ctl">
@@ -938,6 +952,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.stopMusicOnMenu" />
         <div class="set-row" data-setting="Audio:ChatMessageSound">
             <div class="set-info"><span class="set-name">@Ui("Settings.MessageSound", "Chat message sound")</span></div>
             <div class="set-ctl">
@@ -948,6 +963,8 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.messageSound" />
+        <PluginSlot Key="page.settings.audio" />
         @Extras("audio")
     };
 
@@ -963,6 +980,7 @@
                 <span class="set-val">@GetInt("scrollRate", SettingsSvc.Ini.ScrollRate.Value)</span>
             </div>
         </div>
+        <PluginSlot Key="settings.option.scrollRate" />
         <div class="set-row" data-setting="Options:DoubleTapInterval">
             <div class="set-info"><span class="set-name">@Ui("Settings.DoubleTapInterval", "Double tap interval (ms)")</span></div>
             <div class="set-ctl">
@@ -972,6 +990,7 @@
                 <span class="set-val">@GetInt("doubleTapInterval", SettingsSvc.Ini.DoubleTapInterval.Value)</span>
             </div>
         </div>
+        <PluginSlot Key="settings.option.doubleTapInterval" />
         <div class="set-row" data-setting="Options:GameSpeed">
             <div class="set-info"><span class="set-name">@Ui("Settings.GameSpeed", "Game speed")</span></div>
             <div class="set-ctl">
@@ -981,6 +1000,7 @@
                 <span class="set-val">@GetInt("gameSpeed", SettingsSvc.Ini.GameSpeed.Value)</span>
             </div>
         </div>
+        <PluginSlot Key="settings.option.gameSpeed" />
         <div class="set-row" data-setting="Options:AutoRemoveUnderscoresFromName">
             <div class="set-info"><span class="set-name">@Ui("Settings.AutoTrimUnderscores", "Auto trim underscores from nickname")</span></div>
             <div class="set-ctl">
@@ -991,6 +1011,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.autoTrimUnderscores" />
         @if (ReplayManager.IsSupported)
         {
             <div class="set-row" data-setting="Replays:RecordReplays">
@@ -1003,6 +1024,7 @@
                     </label>
                 </div>
             </div>
+            <PluginSlot Key="settings.option.recordReplays" />
             <div class="set-row" data-setting="Replays:MaxKeptReplays">
                 <div class="set-info"><span class="set-name">@Ui("Settings.MaxKeptReplays", "Maximum kept replays")</span><span class="set-hint">@Ui("Settings.ReplayUnlimitedHint", "0 = UNLIMITED")</span></div>
                 <div class="set-ctl">
@@ -1011,6 +1033,7 @@
                            @onchange="@(e => SetDraftInt("maxKeptReplays", e))" />
                 </div>
             </div>
+            <PluginSlot Key="settings.option.maxKeptReplays" />
             <div class="set-row" data-setting="Replays:MaxReplayFolderSizeMB">
                 <div class="set-info"><span class="set-name">@Ui("Settings.MaxReplayFolderSize", "Replay folder size limit (MB)")</span><span class="set-hint">@Ui("Settings.ReplayUnlimitedHint", "0 = UNLIMITED")</span></div>
                 <div class="set-ctl">
@@ -1019,6 +1042,7 @@
                            @onchange="@(e => SetDraftInt("maxReplayFolderSizeMB", e))" />
                 </div>
             </div>
+            <PluginSlot Key="settings.option.maxReplayFolderSize" />
             <div class="set-row" data-setting="Replays:ReplayKeyframeStorageLimitMB">
                 <div class="set-info"><span class="set-name">@Ui("Settings.ReplayKeyframeStorage", "Replay keyframe storage limit (MB)")</span></div>
                 <div class="set-ctl">
@@ -1027,7 +1051,9 @@
                            @onchange="@(e => SetDraftInt("replayKeyframeStorageLimitMB", e))" />
                 </div>
             </div>
+            <PluginSlot Key="settings.option.replayKeyframeStorage" />
         }
+        <PluginSlot Key="page.settings.game" />
         @Extras("game")
     };
 
@@ -1042,6 +1068,7 @@
                        @onchange="@(e => SetDraft("playerName", (e.Value ?? string.Empty).ToString()!.Trim()))" />
             </div>
         </div>
+        <PluginSlot Key="settings.option.playerName" />
         <div class="set-row @(IniRowClass("skipConnectDialog"))" data-setting="MultiPlayer:SkipConnectDialog">
             <div class="set-info"><span class="set-name">@IniText("skipConnectDialog", Ui("Settings.SkipConnectDialog", "Remember me (skip login window)"))</span></div>
             <div class="set-ctl">
@@ -1052,6 +1079,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.skipConnectDialog" />
         <div class="set-row @(IniRowClass("persistentMode"))" data-setting="MultiPlayer:PersistentMode">
             <div class="set-info"><span class="set-name">@IniText("persistentMode", Ui("Settings.PersistentMode", "Stay connected after leaving lobby"))</span></div>
             <div class="set-ctl">
@@ -1062,6 +1090,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.persistentMode" />
         <div class="set-row @(IniRowClass("autoConnect"))" data-setting="MultiPlayer:AutomaticCnCNetLogin">
             <div class="set-info"><span class="set-name">@IniText("autoConnect", Ui("Settings.AutoConnect", "Auto connect on startup"))</span></div>
             <div class="set-ctl">
@@ -1072,6 +1101,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.autoConnect" />
         <div class="set-row" data-setting="MultiPlayer:PingCustomTunnels">
             <div class="set-info"><span class="set-name">@Ui("Settings.PingCustomTunnels", "Ping custom tunnels")</span></div>
             <div class="set-ctl">
@@ -1082,6 +1112,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.pingCustomTunnels" />
         <div class="set-row" data-setting="MultiPlayer:EnableMapSharing">
             <div class="set-info"><span class="set-name">@Ui("Settings.EnableMapSharing", "Allow map sharing")</span></div>
             <div class="set-ctl">
@@ -1092,6 +1123,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.mapSharing" />
         <div class="set-row" data-setting="MultiPlayer:AlwaysDisplayTunnelList">
             <div class="set-info"><span class="set-name">@Ui("Settings.AlwaysShowTunnelList", "Always show tunnel list")</span></div>
             <div class="set-ctl">
@@ -1102,6 +1134,8 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.tunnelList" />
+        <PluginSlot Key="page.settings.network" />
         @Extras("network")
     };
 
@@ -1118,14 +1152,18 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.checkUpdates" />
         <div class="set-row">
             <div class="set-info"><span class="set-name">@Ui("Settings.LocalVersion", "Local version")</span></div>
             <div class="set-ctl"><span class="set-val">@UpdateSvc.GameVersion</span></div>
         </div>
+        <PluginSlot Key="settings.option.localVersion" />
         <div class="set-row">
             <div class="set-info"><span class="set-name">@Ui("Settings.ServerVersion", "Server version")</span></div>
             <div class="set-ctl"><span class="set-val">@UpdateSvc.ServerGameVersion</span></div>
         </div>
+
+        <PluginSlot Key="settings.option.serverVersion" />
 
         @if (UpdateSvc.VersionState == VersionState.UPDATECHECKINPROGRESS)
         {
@@ -1181,6 +1219,7 @@
                 <button class="mb-btn primary" @onclick="OnUpdateCheck">@Ui("Settings.CheckNow", "Check now")</button>
             </div>
         }
+        <PluginSlot Key="page.settings.update" />
         @Extras("update")
     };
 
@@ -1239,6 +1278,7 @@
                 }
             </div>
         }
+        <PluginSlot Key="page.settings.components" />
         @Extras("components")
     };
 
@@ -1279,6 +1319,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.privacyAccepted" />
         <div class="set-row @(IniRowClass("discord"))" data-setting="MultiPlayer:DiscordIntegration">
             <div class="set-info"><span class="set-name">@IniText("discord", Ui("Settings.Discord", "Discord integration"))</span></div>
             <div class="set-ctl">
@@ -1289,6 +1330,7 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.discord" />
         <div class="set-row @(IniRowClass("steam"))" data-setting="MultiPlayer:SteamIntegration">
             <div class="set-info"><span class="set-name">@IniText("steam", Ui("Settings.Steam", "Steam integration"))</span></div>
             <div class="set-ctl">
@@ -1299,6 +1341,8 @@
                 </label>
             </div>
         </div>
+        <PluginSlot Key="settings.option.steam" />
+        <PluginSlot Key="page.settings.privacy" />
     };
 
     public void Dispose()
