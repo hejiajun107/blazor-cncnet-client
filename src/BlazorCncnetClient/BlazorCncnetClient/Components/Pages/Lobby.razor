@@ -710,10 +710,14 @@
 
     private void OnPmReceived(string name)
     {
-        _pmOpen = true;
-        _activePmName = name;
-        LobbySvc.MarkPmRead(name);
-        _pmScroll = true;
+        // 原版 ShowNotification：禁用私信弹窗时不自动展开，仅累计未读（顶栏角标由 PmChanged 刷新）。
+        if (!UserINISettings.Instance.DisablePrivateMessagePopups.Value)
+        {
+            _pmOpen = true;
+            _activePmName = name;
+            LobbySvc.MarkPmRead(name);
+            _pmScroll = true;
+        }
         _ = InvokeAsync(StateHasChanged);
     }
 

@@ -1265,6 +1265,33 @@
   <data name="Client:UI:Settings.Steam" xml:space="preserve">
     <value>Steam 集成</value>
   </data>
+  <data name="Client:UI:Settings.AutoConnectHint" xml:space="preserve">
+    <value>需同时勾选「记住我」与「离开大厅保持连接」</value>
+  </data>
+  <data name="Client:UI:Settings.ShowJoinQuit" xml:space="preserve">
+    <value>显示玩家加入 / 退出消息</value>
+  </data>
+  <data name="Client:UI:Settings.DisablePmPopup" xml:space="preserve">
+    <value>禁用私信弹窗</value>
+  </data>
+  <data name="Client:UI:Settings.AllowPmFrom" xml:space="preserve">
+    <value>允许以下来源的私信</value>
+  </data>
+  <data name="Client:UI:Settings.PMAll" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="Client:UI:Settings.PMCurrentChannel" xml:space="preserve">
+    <value>当前频道</value>
+  </data>
+  <data name="Client:UI:Settings.PMFriends" xml:space="preserve">
+    <value>仅好友</value>
+  </data>
+  <data name="Client:UI:Settings.PMNone" xml:space="preserve">
+    <value>无</value>
+  </data>
+  <data name="Client:UI:Settings.FriendsOnlyInvites" xml:space="preserve">
+    <value>仅接收好友的游戏邀请</value>
+  </data>
   <data name="Client:UI:Settings.SavedRestart" xml:space="preserve">
     <value>设置已保存 · 部分设置重启客户端后生效</value>
   </data>

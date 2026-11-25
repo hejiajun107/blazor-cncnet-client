@@ -1261,6 +1261,33 @@ They interfere with the game/mod and must be removed before the client can start
   <data name="Client:UI:Settings.Steam" xml:space="preserve">
     <value>Steam integration</value>
   </data>
+  <data name="Client:UI:Settings.AutoConnectHint" xml:space="preserve">
+    <value>REQUIRES SKIP LOGIN WINDOW + STAY CONNECTED</value>
+  </data>
+  <data name="Client:UI:Settings.ShowJoinQuit" xml:space="preserve">
+    <value>Show player join / quit messages</value>
+  </data>
+  <data name="Client:UI:Settings.DisablePmPopup" xml:space="preserve">
+    <value>Disable popups from private messages</value>
+  </data>
+  <data name="Client:UI:Settings.AllowPmFrom" xml:space="preserve">
+    <value>Allow private messages from</value>
+  </data>
+  <data name="Client:UI:Settings.PMAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Client:UI:Settings.PMCurrentChannel" xml:space="preserve">
+    <value>Current channel</value>
+  </data>
+  <data name="Client:UI:Settings.PMFriends" xml:space="preserve">
+    <value>Friends</value>
+  </data>
+  <data name="Client:UI:Settings.PMNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Client:UI:Settings.FriendsOnlyInvites" xml:space="preserve">
+    <value>Only receive game invitations from friends</value>
+  </data>
   <data name="Client:UI:Settings.SavedRestart" xml:space="preserve">
     <value>Settings saved · some settings take effect after restarting the client</value>
   </data>

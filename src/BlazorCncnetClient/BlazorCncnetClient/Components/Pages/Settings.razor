@@ -234,6 +234,14 @@
     /// <summary>无边框当前值（草稿优先；渲染器有 BorderlessWindowedModeKey 时从自身配置 INI 读，否则读 UserINISettings）。</summary>
     private bool BorderlessChecked => GetBool("borderless", ReadBorderlessFromRenderer(CurrentRenderer));
 
+    /// <summary>
+    /// 自动连接是否可勾选（对齐原版 CnCNetOptionsPanel.CheckConnectOnStartupAllowance：
+    /// 仅当「记住我」与「离开大厅保持连接」同时勾选时才允许自动连接）。
+    /// </summary>
+    private bool AutoConnectAllowed =>
+        GetBool("skipConnectDialog", SettingsSvc.Ini.SkipConnectDialog.Value) &&
+        GetBool("persistentMode", SettingsSvc.Ini.PersistentMode.Value);
+
     /// <summary>旧版 DisplayOptionsPanel：渲染器 UsesCustomWindowedOption 时窗口化状态存其配置 INI（如 dxwnd.ini [DxWnd] RunInWindow）。</summary>
     private bool ReadWindowedFromRenderer(DirectDrawWrapper? renderer)
     {
@@ -378,6 +386,10 @@
         ["skipConnectDialog"] = "chkSkipLoginWindow",
         ["persistentMode"] = "chkPersistentMode",
         ["autoConnect"] = "chkConnectOnStartup",
+        ["notifyOnUserListChange"] = "chkNotifyOnUserListChange",
+        ["disablePmPopup"] = "chkDisablePrivateMessagePopup",
+        ["allowPmFrom"] = "ddAllowPrivateMessagesFrom",
+        ["friendsOnlyInvites"] = "chkAllowGameInvitesFromFriendsOnly",
         ["discord"] = "chkDiscordIntegration",
         ["steam"] = "chkSteamIntegration",
     };
@@ -453,6 +465,9 @@
             "chkskiploginwindow" => GetBool("skipConnectDialog", SettingsSvc.Ini.SkipConnectDialog.Value),
             "chkpersistentmode" => GetBool("persistentMode", SettingsSvc.Ini.PersistentMode.Value),
             "chkconnectonstartup" => GetBool("autoConnect", SettingsSvc.Ini.AutomaticCnCNetLogin.Value),
+            "chknotifyonuserlistchange" => GetBool("notifyOnUserListChange", SettingsSvc.Ini.NotifyOnUserListChange.Value),
+            "chkdisableprivatemessagepopup" => GetBool("disablePmPopup", SettingsSvc.Ini.DisablePrivateMessagePopups.Value),
+            "chkallowgameinvitesfromfriendsonly" => GetBool("friendsOnlyInvites", SettingsSvc.Ini.AllowGameInvitesFromFriendsOnly.Value),
             "chkdiscordintegration" => GetBool("discord", SettingsSvc.Ini.DiscordIntegration.Value),
             "chksteamintegration" => GetBool("steam", SettingsSvc.Ini.SteamIntegration.Value),
             _ => true,
@@ -694,7 +709,10 @@
         Str("playerName", v => SettingsSvc.Ini.PlayerName.Value = NameProcessor.Process(v));
         Bool("skipConnectDialog", v => SettingsSvc.Ini.SkipConnectDialog.Value = v);
         Bool("persistentMode", v => SettingsSvc.Ini.PersistentMode.Value = v);
-        Bool("autoConnect", v => SettingsSvc.Ini.AutomaticCnCNetLogin.Value = v);
+        // 原版 CheckConnectOnStartupAllowance：前提不满足时自动连接强制为 false（不保留旧的 true）。
+        SettingsSvc.Ini.AutomaticCnCNetLogin.Value =
+            AutoConnectAllowed && GetBool("autoConnect", SettingsSvc.Ini.AutomaticCnCNetLogin.Value);
+        Bool("notifyOnUserListChange", v => SettingsSvc.Ini.NotifyOnUserListChange.Value = v);
         Bool("pingCustomTunnels", v => SettingsSvc.Ini.PingUnofficialCnCNetTunnels.Value = v);
         Bool("mapSharing", v => SettingsSvc.Ini.EnableMapSharing.Value = v);
         Bool("tunnelList", v => SettingsSvc.Ini.AlwaysDisplayTunnelList.Value = v);
@@ -704,6 +722,9 @@
         Bool("privacyAccepted", v => SettingsSvc.Ini.PrivacyPolicyAccepted.Value = v);
         Bool("discord", v => SettingsSvc.Ini.DiscordIntegration.Value = v);
         Bool("steam", v => SettingsSvc.Ini.SteamIntegration.Value = v);
+        Bool("disablePmPopup", v => SettingsSvc.Ini.DisablePrivateMessagePopups.Value = v);
+        Int("allowPmFrom", v => SettingsSvc.Ini.AllowPrivateMessagesFromState.Value = v);
+        Bool("friendsOnlyInvites", v => SettingsSvc.Ini.AllowGameInvitesFromFriendsOnly.Value = v);
 
         // ini 注册的额外控件（OptionsWindow.ini [<面板>ExtraControls] + SettingSection/SettingKey 值绑定）
         CommitExtras();
@@ -1092,16 +1113,28 @@
         </div>
         <PluginSlot Key="settings.option.persistentMode" />
         <div class="set-row @(IniRowClass("autoConnect"))" data-setting="MultiPlayer:AutomaticCnCNetLogin">
-            <div class="set-info"><span class="set-name">@IniText("autoConnect", Ui("Settings.AutoConnect", "Auto connect on startup"))</span></div>
+            <div class="set-info"><span class="set-name">@IniText("autoConnect", Ui("Settings.AutoConnect", "Auto connect on startup"))</span><span class="set-hint">@Ui("Settings.AutoConnectHint", "REQUIRES SKIP LOGIN WINDOW + STAY CONNECTED")</span></div>
             <div class="set-ctl">
                 <label class="set-toggle">
-                    <input type="checkbox" checked="@(GetBool("autoConnect", SettingsSvc.Ini.AutomaticCnCNetLogin.Value))"
+                    <input type="checkbox" checked="@(AutoConnectAllowed && GetBool("autoConnect", SettingsSvc.Ini.AutomaticCnCNetLogin.Value))"
+                           disabled="@(!AutoConnectAllowed)"
                            @onchange="@(e => SetDraftBool("autoConnect", e))" />
                     <span class="tk"></span>
                 </label>
             </div>
         </div>
         <PluginSlot Key="settings.option.autoConnect" />
+        <div class="set-row @(IniRowClass("notifyOnUserListChange"))" data-setting="MultiPlayer:NotifyOnUserListChange">
+            <div class="set-info"><span class="set-name">@IniText("notifyOnUserListChange", Ui("Settings.ShowJoinQuit", "Show player join / quit messages"))</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@(GetBool("notifyOnUserListChange", SettingsSvc.Ini.NotifyOnUserListChange.Value))"
+                           @onchange="@(e => SetDraftBool("notifyOnUserListChange", e))" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <PluginSlot Key="settings.option.notifyOnUserListChange" />
         <div class="set-row" data-setting="MultiPlayer:PingCustomTunnels">
             <div class="set-info"><span class="set-name">@Ui("Settings.PingCustomTunnels", "Ping custom tunnels")</span></div>
             <div class="set-ctl">
@@ -1342,6 +1375,41 @@
             </div>
         </div>
         <PluginSlot Key="settings.option.steam" />
+        <div class="set-row @(IniRowClass("disablePmPopup"))" data-setting="MultiPlayer:DisablePrivateMessagePopups">
+            <div class="set-info"><span class="set-name">@IniText("disablePmPopup", Ui("Settings.DisablePmPopup", "Disable popups from private messages"))</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@(GetBool("disablePmPopup", SettingsSvc.Ini.DisablePrivateMessagePopups.Value))"
+                           @onchange="@(e => SetDraftBool("disablePmPopup", e))" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <PluginSlot Key="settings.option.disablePmPopup" />
+        <div class="set-row @(IniRowClass("allowPmFrom"))" data-setting="MultiPlayer:AllowPrivateMessagesFromState">
+            <div class="set-info"><span class="set-name">@IniText("allowPmFrom", Ui("Settings.AllowPmFrom", "Allow private messages from"))</span></div>
+            <div class="set-ctl">
+                <select class="set-select" value="@GetInt("allowPmFrom", SettingsSvc.Ini.AllowPrivateMessagesFromState.Value)"
+                        @onchange="@(e => SetDraftInt("allowPmFrom", e))">
+                    <option value="1">@Ui("Settings.PMAll", "All")</option>
+                    <option value="4">@Ui("Settings.PMCurrentChannel", "Current channel")</option>
+                    <option value="2">@Ui("Settings.PMFriends", "Friends")</option>
+                    <option value="3">@Ui("Settings.PMNone", "None")</option>
+                </select>
+            </div>
+        </div>
+        <PluginSlot Key="settings.option.allowPmFrom" />
+        <div class="set-row @(IniRowClass("friendsOnlyInvites"))" data-setting="MultiPlayer:AllowGameInvitesFromFriendsOnly">
+            <div class="set-info"><span class="set-name">@IniText("friendsOnlyInvites", Ui("Settings.FriendsOnlyInvites", "Only receive game invitations from friends"))</span></div>
+            <div class="set-ctl">
+                <label class="set-toggle">
+                    <input type="checkbox" checked="@(GetBool("friendsOnlyInvites", SettingsSvc.Ini.AllowGameInvitesFromFriendsOnly.Value))"
+                           @onchange="@(e => SetDraftBool("friendsOnlyInvites", e))" />
+                    <span class="tk"></span>
+                </label>
+            </div>
+        </div>
+        <PluginSlot Key="settings.option.friendsOnlyInvites" />
         <PluginSlot Key="page.settings.privacy" />
     };
 

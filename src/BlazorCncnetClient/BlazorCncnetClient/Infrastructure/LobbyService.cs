@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using CnCNetClient.Core;
+using CnCNetClient.Core.Enums;
 using CnCNetClient.Domain.Multiplayer.CnCNet;
 using CnCNetClient.Integration.Threading;
 using CnCNetClient.Integration.XnaCompat;
@@ -619,6 +620,9 @@ namespace BlazorCncnetClient.Infrastructure
                 : e.Sender;
             if (_userData.IsIgnored(ident))
                 return;
+            // 原版 PrivateMessagingWindow：按「允许私信来源」设置过滤（None / 仅好友 / 当前频道）。
+            if (!CanReceivePrivateMessagesFrom(e.Sender))
+                return;
 
             var session = GetOrCreateSession(e.Sender);
             AddPmMessage(session, e.Sender, e.Message, false);
@@ -628,6 +632,30 @@ namespace BlazorCncnetClient.Infrastructure
             UiSoundRequested?.Invoke(UiSoundService.PrivateMessage);
             PmReceived?.Invoke(session.UserName);
             PmChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// 是否接受来自该玩家的私聊（对齐原版 PrivateMessagingWindow.PrivateMessageHandler_PrivateMessageReceived）：
+        /// None 全部拒绝；仅好友时非好友拒绝；其它模式要求发送者在当前频道（好友不受频道限制）。
+        /// </summary>
+        private bool CanReceivePrivateMessagesFrom(string sender)
+        {
+            int state = UserINISettings.Instance.AllowPrivateMessagesFromState.Value;
+
+            if (state == (int)AllowPrivateMessagesFromEnum.None)
+                return false;
+
+            bool isFriend = _userData.IsFriend(sender);
+
+            if (state == (int)AllowPrivateMessagesFromEnum.Friends && !isFriend)
+                return false;
+
+            if (!isFriend &&
+                state != (int)AllowPrivateMessagesFromEnum.All &&
+                CurrentChannel?.Users.Find(sender) is null)
+                return false;
+
+            return true;
         }
 
         private void OnChannelMessageAdded(object? sender, IRCMessageEventArgs e) => NotifyChanged();
