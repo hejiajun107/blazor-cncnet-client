@@ -417,7 +417,8 @@ namespace BlazorCncnetClient.Infrastructure
         // ── AI 玩家配置 ──
 
         /// <summary>在指定槽位添加一个 AI 玩家（原版空槽下拉语义：选难度即占位）：
-        /// 阵营/颜色/出生点取第一个空闲值，名称与难度联动（Easy/Medium/Hard AI）。</summary>
+        /// 阵营/颜色默认随机（<see cref="RandomSideId"/> / <see cref="RandomColorId"/>，开局时避开已选颜色），
+        /// 出生点取第一个空闲值，名称与难度联动（Easy/Medium/Hard AI）。</summary>
         public void AddAI(int slot, int level = 0)
         {
             int count = _aiPlayers.Count;
@@ -426,7 +427,7 @@ namespace BlazorCncnetClient.Infrastructure
                     UiText.T("SkirmishSvc.TooManyAI", "You can add at most {0} AI players."), MaxAIPlayersConst));
 
             level = Math.Clamp(level, 0, 2);
-            var ai = new PlayerInfo(GetAIName(level), 0, 0, 0, 0)
+            var ai = new PlayerInfo(GetAIName(level), RandomSideId, 0, RandomColorId, 0)
             {
                 IsAI = true,
                 AILevel = level,
@@ -770,13 +771,16 @@ namespace BlazorCncnetClient.Infrastructure
             ApplyForcedGameOptions();
         }
 
-        /// <summary>默认配置：人类玩家（阵营 0/颜色 0/无出生点）+ 1 个 Easy AI（同原版 InitDefaultSettings）。</summary>
+        /// <summary>默认配置：人类玩家（随机阵营/随机颜色/无出生点）+ 1 个 Easy AI（同原版 InitDefaultSettings）。
+        /// 注意：上游 SideId/ColorId 本身就是下拉索引（0 = Random），本类改用负数表示随机
+        /// （<see cref="RandomSideId"/> / <see cref="RandomColorId"/>），故默认值不能再沿用上游的 0，
+        /// 否则会落到第一个真实阵营/第一个颜色（黄色），且人类与 AI 同色。</summary>
         private void InitDefaultSettings()
         {
-            HumanPlayer = new PlayerInfo(ProgramConstants.PLAYERNAME, 0, 0, 0, 0);
+            HumanPlayer = new PlayerInfo(ProgramConstants.PLAYERNAME, RandomSideId, 0, RandomColorId, 0);
 
             _aiPlayers.Clear();
-            var aiPlayer = new PlayerInfo(GetAIName(0), 0, 0, 0, 0)
+            var aiPlayer = new PlayerInfo(GetAIName(0), RandomSideId, 0, RandomColorId, 0)
             {
                 IsAI = true,
                 AILevel = 0,
