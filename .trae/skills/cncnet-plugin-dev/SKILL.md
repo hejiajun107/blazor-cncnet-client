@@ -77,6 +77,12 @@ description: Scaffold, debug, and package CnCNet client plugins (theme packs and
 | `layout.footer` | 替换（默认 `FooterBar`） | 全局底栏 |
 | `layout.topbar` | 追加 | 全局悬浮顶栏菜单区 |
 | `menu.entry` | 追加 | 主菜单按钮列表之后 |
+| `page.campaign` | 替换 | 战役页主体（数据加载/启动仍在宿主 Campaign.razor） |
+| `page.index` / `page.notfound` | 替换 | 环境检查页 / 404 页 |
+| `page.campaign.loading` / `page.game.loading` / `page.skirmish.loading` / `page.lan.loading` | 替换 | 各加载等待页 |
+| `page.lobby` / `page.game` | 替换 | 在线大厅 / 在线房间 |
+| `page.lan.lobby` / `page.lan.game` | 替换 | 局域网大厅 / 局域网房间 |
+| `page.skirmish` / `page.settings` / `page.loadgame` / `page.stats` | 替换 | 遭遇战 / 设置 / 读档录像 / 战绩页 |
 | `page.settings.aside` | 追加 | 设置页左侧栏 |
 | `page.settings.<tab>` | 追加 | 设置页各分区末尾（display/audio/game/network/update/components/privacy） |
 | `settings.option.<id>` | 追加 | 每个自带设置项之后；id 清单见 `docs/plugin-dev.md` 槽位小节 |

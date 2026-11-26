@@ -370,6 +370,21 @@ new PluginMenuEntry(
 | `layout.splash` | 替换 | 启动闪屏（`ReplaceableComponent`）；默认 `SplashScreen`，轻量换内容用 `SetLoadingScreenContent` |
 | `layout.background` | 替换 | 全局背景层（`ReplaceableComponent`）；默认 `BackgroundLayers`（星粒/极光/网格/扫描线/暗角） |
 | `page.mainmenu` | 替换 | 主菜单主体（`MainMenu.razor` 的 `DynamicComponent`）；宿主自动连接 / ESC / 更新检查 / 隐私声明仍生效，示例见 `samples/Cnc3Home` |
+| `page.campaign` | 替换 | 战役页视觉主体（`Campaign.razor` 的 `ReplaceableComponent`，无替换时渲染原布局）；任务加载 / 启动 / 作弊检测仍由宿主页执行 |
+| `page.index` | 替换 | 启动环境检查页（`/`），环境检测逻辑仍执行 |
+| `page.campaign.loading` | 替换 | 战役加载等待页（`/campaign/loading`） |
+| `page.game.loading` | 替换 | 在线对局加载等待页（`/online/loading`） |
+| `page.skirmish.loading` | 替换 | 遭遇战加载等待页（`/skirmish/loading`） |
+| `page.lan.loading` | 替换 | 局域网加载等待页（`/lan/loading`） |
+| `page.loadgame` | 替换 | 读档 / 录像页（`/load`） |
+| `page.stats` | 替换 | 战绩统计页（`/stats`） |
+| `page.lobby` | 替换 | 在线大厅页（`/online/lobby`） |
+| `page.game` | 替换 | 在线房间页（`/online/game`） |
+| `page.lan.lobby` | 替换 | 局域网大厅页（`/lan/lobby`） |
+| `page.lan.game` | 替换 | 局域网房间页（`/lan/game`） |
+| `page.skirmish` | 替换 | 遭遇战设置页（`/skirmish`） |
+| `page.settings` | 替换 | 设置页整体（`/settings`）；分区追加仍可用 `page.settings.<tab>` |
+| `page.notfound` | 替换 | 404 页（`/404`） |
 | `layout.topbar` | 追加 | 全局悬浮顶栏的菜单区（`PluginSlot`） |
 | `menu.entry` | 追加 | 主菜单按钮列表之后、页脚之前（自定义渲染的菜单入口） |
 | `page.settings.aside` | 追加 | 设置页左侧栏（`PluginSlot`） |
@@ -397,7 +412,7 @@ new PluginMenuEntry(
 > 注意：宿主设置页是「草稿 → 保存」模型，`settings.option.*` 槽位里的自定义控件不受该草稿管理；
 > 若要随保存一起提交，请自行写入 INI 或在组件内直接持久化（与设置页自带的即时生效项一致）。
 
-**替换型槽位的约定**（`page.mainmenu` / `layout.footer` / `layout.splash` / `layout.background`）：
+**替换型槽位的约定**（`page.*` 整页槽位 / `layout.footer` / `layout.splash` / `layout.background`）：
 
 - 由宿主的 `DynamicComponent` 渲染，**不向组件传参**；所需数据用 `@inject` 取宿主服务。
 - 同一 key 只有一个组件生效：**后加载的插件胜出**，宿主按 `TryGetReplacement` 倒序解析；
@@ -555,9 +570,11 @@ public sealed class MyPlayerNameProcessor : IPlayerNameProcessor
   组件内引用图片等资源用 `IPluginContext.ContentUrl("Plugins/<id>/assets/x.png")` 或
   `<img src="@Url">`（`Microsoft.AspNetCore.Components.WebAssembly.Services` 之外无特殊要求）。
   同理，`@import`/`url()` 的相对路径以**插件目录**为基准（内容伺服以游戏根为根，插件目录是它的一段）。
-- **槽位数量有限**：当前为 `page.mainmenu` / `layout.footer` / `layout.splash` /
-  `layout.background`（替换）+ `layout.topbar` / `menu.entry` / `page.settings.aside` /
-  `page.lobby.aside` / `page.campaign.aside` / `page.skirmish.map.tools`（追加），共 10 个挂载点。
+- **槽位数量有限**：整页替换为 `page.mainmenu` / `page.index` / `page.campaign` /
+  `page.campaign.loading` / `page.game` / `page.game.loading` / `page.skirmish` /
+  `page.skirmish.loading` / `page.lan.lobby` / `page.lan.game` / `page.lan.loading` /
+  `page.lobby` / `page.loadgame` / `page.stats` / `page.settings` / `page.notfound`，
+  另有 `layout.footer` / `layout.splash` / `layout.background`；
   需要更多挂载点在宿主侧加一行 `<PluginSlot Key="…"/>` 即可。
 - **内容伺服的 MIME 是白名单制**：非常见扩展名（`.wasm`、`.glb`、`.hdr` 等）按
   `application/octet-stream` 返回，只影响流式实例化一类的用法，详见 §2.7。
