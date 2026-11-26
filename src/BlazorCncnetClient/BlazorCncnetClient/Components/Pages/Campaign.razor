@@ -23,6 +23,8 @@
 }
 else
 {
+    @* 替换型槽位：插件可整体接管战役页视觉主体（宿主的数据加载/启动/作弊检测仍在此页运行） *@
+    <ReplaceableComponent Key="page.campaign">
     <div class="groom page-anim">
         <header class="groom-top item-in">
             <div class="gt-left">
@@ -152,6 +154,7 @@ else
             </section>
         </div>
     </div>
+    </ReplaceableComponent>
 }
 
 @code {

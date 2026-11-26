@@ -16,6 +16,8 @@
 @inject GameContentServer ContentServer
 @inject ITranslationService TranslationSvc
 
+@* 替换型槽位：插件可整体接管遭遇战页视觉（地图/选项/启动仍在宿主页执行） *@
+<ReplaceableComponent Key="page.skirmish">
 @if (!Svc.IsActive)
 {
     <div class="game-empty page-anim">
@@ -436,6 +438,8 @@ else
                                 OnPresetApplied="OnPresetApplied" />
     </div>
 }
+
+</ReplaceableComponent>
 
 @code {
     /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>

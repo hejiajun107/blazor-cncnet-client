@@ -7,6 +7,7 @@
 @inject MessageBoxService MessageBox
 @inject ITranslationService TranslationSvc
 
+<ReplaceableComponent Key="page.skirmish.loading">
 @if (!Svc.IsActive)
 {
     <div class="game-empty page-anim">
@@ -53,6 +54,8 @@ else
         </div>
     </div>
 }
+
+</ReplaceableComponent>
 
 @code {
     private Timer? _timer;

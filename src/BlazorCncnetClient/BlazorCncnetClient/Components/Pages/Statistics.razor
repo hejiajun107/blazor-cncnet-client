@@ -8,6 +8,8 @@
 @inject MessageBoxService MessageBox
 @inject ITranslationService TranslationSvc
 
+@* 替换型槽位：插件可整体接管统计页视觉（数据仍在宿主页加载） *@
+<ReplaceableComponent Key="page.stats">
 <div class="groom stats page-anim">
     <header class="groom-top item-in">
         <div class="gt-left">
@@ -167,6 +169,8 @@
         <button class="mb-btn primary" @onclick="BackToMenu">@T("Common.BackToMenu", "Back to main menu")</button>
     </div>
 </div>
+
+</ReplaceableComponent>
 
 @code {
     /// <summary>UI 文案查表（键省略 <c>Client:UI:</c> 前缀，缺失回退英文默认值）。</summary>

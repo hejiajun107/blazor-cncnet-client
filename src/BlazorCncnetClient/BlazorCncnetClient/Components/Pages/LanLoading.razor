@@ -7,6 +7,7 @@
 @inject MessageBoxService MessageBox
 @inject ITranslationService TranslationSvc
 
+<ReplaceableComponent Key="page.lan.loading">
 @if (!Room.IsInGameRoom)
 {
     <div class="game-empty page-anim">
@@ -54,6 +55,8 @@ else
         </div>
     </div>
 }
+
+</ReplaceableComponent>
 
 @code {
     private Timer? _timer;

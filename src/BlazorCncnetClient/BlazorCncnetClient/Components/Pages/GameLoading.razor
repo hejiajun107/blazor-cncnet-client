@@ -10,6 +10,7 @@
 @inject DiscordPresenceService Discord
 @inject ITranslationService TranslationSvc
 
+<ReplaceableComponent Key="page.game.loading">
 @if (!Room.IsInGameRoom)
 {
     <div class="game-empty page-anim">
@@ -57,6 +58,8 @@ else
         </div>
     </div>
 }
+
+</ReplaceableComponent>
 
 @code {
     private Timer? _timer;

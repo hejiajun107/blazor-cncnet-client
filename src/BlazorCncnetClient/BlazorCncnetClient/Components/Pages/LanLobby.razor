@@ -13,6 +13,8 @@
 @inject MessageBoxService MessageBox
 @inject ITranslationService TranslationSvc
 
+@* 替换型槽位：插件可整体接管局域网大厅视觉（发现/UDP 逻辑仍在宿主页执行） *@
+<ReplaceableComponent Key="page.lan.lobby">
 <div class="lobby page-anim">
     <header class="lobby-top item-in">
         <div class="lt-left">
@@ -194,6 +196,8 @@
         </div>
     }
 </div>
+
+</ReplaceableComponent>
 
 @code {
     /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>

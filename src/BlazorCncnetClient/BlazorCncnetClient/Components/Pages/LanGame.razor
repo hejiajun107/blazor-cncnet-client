@@ -18,6 +18,8 @@
 @inject GameContentServer ContentServer
 @inject UiSoundService Snd
 
+@* 替换型槽位：插件可整体接管局域网房间视觉（房间状态/启动仍在宿主页执行） *@
+<ReplaceableComponent Key="page.lan.game">
 @if (!Room.IsInGameRoom)
 {
     <div class="game-empty page-anim">
@@ -354,6 +356,8 @@ else
         }
     </div>
 }
+
+</ReplaceableComponent>
 
 @code {
     /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>

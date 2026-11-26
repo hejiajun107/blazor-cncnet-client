@@ -12,6 +12,8 @@
 @inject IThemeProvider ThemeProvider
 @inject ITranslationService TranslationSvc
 
+@* 替换型槽位：插件可整体接管读档/录像页视觉（数据与启动仍在宿主页执行） *@
+<ReplaceableComponent Key="page.loadgame">
 <div class="groom page-anim">
     <header class="groom-top item-in">
         <div class="gt-left">
@@ -250,6 +252,8 @@
         }
     </div>
 </div>
+
+</ReplaceableComponent>
 
 @code {
     private enum LoadTab { Saves, Replays }

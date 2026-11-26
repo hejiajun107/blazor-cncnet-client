@@ -36,14 +36,32 @@ public sealed class ReplaceableComponentService
     /// <summary>解析槽位组件类型（ini 覆盖 → 插件替换 → 内置默认）。未知槽位抛异常（配置错误应尽早暴露）。</summary>
     public Type Resolve(string key)
     {
-        if (TryResolveOverride(key, out Type? overrideType))
-            return overrideType;
-        if (_plugins.TryGetReplacement(key, out Type pluginType))
-            return pluginType;
-        if (_defaults.TryGetValue(key, out Type? defaultType))
-            return defaultType;
+        if (TryResolve(key, out Type? type))
+            return type!;
         throw new InvalidOperationException(string.Format(
             UiText.T("Component.NotRegistered", "ReplaceableComponent is not registered: {0}"), key));
+    }
+
+    /// <summary>非抛异常版本：槽位无覆盖/无插件替换/无内置默认时返回 false（供带 ChildContent 回退的槽位使用）。</summary>
+    public bool TryResolve(string key, out Type? type)
+    {
+        if (TryResolveOverride(key, out Type? overrideType))
+        {
+            type = overrideType;
+            return true;
+        }
+        if (_plugins.TryGetReplacement(key, out Type pluginType))
+        {
+            type = pluginType;
+            return true;
+        }
+        if (_defaults.TryGetValue(key, out Type? defaultType))
+        {
+            type = defaultType;
+            return true;
+        }
+        type = null;
+        return false;
     }
 
     /// <summary>

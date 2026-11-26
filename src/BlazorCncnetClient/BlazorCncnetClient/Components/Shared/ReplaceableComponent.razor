@@ -1,10 +1,14 @@
 @inject ReplaceableComponentService Replacer
 
 <!-- F2 可替换槽位：按 Key 经 ReplaceableComponentService 解析渲染类型（[Components] 覆盖优先），
-     未知槽位 Key 抛异常（配置错误应尽早暴露），未解析时渲染空。 -->
+     未知槽位 Key 抛异常（配置错误应尽早暴露）；未解析时渲染 ChildContent（无回退则为空）。 -->
 @if (_resolved is not null)
 {
     <DynamicComponent Type="_resolved" />
+}
+else
+{
+    @ChildContent
 }
 
 @code {
@@ -12,10 +16,17 @@
     [Parameter, EditorRequired]
     public string Key { get; set; } = string.Empty;
 
+    /// <summary>无插件替换时渲染的默认内容（可选）。</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
     private Type? _resolved;
 
     protected override void OnParametersSet()
     {
-        _resolved = Replacer.Resolve(Key);
+        // 有 ChildContent 时允许槽位未注册（渲染默认内容）；无回退时保持“未知 key 即报错”的严格语义。
+        _resolved = ChildContent is not null
+            ? (Replacer.TryResolve(Key, out Type? type) ? type : null)
+            : Replacer.Resolve(Key);
     }
 }

@@ -23,6 +23,8 @@
 @inject AppExitNotifier ExitNotifier
 @inject IPlayerNameProcessor NameProcessor
 
+@* 替换型槽位：插件可整体接管设置页视觉（配置读写/保存仍在宿主页执行） *@
+<ReplaceableComponent Key="page.settings">
 <div class="settings page-anim">
     <header class="settings-top item-in">
         <div class="st-left">
@@ -85,6 +87,8 @@
         <button class="mb-btn primary" disabled="@_saving" @onclick="OnSave">@Ui("Settings.Save", "Save settings")</button>
     </footer>
 </div>
+
+</ReplaceableComponent>
 
 @code {
     private sealed record Section(string Key, string En, string Icon);

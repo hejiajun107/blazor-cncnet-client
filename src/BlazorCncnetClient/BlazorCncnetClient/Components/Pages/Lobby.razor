@@ -18,6 +18,8 @@
 @inject UiSoundService Snd
 @inject CnCNetClient.Online.TunnelHandler TunnelSvc
 
+@* 替换型槽位：插件可整体接管在线大厅视觉（IRC/房间逻辑仍在宿主页执行） *@
+<ReplaceableComponent Key="page.lobby">
 <div class="lobby page-anim">
     <header class="lobby-top item-in">
         <div class="lt-left">
@@ -472,6 +474,8 @@
         </div>
     }
 </div>
+
+</ReplaceableComponent>
 
 @code {
     private const int MAX_VISIBLE_MESSAGES = 300;

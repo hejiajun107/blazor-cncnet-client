@@ -7,6 +7,8 @@
 @inject ITranslationService TranslationSvc
 @inject IServiceProvider Services
 
+@* 替换型槽位：插件可整体接管环境检查页视觉（检查逻辑仍在宿主页执行） *@
+<ReplaceableComponent Key="page.index">
 <div class="env-check">
     <h1>@T("Index.Title", "CNCNet Client")</h1>
     <p class="subtitle">@T("Index.Subtitle", "Startup environment check")</p>
@@ -69,6 +71,8 @@
         </div>
     }
 </div>
+
+</ReplaceableComponent>
 
 @code {
     /// <summary>文案查表（Resx / 原版 Translation.ini），缺失时用英文原文兜底。</summary>
